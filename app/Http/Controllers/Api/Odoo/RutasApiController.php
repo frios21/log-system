@@ -1,0 +1,90 @@
+<?php
+
+namespace App\Http\Controllers\Api\Odoo;
+
+use App\Http\Controllers\Controller;
+use App\Services\Odoo\RutasService;
+use Illuminate\Http\Request;
+use App\Services\Odoo\OdooJsonRpc;
+
+class RutasApiController extends Controller
+{
+    public function __construct(
+        private readonly RutasService $rutas
+    ) {}
+
+    public function index()
+    {
+        return response()->json(
+            $this->rutas->todas()
+        );
+    }
+
+    public function show(int $id)
+    {
+        $ruta = $this->rutas->porId($id);
+
+        if (!$ruta) {
+            return response()->json(['error' => 'Ruta no encontrada'], 404);
+        }
+
+        return response()->json($ruta);
+    }
+
+    public function actualizarDistancia($id, Request $request)
+    {
+        $km = $request->input('distance_km');
+
+        if ($km === null) {
+            return response()->json(['error' => 'distance_km required'], 422);
+        }
+
+        $service = new RutasService(new OdooJsonRpc());
+
+        $ok = $service->actualizarDistancia($id, floatval($km));
+
+        return response()->json([
+            'success' => $ok,
+            'distance_km' => $km,
+        ]);
+    }
+
+    public function actualizarNombre($id, Request $request)
+    {
+        $name = $request->input('name');
+
+        if (!$name) {
+            return response()->json(['error' => 'name required'], 422);
+        }
+
+        $service = new RutasService(new OdooJsonRpc());
+
+        $ok = $service->actualizarNombre($id, $name);
+
+        return response()->json([
+            'success' => $ok,
+            'name' => $name,
+        ]);
+    }
+
+    public function evaluarDesviacion(Request $request)
+    {
+        $km_original = $request->km_original;
+        $km_nuevo = $request->km_nuevo;
+        $kg_original = $request->kg_original;
+        $kg_nuevo = $request->kg_nuevo;
+        $costo_km = $request->costo_km;
+
+        $costo_original = $km_original * $costo_km;
+        $costo_nuevo = $km_nuevo * $costo_km;
+
+        $costo_original_por_kg = $costo_original / $kg_original;
+        $costo_nuevo_por_kg = $costo_nuevo / $kg_nuevo;
+
+        return response()->json([
+            "coste_original_por_kg" => $costo_original_por_kg,
+            "coste_nuevo_por_kg" => $costo_nuevo_por_kg,
+            "conviene" => $costo_nuevo_por_kg <= $costo_original_por_kg
+        ]);
+    }
+}
