@@ -260,7 +260,7 @@ export default function MapView() {
 
       async function snapLatLon(p) {
         const url =
-          `http://167.114.114.51:8989/graphhopper/route?` +
+          `http://167.114.114.51:8989/route?` +
           `point=${p.lat},${p.lon}&profile=car&points_encoded=false`;
 
         try {
@@ -284,7 +284,7 @@ export default function MapView() {
       });
 
       /** construir url de graphhopper */
-      let ghUrl = "http://167.114.114.51:8989/graphhopper/route?";
+      let ghUrl = "http://167.114.114.51:8989/route?";
       cleaned.forEach((p) => {
         ghUrl += `point=${p.lat},${p.lon}&`;
       });
