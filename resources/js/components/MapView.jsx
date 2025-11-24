@@ -260,7 +260,7 @@ export default function MapView() {
 
       async function snapLatLon(p) {
         const url =
-          `https://graphhopper.com/api/1/route?` +
+          `http://127.0.0.1:8989/route?` +
           `point=${p.lat},${p.lon}&profile=car&points_encoded=false&key=${GH_KEY}`;
 
         try {
@@ -284,14 +284,13 @@ export default function MapView() {
       });
 
       /** construir url de graphhopper */
-      let ghUrl = "https://graphhopper.com/api/1/route?";
+      let ghUrl = "http://127.0.0.1:8989/route?";
       cleaned.forEach((p) => {
         ghUrl += `point=${p.lat},${p.lon}&`;
       });
 
       ghUrl +=
-        "profile=car&locale=es&points_encoded=false&instructions=false&" +
-        `key=${GH_KEY}`;
+        "profile=truck&points_encoded=false&instructions=false";
 
       /** consumir GraphHopper */
       const gh = await fetch(ghUrl).then((r) => r.json());
