@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 | Mantiene la página de bienvenida estándar de Laravel.
 */
 Route::get('/', function () {
-    return view('welcome');
+    return "Sistema logístico corriendo correctamente.";
 });
 
 /*
@@ -33,6 +33,6 @@ Route::get('/cargas', function () {
 | - NO intercepta /api o rutas de backend
 | - NO intercepta /build ni /storage ni assets
 */
-Route::get('/cargas/{any}', function () {
+Route::get('/cargas/{any?}', function () {
     return view('app');
 })->where('any', '.*');
