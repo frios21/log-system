@@ -31,12 +31,15 @@ export default function RoutesView() {
     function refetch() {
         fetch("/api/rutas")
             .then(r => r.json())
-            .then(data => {
-                const normalized = data.map(r => ({
-                    ...r,
-                    isVisible: true
-                }));
-                setRutas(normalized);
+            .then(rutas => {
+                setRutas(rutas);
+
+                // Al cargar rutas, dibujarlas automáticamente
+                rutas.forEach(r =>
+                    window.dispatchEvent(
+                        new CustomEvent("draw-route", { detail: r.id })
+                    )
+                );
             })
             .catch(console.error);
     }
@@ -53,13 +56,14 @@ export default function RoutesView() {
         <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <h3>Rutas</h3>
+
                 <button className="btn btn-primary" onClick={async () => {
                     const res = await fetch("/api/rutas", {
                         method: "POST",
                         headers: {"Content-Type":"application/json"},
                         body: JSON.stringify({ name: "Ruta nueva" })
                     });
-                    const created = await res.json();
+                    await res.json();
                     refetch();
                 }}>+</button>
             </div>
