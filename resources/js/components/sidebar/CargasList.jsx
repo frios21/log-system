@@ -1,93 +1,97 @@
+// CargasList.jsx
 import { useEffect, useState } from "react";
-import CargaDetailsModal from "../modals/CargaDetailsModal";
+
+// normalizar busqueda
+function normalize(str) {
+    if (!str) return "";
+    return str
+        .toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
 
 export default function CargasList() {
     const [cargas, setCargas] = useState([]);
-    const [selectedCarga, setSelectedCarga] = useState(null);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
     useEffect(() => {
         fetch("/api/cargas")
             .then(r => r.json())
-            .then(setCargas);
+            .then(setCargas)
+            .catch(console.error);
     }, []);
 
-    function stateColor(state) {
-        switch (state) {
-            case "draft":
-                return { 
-                    background: "#ffebee",   // rojo pastel
-                    borderLeft: "5px solid #d32f2f"
-                };
-            case "assigned":
-                return { 
-                    background: "#fff8e1",   // amarillo pastel
-                    borderLeft: "5px solid #f9a825"
-                };
-            case "done":
-                return { 
-                    background: "#e8f5e9",   // verde pastel
-                    borderLeft: "5px solid #2e7d32"
-                };
-            default:
-                return {};
+    const q = normalize(search);
+
+    const visibles = cargas.filter(c => {
+        // filtro por estado
+        if (statusFilter && c.state !== statusFilter) return false;
+
+        // filtro por búsqueda flexible
+        if (q) {
+            const match =
+                normalize(c.name).includes(q) ||
+                normalize(c.vendor_name).includes(q) ||
+                normalize(c.partner?.name).includes(q) ||
+                normalize(c.id).includes(q);
+
+            if (!match) return false;
         }
-    }
+
+        return true;
+    });
 
     return (
-        <>
-            {cargas.map(carga => (
-                <div className="card" style={stateColor(carga.state)} key={carga.id}>
+        <div>
+            <h3 style={{ marginBottom: 12 }}>Cargas</h3>
 
-                    {/* HEADER */}
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <div className="card-title">{carga.name}</div>
+            {/* Barra de búsqueda + filtro */}
+            <div style={{ marginBottom: 10, display: "flex", gap: 8 }}>
+                <input
+                    className="input"
+                    placeholder="Buscar cargas..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                />
 
-                        <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
-                            {carga.date?.split(" ")[0]}<br />
-                            {carga.date?.split(" ")[1]}
-                        </div>
-                    </div>
+                <select
+                    className="input"
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    style={{ width: 140 }}
+                >
+                    <option value="">Todos</option>
+                    <option value="draft">Draft</option>
+                    <option value="assigned">Asignado</option>
+                    <option value="delivered">Entregado</option>
+                    <option value="cancelled">Cancelado</option>
+                </select>
+            </div>
 
-                    {/* Cliente */}
-                    {(carga.partner || carga.vendor_id) && (
-                        <div
-                            className="chip"
-                            style={{ marginTop: "8px" }}
-                            onClick={() => {
-                                // obtener siempre el id numérico del partner
-                                const partnerId = carga.partner?.id
-                                    ?? (Array.isArray(carga.vendor_id) ? carga.vendor_id[0] : carga.vendor_id);
-                                window.dispatchEvent(new CustomEvent("focus-client", { detail: partnerId }));
-                            }}
-                        >
-                            {carga.vendor_name || carga.partner?.name}
-                        </div>
-                    )}
+            {/* Lista filtrada */}
+            {visibles.map(c => (
+                <div
+                    key={c.id}
+                    className="card"
+                    style={{ padding: 12, marginBottom: 10 }}
+                >
+                    <strong>{c.name}</strong>
 
-
-                    {/* Info */}
-                    <div className="text-small" style={{ marginTop: "10px" }}>
-                        Cantidad: <strong>{carga.total_quantity} kg</strong> — 
-                        Pallets: <strong>{carga.total_pallets}</strong>
-                    </div>
-
-                    {/* BOTONES */}
-                    <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
-                        <button
-                            className="btn btn-outlined"
-                            style={{ flex: 1 }}
-                            onClick={() => setSelectedCarga(carga)}
-                        >
-                            Detalles
-                        </button>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>
+                        <div>Cliente: {c.partner?.name || "—"}</div>
+                        <div>Proveedor: {c.vendor_name}</div>
+                        <div>Estado: {c.state}</div>
+                        <div>Cantidad: {c.total_quantity} kg</div>
                     </div>
                 </div>
             ))}
 
-            {/* MODAL */}
-            {selectedCarga && (
-                <CargaDetailsModal carga={selectedCarga} onClose={() => setSelectedCarga(null)} />
+            {visibles.length === 0 && (
+                <p style={{ marginTop: 20 }}>No se encontraron cargas.</p>
             )}
-        </>
+        </div>
     );
 }

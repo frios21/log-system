@@ -1,3 +1,4 @@
+// /mnt/data/RoutesList.jsx
 import { useEffect, useState } from "react";
 import RouteCard from "./RouteCard";
 import RouteAssignModal from "../modals/RouteAssignModal";
@@ -6,10 +7,24 @@ export default function RoutesView() {
     const [rutas, setRutas] = useState([]);
     const [openAssignFor, setOpenAssignFor] = useState(null);
 
+    // UI: filtros y búsqueda
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState(""); // "" = todos
+    const [selectedRoutes, setSelectedRoutes] = useState(new Set());
+
     useEffect(() => {
         refetch();
     }, []);
 
+    // cuando cambian rutas -> inicializar selección (seleccionar todas)
+    useEffect(() => {
+        const ids = rutas.map(r => r.id);
+        setSelectedRoutes(new Set(ids));
+        // notificar mapa que todas están seleccionadas
+        window.dispatchEvent(new CustomEvent("routes-selection-changed", { detail: { ids } }));
+    }, [rutas]);
+
+    // recibir updates de distancia
     useEffect(() => {
         function refreshOnDistanceUpdate(ev) {
             const { routeId, distanceKm } = ev.detail;
@@ -31,16 +46,7 @@ export default function RoutesView() {
     function refetch() {
         fetch("/api/rutas")
             .then(r => r.json())
-            .then(rutas => {
-                setRutas(rutas);
-
-                // Al cargar rutas, dibujarlas automáticamente
-                rutas.forEach(r =>
-                    window.dispatchEvent(
-                        new CustomEvent("draw-route", { detail: r.id })
-                    )
-                );
-            })
+            .then(setRutas)
             .catch(console.error);
     }
 
@@ -52,27 +58,104 @@ export default function RoutesView() {
         refetch();
     }
 
+    function toggleSelect(id, v) {
+        setSelectedRoutes(prev => {
+            const next = new Set(prev);
+            if (v === undefined) {
+                // toggle
+                next.has(id) ? next.delete(id) : next.add(id);
+            } else {
+                if (v) next.add(id); else next.delete(id);
+            }
+            // notificar al mapa
+            window.dispatchEvent(new CustomEvent("routes-selection-changed", { detail: { ids: Array.from(next) } }));
+            return next;
+        });
+    }
+
+    function toggleSelectAll(v) {
+        if (v) {
+            const all = rutas.map(r => r.id);
+            setSelectedRoutes(new Set(all));
+            window.dispatchEvent(new CustomEvent("routes-selection-changed", { detail: { ids: all } }));
+        } else {
+            setSelectedRoutes(new Set());
+            window.dispatchEvent(new CustomEvent("routes-selection-changed", { detail: { ids: [] } }));
+        }
+    }
+
+    // filtros + búsqueda
+    function normalize(str) {
+        if (!str) return "";
+        return str
+            .toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    }
+
+    const visibleRutas = rutas.filter(r => {
+        // filtro por estado
+        if (statusFilter && r.status !== statusFilter) return false;
+
+        // búsqueda flexible
+        const q = normalize(search);
+        if (!q) return true;
+
+        const name = normalize(r.name);
+        const id = normalize(r.id);
+        const distance = normalize(r.total_distance_km);
+
+        return (
+            name.includes(q) ||
+            id.includes(q) ||
+            distance.includes(q)
+        );
+    });
+
     return (
         <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <h3>Rutas</h3>
-
                 <button className="btn btn-primary" onClick={async () => {
                     const res = await fetch("/api/rutas", {
                         method: "POST",
                         headers: {"Content-Type":"application/json"},
                         body: JSON.stringify({ name: "Ruta nueva" })
                     });
-                    await res.json();
+                    const created = await res.json();
                     refetch();
                 }}>+</button>
             </div>
 
-            {rutas.map((r, i) => (
+            {/* filtros */}
+            <div style={{ fontSize: 14, marginBottom: 10, display: "flex", gap: 8 }}>
+                <input placeholder="Buscar rutas..." value={search} onChange={e => setSearch(e.target.value)} className="input" />
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input" style={{ width: 140 }}>
+                    <option value="">Todas</option>
+                    <option value="draft">Pendientes</option>
+                    <option value="assigned">Asignadas</option>
+                    <option value="delivered">Entregadas</option>
+                </select>
+
+                <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                        type="checkbox"
+                        checked={selectedRoutes.size === rutas.length && rutas.length > 0}
+                        onChange={(e) => toggleSelectAll(e.target.checked)}
+                    /> Seleccionar todas
+                </label>
+            </div>
+
+            {/* lista */}
+            {visibleRutas.map((r, i) => (
                 <RouteCard
                     key={r.id}
                     ruta={r}
                     colorIndex={i}
+                    visible={selectedRoutes.has(r.id)}
+                    onToggleVisible={(id, v) => toggleSelect(id, v)}
                     onAssign={() => setOpenAssignFor(r)}
                     onDelete={() => deleteRoute(r.id)}
                 />
