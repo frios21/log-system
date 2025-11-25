@@ -7,7 +7,7 @@ use App\Http\Controllers\LoadController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\Api\Odoo\RutasApiController;
 use App\Http\Controllers\Api\Odoo\ContactosApiController;
-use App\Http\Controllers\VehiculosApiController;
+use App\Http\Controllers\VehiclesController;
 use App\Http\Controllers\TraccarController;
 
 /*
@@ -40,6 +40,7 @@ Route::middleware('api')->group(function () {
     Route::post('/rutas', [RouteController::class, 'store']);
     Route::post('/rutas/{id}/assign', [RouteController::class, 'assign']);
     Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia']);
+    Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle']);
     Route::patch('/rutas/{id}', [RutasApiController::class, 'actualizarNombre']);
     Route::delete('/rutas/{id}', [RouteController::class, 'destroy']);
 
@@ -53,7 +54,9 @@ Route::middleware('api')->group(function () {
     // =====================
     // VEHÍCULOS (fleet.vehicle)
     // =====================
-    Route::get('/vehiculos', [VehiculosApiController::class, 'index']);
+    Route::get('/vehiculos', [VehiclesController::class, 'index']);
+    Route::get('/vehiculos/{id}', [VehiclesController::class, 'show']);
+
 
     // =====================
     // TEST API

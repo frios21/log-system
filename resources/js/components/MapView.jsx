@@ -99,6 +99,57 @@ export default function MapView() {
     };
   }, []);
 
+   /** UBICACIÓN TRACCAR EN TIEMPO REAL
+  useEffect(() => {
+    if (!mapRef.current) return; // esperar a que el mapa exista
+
+    let active = true;
+    const map = mapRef.current;
+
+    async function updateTraccarPosition() {
+      if (!active) return;
+
+      try {
+        const pos = await fetch("/api/traccar/2").then(r => r.json());
+        if (!pos.latitude || !pos.longitude) return;
+
+        const lat = pos.latitude;
+        const lon = pos.longitude;
+
+        // si el marcador existe -> moverlo
+        if (traccarMarkerRef.current) {
+          traccarMarkerRef.current.setLatLng([lat, lon]);
+        } else {
+          // crear nuevo marcador
+          traccarMarkerRef.current = L.marker([lat, lon], {
+            icon: traccarIcon,
+          }).addTo(map);
+
+          traccarMarkerRef.current.bindPopup(`
+            <strong>Ubicación en tiempo real</strong><br/>
+            Velocidad: ${pos.speed} km/h<br/>
+            Batería: ${pos.attributes?.batteryLevel ?? "?"}%
+          `);
+        }
+
+      } catch (err) {
+        console.error("Error consultando Traccar:", err);
+      }
+    }
+
+    // Ejecutar ahora
+    updateTraccarPosition();
+
+    // Ejecutar cada 1 segundos
+    const interval = setInterval(updateTraccarPosition, 1000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+
+  }, [mapRef.current]);*/
+
   // Helper: parse waypoints field safely
   function parseWaypointsField(w) {
     if (!w) return [];

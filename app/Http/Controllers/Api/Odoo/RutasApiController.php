@@ -87,4 +87,30 @@ class RutasApiController extends Controller
             "conviene" => $costo_nuevo_por_kg <= $costo_original_por_kg
         ]);
     }
+
+   public function updateVehicle($id, Request $request)
+    {
+        $vehicleId = $request->input('vehicle_id');
+
+        if (!$vehicleId) {
+            return response()->json(['message' => 'vehicle_id requerido'], 422);
+        }
+
+        $rutaExistente = $this->rutas->buscarPorVehiculo($vehicleId);
+
+        if ($rutaExistente && (int)$rutaExistente['id'] !== (int)$id) {
+            return response()->json([
+                'message' => 'Este vehículo ya está asignado a otra ruta',
+                'ruta_id' => $rutaExistente['id'],
+                'ruta_name' => $rutaExistente['name'],
+            ], 409);
+        }
+
+        try {
+            $result = $this->rutas->asignarVehiculo((int)$id, (int)$vehicleId);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
 }

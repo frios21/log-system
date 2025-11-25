@@ -3,18 +3,26 @@
 namespace App\Http\Controllers\Api\Odoo;
 
 use App\Http\Controllers\Controller;
-use App\Services\Odoo\VehiculosService;
+use Illuminate\Http\Request;
+use App\Http\Services\Odoo\VehiclesService;
 
-class VehiculosApiController extends Controller
+class VehiclesController extends Controller
 {
-    public function __construct(
-        private readonly VehiculosService $vehiculos
-    ) {}
+    protected $service;
 
-    public function index()
+    public function __construct(VehiclesService $service)
     {
-        return response()->json(
-            $this->vehiculos->todos()
-        );
+        $this->service = $service;
+    }
+
+    /**
+     * GET /api/odoo/vehicles
+     * Query param opcional: q
+     */
+    public function index(Request $request)
+    {
+        $q = $request->query('q', null);
+        $vehicles = $this->service->fetchVehicles($q);
+        return response()->json($vehicles);
     }
 }

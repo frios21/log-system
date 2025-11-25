@@ -5,7 +5,7 @@ function pastelColor(i) {
     return `hsl(${hue} 70% 85%)`;
 }
 
-export default function RouteCard({ ruta, colorIndex = 0, onAssign, onDelete }) {
+export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehicle, onDelete }) {
     const color = pastelColor(colorIndex);
 
     const [editing, setEditing] = useState(false);
@@ -95,6 +95,10 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onDelete }) 
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <button className="btn btn-primary" onClick={onAssign}>Asignar</button>
+
+                <button className="btn btn-primary" onClick={() => onAssignVehicle(ruta)}>
+                    Vehículo
+                </button>
 
                 <button
                     className="btn btn-danger"
