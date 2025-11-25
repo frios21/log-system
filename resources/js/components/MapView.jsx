@@ -429,6 +429,54 @@ export default function MapView() {
     return () => window.removeEventListener("toggle-route", toggleRouteLegacy);
   }, []);
 
+  // Recalc handler: when modal changes order in real-time it emits 'recalc-route-graphhopper'
+  useEffect(() => {
+    let pending = {};
+
+    async function recalcHandler(ev) {
+      const { routeId, newOrder } = ev.detail || {};
+      if (!routeId || !Array.isArray(newOrder)) return;
+
+      // To avoid rapid-fire requests, debounce per route
+      if (pending[routeId]) clearTimeout(pending[routeId]);
+      pending[routeId] = setTimeout(async () => {
+        delete pending[routeId];
+
+        // Call assign endpoint (modal expects this to happen often)
+        try {
+          await fetch(`/api/rutas/${routeId}/assign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ load_ids: newOrder }),
+          });
+        } catch (e) {
+          console.warn("Failed to POST assign during recalc", e);
+        }
+
+        // Fetch fresh route
+        let updated;
+        try {
+          updated = await fetch(`/api/rutas/${routeId}`).then((r) => r.json());
+        } catch (e) {
+          console.warn("Failed to fetch updated route after assign", e);
+          return;
+        }
+
+        // Redraw/Update route using GH (no flicker)
+        try {
+          await drawRouteUsingGraphhopper(updated, { fitBounds: false });
+        } catch (e) {
+          console.warn("Failed to redraw route after recalc", e);
+        }
+      }, 250);
+    }
+
+    window.addEventListener("recalc-route-graphhopper", recalcHandler);
+    return () => {
+      window.removeEventListener("recalc-route-graphhopper", recalcHandler);
+    };
+  }, []);
+
   // Mostrar marcadores de contactos
   useEffect(() => {
     function showContacts(ev) {
