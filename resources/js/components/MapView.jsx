@@ -99,6 +99,67 @@ export default function MapView() {
       };
   }, []);
 
+  useEffect(() => {
+    async function loadAllRoutes() {
+        const map = mapRef.current;
+        if (!map) return;
+
+        const rutas = await fetch("/api/rutas").then(r => r.json());
+
+        for (const r of rutas) {
+            // evitar redibujar si ya está en cache
+            if (routesLayers.current[r.id]) continue;
+
+            let points = [];
+
+            if (typeof r.waypoints === "string") {
+                try {
+                    const parsed = JSON.parse(r.waypoints);
+                    if (Array.isArray(parsed)) points = parsed;
+                } catch (e) {
+                    console.warn("waypoints JSON inválido", e);
+                }
+            }
+
+            else if (Array.isArray(r.waypoints)) {
+                points = r.waypoints;
+            }
+
+            else if (Array.isArray(r.loads)) {
+                points = r.loads
+                    .filter(l => l.partner?.latitude && l.partner?.longitude)
+                    .map(l => ({
+                        lat: l.partner.latitude,
+                        lon: l.partner.longitude,
+                    }));
+            }
+
+            points = points.map(p => ({
+                lat: Number(p.lat),
+                lon: Number(p.lon),
+            }));
+
+
+            if (!points.length) continue;
+
+            const coords = points.map(p => [p.lat, p.lon]);
+
+            const color = routeColor(r.id);
+            const polyline = L.polyline(coords, {
+                color,
+                weight: 5,
+                opacity: 0.9,
+            }).addTo(map);
+
+            routesLayers.current[r.id] = {
+                polyline,
+                markers: [],
+            };
+        }
+    }
+      loadAllRoutes();
+  }, []);
+
   /** UBICACIÓN TRACCAR EN TIEMPO REAL
   useEffect(() => {
     if (!mapRef.current) return; // esperar a que el mapa exista
@@ -225,9 +286,36 @@ export default function MapView() {
     return () => window.removeEventListener("focus-client", focusClient);
   }, []);
 
+  // Toggle visibilidad de rutas
+  useEffect(() => {
+      function toggleVisibility(ev) {
+          const { id, visible } = ev.detail;
+          const map = mapRef.current;
+          if (!map) return;
+
+          const layer = routesLayers.current[id];
+          if (!layer) return;
+
+          if (!routesLayers.current[id]) return;
+
+          if (visible) {
+              // volver a mostrar
+              map.addLayer(layer.polyline);
+              layer.markers.forEach(m => map.addLayer(m));
+          } else {
+              // ocultar sin borrar
+              map.removeLayer(layer.polyline);
+              layer.markers.forEach(m => map.removeLayer(m));
+          }
+      }
+
+      window.addEventListener("toggle-route-visible", toggleVisibility);
+      return () =>
+          window.removeEventListener("toggle-route-visible", toggleVisibility);
+  }, []);
+
   /** TOGGLE / DIBUJAR RUTA — GraphHopper + actualizar distancia */
   useEffect(() => {
-    const GH_KEY = "600ab2f1-f867-44a9-9b60-bdabcd6db589";
 
     async function toggleRoute(ev) {
       const routeId = ev.detail;
@@ -337,9 +425,6 @@ export default function MapView() {
 
       map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
     }
-
-    window.addEventListener("toggle-route", toggleRoute);
-    return () => window.removeEventListener("toggle-route", toggleRoute);
   }, []);
   
   // Mostrar marcadores de contactos
@@ -369,6 +454,10 @@ export default function MapView() {
             iconAnchor: [13, 13]
           });
           const marker = L.marker([c.latitude, c.longitude], { icon: arrowIcon }).addTo(map);
+
+          marker.bindPopup(`<strong>${c.name}</strong>`);
+
+          contactsMarkersRef.current.push(marker);
       });
   }
     function clearContacts() {
@@ -414,7 +503,6 @@ export default function MapView() {
           const { routeId, newOrder } = ev.detail;
           if (!routeId || !Array.isArray(newOrder)) return;
 
-          // Pedir al backend que actualice el orden de las cargas SIN ORIGEN/DESTINO
           fetch(`/api/rutas/${routeId}/assign`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -423,12 +511,10 @@ export default function MapView() {
               }),
           })
           .then(() => {
-              // Vuelve a dibujar la ruta usando GraphHopper
               window.dispatchEvent(
                   new CustomEvent("toggle-route", { detail: routeId })
               );
 
-              // Después de quitarla, la volvemos a poner (redibujo)
               setTimeout(() => {
                   window.dispatchEvent(
                       new CustomEvent("toggle-route", { detail: routeId })

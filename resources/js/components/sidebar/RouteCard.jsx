@@ -91,17 +91,20 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onDelete }) 
             </div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button
-                    className="btn btn-outlined"
-                    onClick={() =>
-                        window.dispatchEvent(
-                            new CustomEvent("toggle-route", { detail: ruta.id })
-                        )
-                    }
-                >
-                    Ver
-                </button>
-
+                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                        type="checkbox"
+                        checked={ruta.isVisible ?? true}
+                        onChange={(e) => {
+                            window.dispatchEvent(
+                                new CustomEvent("toggle-route-visible", {
+                                    detail: { id: ruta.id, visible: e.target.checked }
+                                })
+                            );
+                        }}
+                    />
+                    <span>Visible</span>
+                </label>
                 <button className="btn btn-primary" onClick={onAssign}>
                     Asignar
                 </button>

@@ -31,7 +31,13 @@ export default function RoutesView() {
     function refetch() {
         fetch("/api/rutas")
             .then(r => r.json())
-            .then(setRutas)
+            .then(data => {
+                const normalized = data.map(r => ({
+                    ...r,
+                    isVisible: true
+                }));
+                setRutas(normalized);
+            })
             .catch(console.error);
     }
 
