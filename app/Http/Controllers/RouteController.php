@@ -36,6 +36,22 @@ class RouteController extends Controller
         );
     }
 
+    public function preview(Request $request, $id)
+    {
+        $loadIds       = $request->input('load_ids', []);
+        $originId      = $request->input('origin_id');
+        $destinationId = $request->input('destination_id');
+
+        $result = $this->rutas->previewCargas(
+            (int) $id,
+            $loadIds,
+            $originId,
+            $destinationId
+        );
+
+        return response()->json($result);
+    }
+
     public function assign(Request $request, $id)
     {
         $loadIds       = $request->input('load_ids', []);

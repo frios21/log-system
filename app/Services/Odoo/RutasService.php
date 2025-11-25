@@ -196,6 +196,78 @@ class RutasService
         ];
     }
 
+    public function previewCargas(int $routeId, array $loadIds, ?int $originId, ?int $destId)
+    {
+        
+        $existing = $this->porId($routeId);
+        $existingWaypoints = $existing['waypoints'] ?? [];
+
+        $waypoints = [];
+
+        if ($originId) {
+            $p = $this->odoo->searchRead('res.partner', [['id', '=', $originId]], ['id','name','latitude','longitude']);
+            $origin = $p[0] ?? null;
+            if ($origin && $origin['latitude'] && $origin['longitude']) {
+                $waypoints[] = [
+                    'lat' => (float)$origin['latitude'],
+                    'lon' => (float)$origin['longitude'],
+                    'partner_id' => $origin['id'],
+                    'label' => 'Origen: '.$origin['name'],
+                    'type' => 'origin',
+                ];
+            }
+        } elseif ($existingWaypoints && empty($loadIds)) {
+            $waypoints[] = $existingWaypoints[0];
+        }
+
+        if (!empty($loadIds)) {
+            $rawLoads = $this->odoo->searchRead('logistics.load', [['id','in',$loadIds]], ['id','name','vendor_id']);
+            $map = [];
+            foreach ($rawLoads as $l) { $map[$l['id']] = $l; }
+            foreach ($loadIds as $lid) {
+                if (!isset($map[$lid])) continue;
+                $l = $map[$lid];
+
+                $vendorId = is_array($l['vendor_id']) ? ($l['vendor_id'][0] ?? null) : $l['vendor_id'];
+                if (!$vendorId) continue;
+
+                $p = $this->odoo->searchRead('res.partner', [['id','=',$vendorId]], ['id','name','latitude','longitude']);
+                $p = $p[0] ?? null;
+
+                if (!$p || !$p['latitude'] || !$p['longitude']) continue;
+
+                $waypoints[] = [
+                    'lat' => (float)$p['latitude'],
+                    'lon' => (float)$p['longitude'],
+                    'load_id' => $l['id'],
+                    'partner_id' => $p['id'],
+                    'label' => $l['name'],
+                ];
+            }
+        }
+
+        if ($destId) {
+            $p = $this->odoo->searchRead('res.partner', [['id','=',$destId]], ['id','name','latitude','longitude']);
+            $dest = $p[0] ?? null;
+            if ($dest && $dest['latitude'] && $dest['longitude']) {
+                $waypoints[] = [
+                    'lat' => (float)$dest['latitude'],
+                    'lon' => (float)$dest['longitude'],
+                    'partner_id' => $dest['id'],
+                    'label' => 'Destino: '.$dest['name'],
+                    'type' => 'destination',
+                ];
+            }
+        }
+
+        $distKm = $this->calcularDistanciaKm($waypoints);
+
+        return [
+            'waypoints' => $waypoints,
+            'total_distance_km' => $distKm,
+        ];
+    }
+
     public function actualizarDistancia(int $routeId, float $km): bool
     {
         return $this->odoo->write('logistics.route', $routeId, [
