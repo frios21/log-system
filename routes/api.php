@@ -39,6 +39,7 @@ Route::middleware('api')->group(function () {
     Route::get('/rutas/{id}', [RouteController::class, 'show']);
     Route::post('/rutas', [RouteController::class, 'store']);
     Route::post('/rutas/{id}/assign', [RouteController::class, 'assign']);
+    Route::post('/rutas/{id}/preview', [RouteController::class, 'preview']);
     Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia']);
     Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle']);
     Route::patch('/rutas/{id}', [RutasApiController::class, 'actualizarNombre']);

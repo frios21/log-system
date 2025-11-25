@@ -198,73 +198,103 @@ class RutasService
 
     public function previewCargas(int $routeId, array $loadIds, ?int $originId, ?int $destId)
     {
-        
+        // 1. Obtener la ruta base (solo para referencia, no escribimos en ella)
         $existing = $this->porId($routeId);
         $existingWaypoints = $existing['waypoints'] ?? [];
+        
+        // Detectar origen/destino existentes si no se envían nuevos
+        $existingOrigin = null;
+        $existingDest = null;
+        if (is_array($existingWaypoints) && !empty($existingWaypoints)) {
+            // Lógica simple: asume primero es origen, último es destino si no tienen load_id
+            $first = $existingWaypoints[0] ?? null;
+            $last = $existingWaypoints[count($existingWaypoints) - 1] ?? null;
+            if ($first && (!isset($first['load_id']) || !$first['load_id'])) $existingOrigin = $first;
+            if ($last && (!isset($last['load_id']) || !$last['load_id'])) $existingDest = $last;
+        }
 
         $waypoints = [];
 
+        // 2. Construir ORIGEN
         if ($originId) {
             $p = $this->odoo->searchRead('res.partner', [['id', '=', $originId]], ['id','name','latitude','longitude']);
             $origin = $p[0] ?? null;
-            if ($origin && $origin['latitude'] && $origin['longitude']) {
+            if ($origin) {
                 $waypoints[] = [
                     'lat' => (float)$origin['latitude'],
                     'lon' => (float)$origin['longitude'],
                     'partner_id' => $origin['id'],
-                    'label' => 'Origen: '.$origin['name'],
-                    'type' => 'origin',
+                    'label' => 'Origen: ' . $origin['name'],
+                    'type' => 'origin'
                 ];
             }
-        } elseif ($existingWaypoints && empty($loadIds)) {
-            $waypoints[] = $existingWaypoints[0];
+        } elseif ($existingOrigin) {
+            $waypoints[] = $existingOrigin;
         }
 
+        // 3. Construir CARGAS (Intermedios) estrictamente en el orden de $loadIds
         if (!empty($loadIds)) {
-            $rawLoads = $this->odoo->searchRead('logistics.load', [['id','in',$loadIds]], ['id','name','vendor_id']);
-            $map = [];
-            foreach ($rawLoads as $l) { $map[$l['id']] = $l; }
-            foreach ($loadIds as $lid) {
-                if (!isset($map[$lid])) continue;
-                $l = $map[$lid];
+            // Traemos todas las cargas involucradas de una sola vez
+            $rawLoads = $this->odoo->searchRead('logistics.load', [['id', 'in', $loadIds]], ['id', 'name', 'vendor_id']);
+            
+            // Indexamos para acceso rápido
+            $loadsMap = [];
+            foreach ($rawLoads as $l) {
+                $loadsMap[$l['id']] = $l;
+            }
 
-                $vendorId = is_array($l['vendor_id']) ? ($l['vendor_id'][0] ?? null) : $l['vendor_id'];
+            // Iteramos sobre el array ORDENADO de IDs que envió el frontend
+            foreach ($loadIds as $lid) {
+                if (!isset($loadsMap[$lid])) continue;
+                $load = $loadsMap[$lid];
+
+                $vendorId = is_array($load['vendor_id']) ? ($load['vendor_id'][0] ?? null) : $load['vendor_id'];
                 if (!$vendorId) continue;
 
-                $p = $this->odoo->searchRead('res.partner', [['id','=',$vendorId]], ['id','name','latitude','longitude']);
-                $p = $p[0] ?? null;
+                // Nota: Podrías optimizar trayendo todos los partners de una vez, pero esto funciona
+                $p = $this->odoo->searchRead('res.partner', [['id', '=', $vendorId]], ['id','name','latitude','longitude']);
+                $partner = $p[0] ?? null;
 
-                if (!$p || !$p['latitude'] || !$p['longitude']) continue;
-
-                $waypoints[] = [
-                    'lat' => (float)$p['latitude'],
-                    'lon' => (float)$p['longitude'],
-                    'load_id' => $l['id'],
-                    'partner_id' => $p['id'],
-                    'label' => $l['name'],
-                ];
+                if ($partner && $partner['latitude'] && $partner['longitude']) {
+                    $waypoints[] = [
+                        'lat' => (float)$partner['latitude'],
+                        'lon' => (float)$partner['longitude'],
+                        'load_id' => $load['id'],
+                        'partner_id' => $partner['id'],
+                        'label' => $load['name'] // o $partner['name']
+                    ];
+                }
             }
+        } else {
+            // Si no hay loadIds nuevos, podríamos mantener los existentes, 
+            // pero en un contexto de "Assign", si la lista está vacía, no hay intermedios.
         }
 
+        // 4. Construir DESTINO
         if ($destId) {
-            $p = $this->odoo->searchRead('res.partner', [['id','=',$destId]], ['id','name','latitude','longitude']);
+            $p = $this->odoo->searchRead('res.partner', [['id', '=', $destId]], ['id','name','latitude','longitude']);
             $dest = $p[0] ?? null;
-            if ($dest && $dest['latitude'] && $dest['longitude']) {
+            if ($dest) {
                 $waypoints[] = [
                     'lat' => (float)$dest['latitude'],
                     'lon' => (float)$dest['longitude'],
                     'partner_id' => $dest['id'],
-                    'label' => 'Destino: '.$dest['name'],
-                    'type' => 'destination',
+                    'label' => 'Destino: ' . $dest['name'],
+                    'type' => 'destination'
                 ];
             }
+        } elseif ($existingDest) {
+            $waypoints[] = $existingDest;
         }
 
+        // 5. Calcular Distancia (Backend OSRM o similar)
+        // Esto nos da la distancia "fiscal" o "de negocio"
         $distKm = $this->calcularDistanciaKm($waypoints);
 
         return [
-            'waypoints' => $waypoints,
-            'total_distance_km' => $distKm,
+            'route_id' => $routeId,
+            'waypoints' => $waypoints,       // El frontend usará esto para dibujar
+            'total_distance_km' => $distKm,  // El frontend usará esto para costos
         ];
     }
 
