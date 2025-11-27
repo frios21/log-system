@@ -33,17 +33,23 @@ Route::middleware('api')->group(function () {
     Route::get('/cargas/{id}', [LoadController::class, 'show']);
 
     // =====================
+    // TRACCAR API (colocar antes de /rutas/{id} para evitar colisión)
+    // =====================
+    Route::get('/rutas/activos-traccar', [TraccarController::class, 'activeDraftPositions']);
+    Route::get('/traccar/{deviceId}', [TraccarController::class, 'position']);
+
+    // =====================
     // RUTAS
     // =====================
     Route::get('/rutas', [RouteController::class, 'index']);
-    Route::get('/rutas/{id}', [RouteController::class, 'show']);
+    Route::get('/rutas/{id}', [RouteController::class, 'show'])->whereNumber('id');
     Route::post('/rutas', [RouteController::class, 'store']);
-    Route::post('/rutas/{id}/assign', [RouteController::class, 'assign']);
-    Route::post('/rutas/{id}/preview', [RouteController::class, 'preview']);
-    Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia']);
-    Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle']);
-    Route::patch('/rutas/{id}', [RutasApiController::class, 'actualizarNombre']);
-    Route::delete('/rutas/{id}', [RouteController::class, 'destroy']);
+    Route::post('/rutas/{id}/assign', [RouteController::class, 'assign'])->whereNumber('id');
+    Route::post('/rutas/{id}/preview', [RouteController::class, 'preview'])->whereNumber('id');
+    Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia'])->whereNumber('id');
+    Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle'])->whereNumber('id');
+    Route::patch('/rutas/{id}', [RutasApiController::class, 'actualizarNombre'])->whereNumber('id');
+    Route::delete('/rutas/{id}', [RouteController::class, 'destroy'])->whereNumber('id');
 
     Route::post('/rutas/desviacion', [RutasApiController::class, 'evaluarDesviacion']);
 
@@ -65,10 +71,5 @@ Route::middleware('api')->group(function () {
     Route::get('/ping', function () {
         return ['pong' => true, 'laravel' => app()->version()];
     });
-
-    // =====================
-    // TRACCAR API
-    // =====================
-    Route::get('/traccar/{deviceId}', [TraccarController::class, 'position']);
 
 });

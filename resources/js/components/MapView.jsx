@@ -19,9 +19,9 @@ const estadoColors = {
 export default function MapView() {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
-  const routesLayers = useRef({}); // { [routeId]: { polyline, markers, visible } }
+  const routesLayers = useRef({});
   const [groups, setGroups] = useState([]);
-
+  const traccarMarkersRef = useRef({});
   function cargaIconForState(state) {
     const color = estadoColors[state] || "#7f8c8d";
     return L.divIcon({
@@ -95,53 +95,74 @@ export default function MapView() {
 
   /** UBICACIÓN TRACCAR EN TIEMPO REAL */
   useEffect(() => {
-    if (!mapRef.current) return; // esperar a que el mapa exista
+    const map = mapRef.current;
+    if (!map) return;
 
     let active = true;
-    const map = mapRef.current;
 
-    async function updateTraccarPosition() {
+    async function updateDraftVehiclesPositions() {
       if (!active) return;
-
       try {
-        const pos = await fetch("/api/traccar/2").then(r => r.json());
-        if (!pos.latitude || !pos.longitude) return;
+        const list = await fetch('/api/rutas/activos-traccar').then(r => r.json());
+        if (!Array.isArray(list)) return;
 
-        const lat = pos.latitude;
-        const lon = pos.longitude;
+        const seen = new Set();
 
-        // si el marcador existe -> moverlo
-        if (traccarMarkerRef.current) {
-          traccarMarkerRef.current.setLatLng([lat, lon]);
-        } else {
-          // crear nuevo marcador
-          traccarMarkerRef.current = L.marker([lat, lon], {
-            icon: traccarIcon,
-          }).addTo(map);
+        list.forEach(item => {
+          const pos = item.position || {};
+          const lat = pos.latitude;
+          const lon = pos.longitude;
+          // Usar el id interno numérico si viene, si no fallback al uniqueId, y normalizar a string para consistencia
+          const deviceKey = String(item.traccar_internal_id ?? item.traccar_device_id);
+          if (lat == null || lon == null || !deviceKey) return;
 
-          traccarMarkerRef.current.bindPopup(`
-            <strong>Ubicación en tiempo real</strong><br/>
-            Velocidad: ${pos.speed} km/h<br/>
-            Batería: ${pos.attributes?.batteryLevel ?? "?"}%
-          `);
-        }
+          seen.add(deviceKey);
+
+          const popup = `
+            <strong>${item.driver_name || 'Chofer'}</strong> — ${item.vehicle_name || 'Vehículo'}<br/>
+            Ruta: ${item.route_name || item.route_id}<br/>
+            Velocidad: ${pos.speed ?? '-'} km/h
+          `;
+
+          const existing = traccarMarkersRef.current[deviceKey];
+          if (existing) {
+            existing.setLatLng([lat, lon]);
+            existing.setPopupContent(popup);
+          } else {
+            const marker = L.marker([lat, lon], { icon: L.divIcon({
+              className: 'traccar-marker',
+              html: '<div style="width:14px;height:14px;border-radius:50%;background:#ff4757;border:3px solid #fff;box-shadow:0 0 8px rgba(0,0,0,.25)"></div>',
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            }) });
+            marker.addTo(map);
+            marker.bindPopup(popup);
+            traccarMarkersRef.current[deviceKey] = marker;
+          }
+        });
+
+        // remover marcadores que no llegaron en esta actualización (usar misma clave string)
+        Object.keys(traccarMarkersRef.current).forEach(key => {
+          if (!seen.has(key)) {
+            const m = traccarMarkersRef.current[key];
+            if (m && map.hasLayer(m)) map.removeLayer(m);
+            delete traccarMarkersRef.current[key];
+          }
+        });
 
       } catch (err) {
-        console.error("Error consultando Traccar:", err);
+        console.warn('Error consultando activos Traccar', err);
       }
     }
 
-    // Ejecutar ahora
-    updateTraccarPosition();
-
-    // Ejecutar cada 1 segundos
-    const interval = setInterval(updateTraccarPosition, 1000);
+    // primera ejecución y polling cada 5s
+    updateDraftVehiclesPositions();
+    const interval = setInterval(updateDraftVehiclesPositions, 5000);
 
     return () => {
       active = false;
       clearInterval(interval);
     };
-
   }, [mapRef.current]);
 
   // -------------------------------------------------------------
