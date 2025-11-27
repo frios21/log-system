@@ -16,6 +16,13 @@ const estadoColors = {
   cancelled: "#e74c3c", 
 };
 
+// Colores de rutas por estado (alineado con RouteCard borderLeft)
+const routeStatusColor = {
+  draft: "#d32f2f",      // rojo
+  assigned: "#f9a825",   // amarillo
+  done: "#2e7d32",       // verde
+};
+
 export default function MapView() {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -112,11 +119,10 @@ export default function MapView() {
           const pos = item.position || {};
           const lat = pos.latitude;
           const lon = pos.longitude;
-          // Usar el id interno numérico si viene, si no fallback al uniqueId, y normalizar a string para consistencia
-          const deviceKey = String(item.traccar_internal_id ?? item.traccar_device_id);
-          if (lat == null || lon == null || !deviceKey) return;
+          const deviceId = item.traccar_device_id;
+          if (lat == null || lon == null || deviceId == null) return;
 
-          seen.add(deviceKey);
+          seen.add(deviceId);
 
           const popup = `
             <strong>${item.driver_name || 'Chofer'}</strong> — ${item.vehicle_name || 'Vehículo'}<br/>
@@ -124,7 +130,7 @@ export default function MapView() {
             Velocidad: ${pos.speed ?? '-'} km/h
           `;
 
-          const existing = traccarMarkersRef.current[deviceKey];
+          const existing = traccarMarkersRef.current[deviceId];
           if (existing) {
             existing.setLatLng([lat, lon]);
             existing.setPopupContent(popup);
@@ -137,16 +143,17 @@ export default function MapView() {
             }) });
             marker.addTo(map);
             marker.bindPopup(popup);
-            traccarMarkersRef.current[deviceKey] = marker;
+            traccarMarkersRef.current[deviceId] = marker;
           }
         });
 
-        // remover marcadores que no llegaron en esta actualización (usar misma clave string)
-        Object.keys(traccarMarkersRef.current).forEach(key => {
-          if (!seen.has(key)) {
-            const m = traccarMarkersRef.current[key];
+        // remover marcadores que no llegaron en esta actualización
+        Object.keys(traccarMarkersRef.current).forEach(idStr => {
+          const id = Number(idStr);
+          if (!seen.has(id)) {
+            const m = traccarMarkersRef.current[id];
             if (m && map.hasLayer(m)) map.removeLayer(m);
-            delete traccarMarkersRef.current[key];
+            delete traccarMarkersRef.current[id];
           }
         });
 
@@ -169,7 +176,7 @@ export default function MapView() {
   // LÓGICA DE DIBUJO CENTRALIZADA (GraphHopper)
   // -------------------------------------------------------------
   // Esta función SOLO dibuja. No calcula distancias para guardar en BD ni llama al backend de Laravel.
-  async function drawRouteOnMap(routeId, waypoints, isPreview = false) {
+  async function drawRouteOnMap(routeId, waypoints, isPreview = false, status = null) {
     const map = mapRef.current;
     if (!map) return;
 
@@ -209,7 +216,8 @@ export default function MapView() {
       const coordsArr = geo.coordinates.map((c) => [c[1], c[0]]); // [lon, lat] -> [lat, lon]
 
       // Configuración de estilo
-      const color = isPreview ? "#333333" : routeColor(routeId);
+      const baseColor = status && routeStatusColor[status] ? routeStatusColor[status] : routeColor(routeId);
+      const color = isPreview ? "#333333" : baseColor;
       const dashArray = isPreview ? "10, 10" : null; // Punteado para preview
       const weight = isPreview ? 4 : 5;
       const opacity = isPreview ? 0.7 : 0.9;
@@ -257,8 +265,8 @@ export default function MapView() {
         // Evitar redibujar si ya existe
         if (routesLayers.current[r.id] && routesLayers.current[r.id].polyline) continue;
 
-        // Dibujar ruta normal (isPreview = false)
-        await drawRouteOnMap(r.id, waypoints, false);
+        // Dibujar ruta normal (isPreview = false) usando color por estado
+        await drawRouteOnMap(r.id, waypoints, false, r.status);
       }
     }
 
@@ -361,6 +369,42 @@ export default function MapView() {
 
     window.addEventListener("focus-client", focusClient);
     return () => window.removeEventListener("focus-client", focusClient);
+  }, []);
+
+  // Listener para enfocar una ruta y para recolorear tras cambio de estado
+  useEffect(() => {
+    function onFocusRoute(ev) {
+      const { routeId } = ev.detail || {};
+      const map = mapRef.current;
+      if (!map || !routeId) return;
+      const layer = routesLayers.current[routeId];
+      if (layer && layer.polyline) {
+        const bounds = layer.polyline.getBounds();
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+
+    function onRouteStatusUpdated(ev) {
+      const { routeId, status } = ev.detail || {};
+      const layer = routesLayers.current[routeId];
+      if (!layer || !layer.polyline) return;
+
+      // Reaplicar color por estado
+      const routeStatusColor = {
+        draft: "#d32f2f",
+        assigned: "#f9a825",
+        done: "#2e7d32",
+      };
+      const color = routeStatusColor[status] || "#555";
+      layer.polyline.setStyle({ color });
+    }
+
+    window.addEventListener('focus-route', onFocusRoute);
+    window.addEventListener('route-status-updated', onRouteStatusUpdated);
+    return () => {
+      window.removeEventListener('focus-route', onFocusRoute);
+      window.removeEventListener('route-status-updated', onRouteStatusUpdated);
+    };
   }, []);
 
   function routeColor(routeId) {

@@ -95,7 +95,7 @@ class OdooJsonRpc
         return $this->password;
     }
 
-    public function searchRead(string $model, array $domain = [], array $fields = [], int $limit = 50): array
+    public function searchRead(string $model, array $domain = [], array $fields = [], int $limit = 100): array
     {
         return $this->call(
             "object",

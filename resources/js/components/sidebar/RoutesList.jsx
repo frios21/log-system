@@ -26,8 +26,7 @@ export default function RoutesList() {
         try {
             const res = await fetch("/api/rutas", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: "Ruta nueva" }),
+                headers: { "Content-Type": "application/json" }
             });
             await res.json();
             refetch();

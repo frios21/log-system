@@ -113,4 +113,29 @@ class RutasApiController extends Controller
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
+
+    // Nuevo: PATCH /api/rutas/{id} - actualizar nombre o estado
+    public function update($id, Request $request)
+    {
+        $status = $request->input('status');
+        $name = $request->input('name');
+
+        if ($status !== null) {
+            // Validación simple de estado
+            $allowed = ['draft','assigned','done'];
+            if (!in_array($status, $allowed, true)) {
+                return response()->json(['error' => 'status inválido'], 422);
+            }
+
+            $ok = $this->rutas->actualizarEstado((int)$id, $status);
+            return response()->json(['success' => (bool)$ok, 'status' => $status]);
+        }
+
+        if ($name !== null) {
+            $ok = $this->rutas->actualizarNombre((int)$id, $name);
+            return response()->json(['success' => (bool)$ok, 'name' => $name]);
+        }
+
+        return response()->json(['error' => 'name or status required'], 422);
+    }
 }

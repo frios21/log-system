@@ -50,15 +50,28 @@ class TraccarController extends Controller
     {
         $odoo = new OdooJsonRpc();
 
-        // Rutas draft con vehiculo
-        $routes = $odoo->searchRead('logistics.route', [ ['status', '=', 'draft'] ], ['id','name','vehicle_id']);
+        // Permitir filtrar por múltiples estados vía query ?statuses=draft,assigned,delivered
+        $statusesParam = request()->query('statuses');
+        if ($statusesParam) {
+            $statuses = array_filter(array_map('trim', explode(',', $statusesParam)));
+        } else {
+            // Por defecto: activos (excluye done/cancelled)
+            $statuses = ['assigned', 'in_progress'];
+        }
+
+        // Rutas con vehículo según estados
+        $routes = $odoo->searchRead(
+            'logistics.route',
+            [ ['status', 'in', $statuses] ],
+            ['id','name','status','vehicle_id']
+        );
 
         // Cargar devices UNA sola vez: id (interno) y uniqueId (tu traccar_device_id)
         $devices = $this->fetchAllDevices();
         $uniqueToInternal = [];
         foreach ($devices as $d) {
             if (isset($d['uniqueId']) && isset($d['id'])) {
-                $uniqueToInternal[(string) $d['uniqueId']] = (int) $d['id'];
+                $uniqueToInternal[(string) trim((string)$d['uniqueId'])] = (int) $d['id'];
             }
         }
 
@@ -77,7 +90,7 @@ class TraccarController extends Controller
             // Partner con traccar_device_id (tu uniqueId almacenado)
             $drv = $odoo->searchRead('res.partner', [ ['id', '=', (int)$driverId] ], ['id','name','traccar_device_id']);
             $drv = $drv[0] ?? null; if (!$drv) continue;
-            $storedUnique = $drv['traccar_device_id'] ?? null;
+            $storedUnique = isset($drv['traccar_device_id']) ? trim((string)$drv['traccar_device_id']) : null;
             if (!$storedUnique) continue;
 
             // Resolver uniqueId -> deviceId interno
@@ -91,6 +104,7 @@ class TraccarController extends Controller
             $result[] = [
                 'route_id' => $r['id'],
                 'route_name' => $r['name'] ?? '',
+                'status' => $r['status'] ?? null,
                 'vehicle_id' => $vehicleId,
                 'vehicle_name' => $veh['name'] ?? '',
                 'driver_id' => $driverId,

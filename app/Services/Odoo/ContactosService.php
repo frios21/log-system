@@ -13,7 +13,7 @@ class ContactosService
         return $this->odoo->searchRead(
             'res.partner',
             [['active', '=', true]],
-            ['name', 'phone', 'email', 'latitude', 'longitude']
+            ['name', 'phone', 'email', 'latitude', 'longitude'], 0
         );
     }
 }
