@@ -36,17 +36,23 @@ class RouteController extends Controller
         );
     }
 
-    public function preview(Request $request, $id)
+     public function preview(Request $request, $id)
     {
         $loadIds       = $request->input('load_ids', []);
         $originId      = $request->input('origin_id');
         $destinationId = $request->input('destination_id');
+        $fakeLoads     = $request->input('fake_loads', []); // array de ids marcadas como "falso"
+
+        // normalizar a array de ints
+        if (!is_array($loadIds)) $loadIds = [];
+        if (!is_array($fakeLoads)) $fakeLoads = [];
 
         $result = $this->rutas->previewCargas(
             (int) $id,
             $loadIds,
             $originId,
-            $destinationId
+            $destinationId,
+            $fakeLoads
         );
 
         return response()->json($result);
@@ -58,13 +64,15 @@ class RouteController extends Controller
         $vehicleId     = $request->input('vehicle_id');
         $originId      = $request->input('origin_id');
         $destinationId = $request->input('destination_id');
+        $totalCost     = $request->input('total_cost');
 
         $result = $this->rutas->asignarCargas(
             (int) $id,
             $loadIds,
             $vehicleId,
             $originId,
-            $destinationId
+            $destinationId,
+            $totalCost
         );
 
         return response()->json($result);

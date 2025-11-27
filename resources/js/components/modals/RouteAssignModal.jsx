@@ -3,9 +3,9 @@ import Sortable from "sortablejs";
 import "../../../css/RouteAssignModal.css";
 
 export default function RouteAssignModal({ ruta, onClose }) {
-    const routeId = ruta?.id; 
-    const [routeDetails, setRouteDetails] = useState(ruta); 
-    
+    const routeId = ruta?.id;
+    const [routeDetails, setRouteDetails] = useState(ruta);
+
     // Datos externos
     const [cargasDraft, setCargasDraft] = useState([]);
     const [partners, setPartners] = useState([]);
@@ -13,12 +13,13 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // Estados de selección y orden
     const [selected, setSelected] = useState(new Set());
     const [ordered, setOrdered] = useState([]);
-    
+    const [fakeSet, setFakeSet] = useState(new Set()); // cargas marcadas como "falso"
+
     // Referencias
     const sortableRef = useRef(null);
-    const recalcTimeoutRef = useRef(null); 
+    const recalcTimeoutRef = useRef(null);
 
-    // Inicializar vehículo
+    // Inicializar vehículo (no usado para preview pero lo dejo)
     const [vehicleId, setVehicleId] = useState(
         ruta.vehicle_id ? (Array.isArray(ruta.vehicle_id) ? ruta.vehicle_id[0] : ruta.vehicle_id) : null
     );
@@ -30,13 +31,13 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
     // Cálculos
     const COSTO_POR_KM = 1000;
-    const [distanceKm, setDistanceKm] = useState(ruta.total_distance_km ?? 0);
+    const [distanceKm, setDistanceKm] = useState(ruta.total_distance_km ?? 0); // billing distance used for cost
     const [totalKg, setTotalKg] = useState(0);
     const [costoTotal, setCostoTotal] = useState(0);
     const [costoPorKg, setCostoPorKg] = useState(0);
 
     // -------------------------------------------------------------
-    // 1. CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS
+    // 1. CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS (igual que antes)
     // -------------------------------------------------------------
     useEffect(() => {
         // A. Cargar recursos globales
@@ -50,76 +51,47 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 .then(fullRoute => {
                     setRouteDetails(fullRoute);
                     if (fullRoute.vehicle_id) {
-                         const vId = Array.isArray(fullRoute.vehicle_id) ? fullRoute.vehicle_id[0] : fullRoute.vehicle_id;
-                         setVehicleId(vId);
+                        const vId = Array.isArray(fullRoute.vehicle_id) ? fullRoute.vehicle_id[0] : fullRoute.vehicle_id;
+                        setVehicleId(vId);
                     }
 
-                    // --- INICIO DE LA CORRECCIÓN DE ORDEN ---
-                    
-                    // 1. Obtener las cargas asignadas (que pueden venir desordenadas por ID)
                     const assignedUnsorted = Array.isArray(fullRoute.loads) ? fullRoute.loads : [];
-                    
-                    // 2. Obtener waypoints (donde está el orden real)
+
                     let waypoints = fullRoute.waypoints;
                     if (typeof waypoints === 'string') {
                         try { waypoints = JSON.parse(waypoints); } catch { waypoints = []; }
                     }
                     if (!Array.isArray(waypoints)) waypoints = [];
 
-                    // 3. Reconstruir el orden basado en los Waypoints
                     const sortedLoads = [];
-                    // Mapa auxiliar para buscar rápido por ID
                     const loadMap = new Map(assignedUnsorted.map(c => [c.id, c]));
 
-                    // Recorremos los waypoints en orden
                     waypoints.forEach(wp => {
-                        // Si el waypoint tiene un load_id y esa carga existe en nuestra lista
-                        if (wp.load_id && loadMap.has(wp.load_id)) {
-                            sortedLoads.push(loadMap.get(wp.load_id));
-                            loadMap.delete(wp.load_id); // La quitamos del mapa para no duplicar
+                        if (issetLoadId(wp) && loadMap.has(intVal(wp.load_id))) {
+                            sortedLoads.push(loadMap.get(intVal(wp.load_id)));
+                            loadMap.delete(intVal(wp.load_id));
                         }
                     });
 
-                    // Si sobró alguna carga (que no tenía waypoint asignado por error), la agregamos al final
                     loadMap.forEach(load => sortedLoads.push(load));
 
-                    // 4. Establecer estado con la lista YA ORDENADA
                     setOrdered(sortedLoads);
                     setSelected(new Set(sortedLoads.map(c => c.id)));
-
-                    // --- FIN DE LA CORRECCIÓN DE ORDEN ---
-
-
-                    // Llenar Origen y Destino desde Waypoints
-                    let startId = null;
-                    let endId = null;
-
-                    if (waypoints.length > 0) {
-                        const first = waypoints[0];
-                        if (first && first.partner_id && first.type !== 'load') startId = Number(first.partner_id);
-
-                        const last = waypoints[waypoints.length - 1];
-                        if (last && last.partner_id && last.type !== 'load') endId = Number(last.partner_id);
-                        
-                        // Fallback: si el primero tiene load_id, es que no hay origen explícito, asumimos lógica de servicio
-                        if (first && first.load_id) startId = null; 
-                    }
-
-                    if (startId) setOriginId(startId);
-                    if (endId) setDestinationId(endId);
-                    
-                    if (startId && endId && startId !== endId) {
-                        setSameAsOrigin(false);
-                    } else {
-                        setSameAsOrigin(true);
-                    }
                 })
                 .catch(err => console.error("Error cargando detalles de ruta:", err));
         }
+
+        function issetLoadId(wp) {
+            return wp && (wp.load_id !== undefined && wp.load_id !== null);
+        }
+        function intVal(v) {
+            return typeof v === 'string' ? parseInt(v, 10) : v;
+        }
+
     }, [routeId]);
 
     // -------------------------------------------------------------
-    // 2. CÁLCULOS LOCALES
+    // 2. CÁLCULOS LOCALES (usa billing distance `distanceKm`)
     // -------------------------------------------------------------
     useEffect(() => {
         let kg = 0;
@@ -128,28 +100,28 @@ export default function RouteAssignModal({ ruta, onClose }) {
         });
         setTotalKg(kg);
 
-        const costo = distanceKm * COSTO_POR_KM;
+        const costo = distanceKm * COSTO_POR_KM; // distanceKm corresponde a billing_distance_km
         setCostoTotal(costo);
         setCostoPorKg(kg > 0 ? costo / kg : 0);
     }, [ordered, distanceKm]);
 
     // -------------------------------------------------------------
-    // COMBINAR CARGAS
+    // COMBINAR CARGAS: ordered + draft (similar)
     // -------------------------------------------------------------
     const allLoads = [
-        ...(ordered), 
-        ...cargasDraft.filter(d => !selected.has(d.id)) 
+        ...(ordered),
+        ...cargasDraft.filter(d => !selected.has(d.id))
     ];
 
     function toggle(id) {
         const newSelected = new Set(selected);
-        const isSelecting = !newSelected.has(id); 
-        
+        const isSelecting = !newSelected.has(id);
+
         if (isSelecting) {
             newSelected.add(id);
             let itemToAdd = cargasDraft.find(c => c.id === id);
-            
-            if (!itemToAdd && routeDetails.loads) {
+
+            if (!itemToAdd && routeDetails?.loads) {
                 itemToAdd = routeDetails.loads.find(c => c.id === id);
             }
 
@@ -159,34 +131,54 @@ export default function RouteAssignModal({ ruta, onClose }) {
         } else {
             newSelected.delete(id);
             setOrdered(ordered.filter(o => o.id !== id));
+            // also remove from fake if present
+            if (fakeSet.has(id)) {
+                const m = new Set(fakeSet);
+                m.delete(id);
+                setFakeSet(m);
+            }
         }
-        
+
         setSelected(newSelected);
     }
 
+    function toggleFake(id, e) {
+        e && e.stopPropagation && e.stopPropagation(); // avoid triggering toggle select
+        const newFake = new Set(fakeSet);
+        if (newFake.has(id)) newFake.delete(id);
+        else newFake.add(id);
+        setFakeSet(newFake);
+
+        // trigger preview asap
+        triggerPreviewDebounced();
+    }
+
     // -------------------------------------------------------------
-    // 3. ORQUESTADOR DEL RECALCULO
+    // 3. ORQUESTADOR DEL RECALCULO (debounced)
     // -------------------------------------------------------------
     useEffect(() => {
-        if (!routeDetails || !routeId) return;
+        // recalc whenever ordered, origin/dest or fakeSet changes
+        triggerPreviewDebounced();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ordered, originId, destinationId, sameAsOrigin, fakeSet]);
 
+    function triggerPreviewDebounced() {
         if (recalcTimeoutRef.current) clearTimeout(recalcTimeoutRef.current);
-
         recalcTimeoutRef.current = setTimeout(() => {
             performPreview();
-        }, 500);
-
-        return () => clearTimeout(recalcTimeoutRef.current);
-    }, [ordered, originId, destinationId, sameAsOrigin]);
+        }, 300);
+    }
 
     async function performPreview() {
+        if (!routeId) return;
         const loadIds = ordered.map(c => c.id);
-        
-        // Evitar llamada vacía inicial si no hay datos relevantes
+        // if no changes relevant, avoid calling
         if (loadIds.length === 0 && !originId && !destinationId) return;
 
         let dest = destinationId;
         if (sameAsOrigin) dest = originId;
+
+        const fakeArray = Array.from(fakeSet);
 
         try {
             const res = await fetch(`/api/rutas/${routeId}/preview`, {
@@ -195,21 +187,27 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 body: JSON.stringify({
                     load_ids: loadIds,
                     origin_id: originId || null,
-                    destination_id: dest || null
+                    destination_id: dest || null,
+                    fake_loads: fakeArray
                 })
             });
             const data = await res.json();
 
-            if (data.total_distance_km !== undefined) {
-                setDistanceKm(Number(data.total_distance_km));
-            }
+            // Billing distance (sin cargas fake) -> se usa para costos por km
+            const billing = Number(data.billing_distance_km ?? data.total_distance_km ?? 0);
+            setDistanceKm(billing);
 
+            // total kg (incluye fake)
+            const totalKgResp = Number(data.total_kg ?? 0);
+            setTotalKg(totalKgResp);
+
+            // Emitir para dibujar la ruta preview (full waypoints)
             if (data.waypoints) {
                 window.dispatchEvent(
                     new CustomEvent("draw-preview-route", {
-                        detail: { 
-                            routeId: routeId, 
-                            waypoints: data.waypoints 
+                        detail: {
+                            routeId: routeId,
+                            waypoints: data.waypoints
                         }
                     })
                 );
@@ -241,13 +239,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, [ordered]);
 
     // -------------------------------------------------------------
-    // GUARDAR
+    // GUARDAR (assign): mantiene comportamiento previo, no modifica fakeSet en backend por ahora
     // -------------------------------------------------------------
     async function save() {
         const loadIds = ordered.map(c => c.id);
         let dest = destinationId;
         if (sameAsOrigin) dest = originId;
-        
         try {
             await fetch(`/api/rutas/${routeId}/assign`, {
                 method: "POST",
@@ -256,16 +253,21 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     load_ids: loadIds,
                     vehicle_id: vehicleId,
                     origin_id: originId,
-                    destination_id: dest
+                    destination_id: dest,
+                    total_cost: costoTotal
                 }),
             });
-            window.location.reload(); 
+            // Puedes ajustar aquí para persistir fake flags si luego lo deseas
+            window.location.reload();
             onClose();
         } catch (e) {
             alert("Error al guardar");
         }
     }
 
+    // -------------------------------------------------------------
+    // Render
+    // -------------------------------------------------------------
     return (
        <div className="modal-backdrop">
            <div className="route-modal">
@@ -287,17 +289,28 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         <label className="section-label">Cargas disponibles</label>
                         <div className="cargas-list">
                             {allLoads.map(c => (
-                                <div key={c.id} className={`carga-item ${selected.has(c.id) ? 'selected' : ''}`} onClick={() => toggle(c.id)}>
-                                    <div>
-                                        <div className="carga-title">{c.name}</div>
-                                        <div className="carga-sub">{c.vendor_name}</div>
+                                <div key={c.id}
+                                     className={`carga-item ${selected.has(c.id) ? 'selected' : ''}`}
+                                     onClick={() => toggle(c.id)}
+                                >
+                                    <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                        <div style={{flex: 1}}>
+                                            <div className="carga-title">{c.name}</div>
+                                            <div className="carga-sub">{c.vendor_name}</div>
+                                        </div>
+
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.has(c.id)}
+                                            onChange={() => toggle(c.id)}
+                                            style={{marginLeft: 8}}
+                                        />
                                     </div>
-                                    <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} />
                                 </div>
                             ))}
                         </div>
                     </div>
-                     
+
                      {/* Destino */}
                     <div className="section">
                          <label className="section-label">Destino de la ruta</label>
@@ -329,20 +342,30 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         {ordered.map(c => (
                             <div key={c.id} className="order-item">
                                 <span className="drag-handle">☰</span>
-                                <div>
-                                    <div className="carga-title">{c.name}</div>
-                                    <div className="carga-sub">{c.vendor_name}</div>
+                                <div style={{display: 'flex', alignItems:'center', justifyContent:'space-between', width: '100%'}}>
+                                    <div>
+                                        <div className="carga-title">{c.name}</div>
+                                        <div className="carga-sub">{c.vendor_name}</div>
+                                    </div>
+                                    <label style={{display:'flex', alignItems:'center', gap:6}}>
+                                        <input
+                                            type="checkbox"
+                                            checked={fakeSet.has(c.id)}
+                                            onChange={(e) => toggleFake(c.id, e)}
+                                        />
+                                        <small>F</small>
+                                    </label>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* DERECHA */}
+                {/* DERECHA (cálculos) */}
                  <div className="calc-panel">
                     <h4 className="calc-title">Cálculo estimado</h4>
                     <div className="calc-row">
-                        <span>Distancia total:</span>
+                        <span>Distancia total (facturable):</span>
                         <strong>{distanceKm.toFixed(2)} km</strong>
                     </div>
                      <div className="calc-row">

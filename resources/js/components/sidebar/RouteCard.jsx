@@ -1,12 +1,20 @@
 import React, { useState } from "react";
 
-function pastelColor(i) {
-    const hue = (i * 47) % 360;
-    return `hsl(${hue} 70% 85%)`;
+function stateColor(status) {
+    switch (status) {
+        case "draft":
+            return { background: "#ffebee", borderLeft: "5px solid #d32f2f" };
+        case "assigned":
+            return { background: "#fff8e1", borderLeft: "5px solid #f9a825" };
+        case "done":
+            return { background: "#e8f5e9", borderLeft: "5px solid #2e7d32" };
+        default:
+            return {};
+    }
 }
 
 export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehicle, onDelete }) {
-    const color = pastelColor(colorIndex);
+    const color = stateColor(ruta.status);
 
     const [editing, setEditing] = useState(false);
     const [tempName, setTempName] = useState(ruta.name);
@@ -49,13 +57,51 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
         }
     }
 
+    function openInGoogleMaps() {
+        let waypoints;
+
+        try {
+            waypoints = Array.isArray(ruta.waypoints)
+                ? ruta.waypoints
+                : JSON.parse(ruta.waypoints || "[]");
+        } catch (e) {
+            console.error("Error parseando waypoints:", e);
+            return;
+        }
+
+        if (!waypoints.length) return;
+
+        const origin = `${waypoints[0].lat},${waypoints[0].lon}`;
+        const destination = `${waypoints[waypoints.length - 1].lat},${waypoints[waypoints.length - 1].lon}`;
+
+        const wpList = waypoints
+            .slice(1, -1)
+            .map(wp => `${wp.lat},${wp.lon}`)
+            .join("|");
+
+        const url =
+            `https://www.google.com/maps/dir/?api=1` +
+            `&origin=${origin}` +
+            `&destination=${destination}` +
+            `&waypoints=${wpList}` +
+            `&travelmode=driving`;
+
+        window.open(url, "_blank");
+    }
+
     const distance =
         ruta.total_distance_km !== undefined && ruta.total_distance_km !== null
             ? `${ruta.total_distance_km.toFixed(2)} km`
             : "—";
 
     return (
-        <div className="card" style={{ marginBottom: 12, background: color }}>
+        <div
+            className="card"
+            style={{
+                marginBottom: 12,
+                ...stateColor(ruta.status)
+            }}
+        >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <input type="checkbox"
@@ -94,10 +140,14 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
             </div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button className="btn btn-primary" onClick={onAssign}>Asignar</button>
+                <button className="btn btn-primary" onClick={onAssign}>📦</button>
 
                 <button className="btn btn-primary" onClick={() => onAssignVehicle(ruta)}>
-                    Vehículo
+                    🚛
+                </button>
+
+                <button className="btn btn-primary" onClick={openInGoogleMaps}>
+                    📍
                 </button>
 
                 <button
