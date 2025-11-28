@@ -360,6 +360,7 @@ class RutasService
                 'profile' => 'truck',
                 'points_encoded' => 'false',
                 'instructions' => 'false',
+                'ch.disable' => 'true',
             ];
             if ($ghKey) $params['key'] = $ghKey;
             $qs = $pointsQs . http_build_query($params);

@@ -175,11 +175,11 @@ export default function MapView() {
   // -------------------------------------------------------------
   // LÓGICA DE DIBUJO CENTRALIZADA (GraphHopper)
   // -------------------------------------------------------------
-  // Esta función SOLO dibuja. No calcula distancias para guardar en BD ni llama al backend de Laravel.
   async function drawRouteOnMap(routeId, waypoints, isPreview = false, status = null) {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map) return false;
 
+    // Normalizar puntos
     const cleaned = waypoints
       .map((p) => {
         const lat = p.lat ?? p.latitude;
@@ -189,57 +189,119 @@ export default function MapView() {
       })
       .filter(Boolean);
 
-    // Si hay menos de 2 puntos, no se puede trazar ruta.
-    // Si es preview, limpiamos lo que hubiera dibujado antes para esa ruta
     if (cleaned.length < 2) {
-        if (routesLayers.current[routeId]) {
-            const { polyline } = routesLayers.current[routeId];
-            if (polyline) map.removeLayer(polyline);
+      // limpiar ruta previa si existe
+      if (routesLayers.current[routeId]) {
+        const { polyline } = routesLayers.current[routeId];
+        if (polyline) map.removeLayer(polyline);
+      }
+      return false;
+    }
+
+    // helper: peticion GH pairwise (dos puntos)
+    async function fetchLeg(a, b) {
+      const base = "http://167.114.114.51:8989/route?";
+      const params = `point=${a.lat},${a.lon}&point=${b.lat},${b.lon}&profile=truck&points_encoded=false&instructions=false&ch.disable=true`;
+      const url = base + params;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          console.warn("GH leg failed status", res.status, url);
+          return null;
         }
-        return;
+        const gh = await res.json();
+        if (!gh || !gh.paths || !gh.paths[0]) {
+          console.warn("GH leg returned no path", gh, url);
+          return null;
+        }
+        const geo = gh.paths[0].points;
+        if (!geo || !Array.isArray(geo.coordinates)) return null;
+        // coords as [lat, lon]
+        const coords = geo.coordinates.map((c) => [c[1], c[0]]);
+        const distM = gh.paths[0].distance ?? 0;
+        return { coords, distM, raw: gh };
+      } catch (err) {
+        console.error("Error fetching GH leg", err);
+        return null;
+      }
     }
 
-    // GraphHopper URL
-    let ghUrl = "http://167.114.114.51:8989/graphhopper/route?";
-    cleaned.forEach((p) => (ghUrl += `point=${p.lat},${p.lon}&`));
-    ghUrl += "profile=truck&points_encoded=false&instructions=false";
+    // Recorremos pares: 0->1, 1->2, ..., n-1 -> n
+    // Para cerrar el ciclo añadimos la última vuelta: last -> first
+    const legs = [];
+    for (let i = 0; i < cleaned.length - 1; i++) {
+      legs.push([cleaned[i], cleaned[i + 1]]);
+    }
+    // Añadir vuelta al inicio si es distinto
+    const first = cleaned[0];
+    const last = cleaned[cleaned.length - 1];
+    if (first.lat !== last.lat || first.lon !== last.lon) {
+      legs.push([last, first]);
+    } else {
+      // si el primero y el último son idénticos queríamos la vuelta, pero GH puede comportarse raro:
+      // en este caso hacemos last->first con un pequeño nudging (offset minúsculo) para evitar colapso
+      const nudgedFirst = { lat: first.lat + 1e-6, lon: first.lon + 1e-6 };
+      legs.push([last, nudgedFirst]);
+    }
 
-    try {
-      const res = await fetch(ghUrl);
-      const gh = await res.json();
-
-      if (!gh || !gh.paths || !gh.paths[0]) return;
-      
-      const geo = gh.paths[0].points;
-      if (!geo || !Array.isArray(geo.coordinates)) return;
-
-      const coordsArr = geo.coordinates.map((c) => [c[1], c[0]]); // [lon, lat] -> [lat, lon]
-
-      // Configuración de estilo
-      const baseColor = status && routeStatusColor[status] ? routeStatusColor[status] : routeColor(routeId);
-      const color = isPreview ? "#333333" : baseColor;
-      const dashArray = isPreview ? "10, 10" : null; // Punteado para preview
-      const weight = isPreview ? 4 : 5;
-      const opacity = isPreview ? 0.7 : 0.9;
-
-      const existing = routesLayers.current[routeId];
-
-      if (existing && existing.polyline) {
-        existing.polyline.setLatLngs(coordsArr);
-        existing.polyline.setStyle({ color, dashArray, weight, opacity });
+    // Ejecutar legs secuencialmente (podrías paralelizar pero así controlarás mejor errores)
+    const combinedCoords = [];
+    let totalDist = 0;
+    for (let i = 0; i < legs.length; i++) {
+      const [a, b] = legs[i];
+      const leg = await fetchLeg(a, b);
+      if (!leg) {
+        console.warn("No se pudo obtener leg", i, a, b);
+        // fallback: si falla un leg, intentamos con OSRM público (opcional) o abortamos.
+        // Por ahora abortamos el dibujo para que no muestre una ruta incompleta.
+        return false;
+      }
+      // Concatenar sin duplicar el punto intermedio:
+      if (combinedCoords.length === 0) {
+        combinedCoords.push(...leg.coords);
       } else {
-        const polyline = L.polyline(coordsArr, { color, weight, opacity, dashArray }).addTo(map);
-        routesLayers.current[routeId] = { polyline, markers: [], visible: true };
+        // evitar duplicar el primer punto del leg (es el último punto del combined)
+        const lastCombined = combinedCoords[combinedCoords.length - 1];
+        const firstLeg = leg.coords[0];
+        const isSame = Math.abs(lastCombined[0] - firstLeg[0]) < 1e-8 && Math.abs(lastCombined[1] - firstLeg[1]) < 1e-8;
+        if (isSame) {
+          combinedCoords.push(...leg.coords.slice(1));
+        } else {
+          combinedCoords.push(...leg.coords);
+        }
       }
-
-      // Si es preview, ajustamos vista para ver el cambio
-      if (isPreview) {
-         // Opcional: map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), { padding: [50, 50] });
-      }
-
-    } catch (e) {
-      console.error("Error drawing route via GraphHopper", e);
+      totalDist += (leg.distM || 0);
+      // opcional: pequeña pausa para no saturar GH si muchos tramos
+      // await new Promise(res => setTimeout(res, 50));
     }
+
+    // Dibujar/actualizar polyline
+    const baseColor = status && routeStatusColor[status] ? routeStatusColor[status] : routeColor(routeId);
+    const color = isPreview ? "#333333" : baseColor;
+    const dashArray = isPreview ? "10, 10" : null;
+    const weight = isPreview ? 4 : 5;
+    const opacity = isPreview ? 0.7 : 0.9;
+
+    const existing = routesLayers.current[routeId];
+    if (existing && existing.polyline) {
+      existing.polyline.setLatLngs(combinedCoords);
+      existing.polyline.setStyle({ color, dashArray, weight, opacity });
+      existing.visible = true;
+    } else {
+      const polyline = L.polyline(combinedCoords, { color, weight, opacity, dashArray }).addTo(map);
+      routesLayers.current[routeId] = { polyline, markers: [], visible: true };
+    }
+
+    // opcional: ajustar bounds
+    try {
+      map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), { padding: [40, 40] });
+    } catch (e) {}
+
+    // si quieres, conviertes totalDist a km y despachas evento
+    const totalKm = (totalDist || 0) / 1000;
+    window.dispatchEvent(new CustomEvent("route-distance-updated", { detail: { routeId, distanceKm: totalKm } }));
+
+    return true;
   }
 
   // -------------------------------------------------------------

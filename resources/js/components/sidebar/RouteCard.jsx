@@ -196,9 +196,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                     </button>
                 )}
 
-                {!isDone && (
                     <button title="Eliminar ruta" className="btn btn-danger" style={{ background: "#e74c3c", color: "white" }} onClick={onDelete}>🗑</button>
-                )}
             </div>
 
             {/* Modal de confirmación */}

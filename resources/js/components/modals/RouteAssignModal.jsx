@@ -171,13 +171,51 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
     async function performPreview() {
         if (!routeId) return;
-        const loadIds = ordered.map(c => c.id);
-        // if no changes relevant, avoid calling
-        if (loadIds.length === 0 && !originId && !destinationId) return;
 
-        let dest = destinationId;
-        if (sameAsOrigin) dest = originId;
+        // 1. Obtener ORIGEN
+        const origin = partners.find(p => p.id === originId);
+        if (!origin) return;
 
+        // 2. Obtener DESTINO
+        let destId = sameAsOrigin ? originId : destinationId;
+        const destination = partners.find(p => p.id === destId);
+        if (!destination) return;
+
+        // 3. Construir WAYPOINTS completos
+        const waypoints = [];
+
+        // A. ORIGEN
+        waypoints.push({
+            type: "origin",
+            partner_id: origin.id,
+            lat: origin.latitude,
+            lon: origin.longitude
+        });
+
+        // B. CARGAS ORDENADAS
+        ordered.forEach(c => {
+            const partner = partners.find(p => p.id === c.partner_id);
+            if (!partner) return;
+
+            waypoints.push({
+                type: "load",
+                load_id: c.id,
+                partner_id: partner.id,
+                lat: partner.latitude,
+                lon: partner.longitude,
+                kg: Number(c.total_quantity || 0)
+            });
+        });
+
+        // C. DESTINO
+        waypoints.push({
+            type: "destination",
+            partner_id: destination.id,
+            lat: destination.latitude,
+            lon: destination.longitude
+        });
+
+        // 4. Fake loads
         const fakeArray = Array.from(fakeSet);
 
         try {
@@ -185,36 +223,30 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    load_ids: loadIds,
-                    origin_id: originId || null,
-                    destination_id: dest || null,
-                    fake_loads: fakeArray
+                    waypoints,
+                    fake_loads: fakeArray,
+                    vehicle_id: vehicleId
                 })
             });
+
             const data = await res.json();
 
-            // Billing distance (sin cargas fake) -> se usa para costos por km
+            // Billing distance
             const billing = Number(data.billing_distance_km ?? data.total_distance_km ?? 0);
             setDistanceKm(billing);
 
-            // total kg (incluye fake)
-            const totalKgResp = Number(data.total_kg ?? 0);
-            setTotalKg(totalKgResp);
+            // Total kg (incluyendo fake)
+            setTotalKg(Number(data.total_kg ?? 0));
 
-            // Emitir para dibujar la ruta preview (full waypoints)
+            // Pintar ruta
             if (data.waypoints) {
-                window.dispatchEvent(
-                    new CustomEvent("draw-preview-route", {
-                        detail: {
-                            routeId: routeId,
-                            waypoints: data.waypoints
-                        }
-                    })
-                );
+                window.dispatchEvent(new CustomEvent("draw-preview-route", {
+                    detail: { routeId, waypoints: data.waypoints }
+                }));
             }
 
-        } catch (error) {
-            console.error("Error obteniendo preview de ruta", error);
+        } catch (err) {
+            console.error("Error en preview:", err);
         }
     }
 
