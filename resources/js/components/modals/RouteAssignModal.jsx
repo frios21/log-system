@@ -177,59 +177,24 @@ export default function RouteAssignModal({ ruta, onClose }) {
         const destination = partners.find(p => p.id === destId);
         if (!destination) return;
 
-        // 3. Construir WAYPOINTS completos
-        const waypoints = [];
-
-        // A. ORIGEN
-        waypoints.push({
-            type: "origin",
-            partner_id: origin.id,
-            lat: origin.latitude,
-            lon: origin.longitude
-        });
-
-        // B. CARGAS ORDENADAS
-        ordered.forEach(c => {
-            const partner = partners.find(p => p.id === c.partner_id);
-            if (!partner) return;
-
-            waypoints.push({
-                type: "load",
-                load_id: c.id,
-                partner_id: partner.id,
-                lat: partner.latitude,
-                lon: partner.longitude,
-                kg: Number(c.total_quantity || 0)
-            });
-        });
-
-        // C. DESTINO
-        waypoints.push({
-            type: "destination",
-            partner_id: destination.id,
-            lat: destination.latitude,
-            lon: destination.longitude
-        });
-
-        const fakeArray = Array.from(fakeSet);
+        // 3. IDs de cargas en el orden seleccionado
+        const loadIds = ordered.map(c => c.id);
 
         try {
             const res = await fetch(`/api/rutas/${routeId}/preview`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    waypoints,
-                    fake_loads: fakeArray,
-                    vehicle_id: vehicleId
+                    load_ids: loadIds,
+                    origin_id: originId,
+                    destination_id: destId,
                 })
             });
 
             const data = await res.json();
 
-            const billing = Number(data.billing_distance_km ?? data.total_distance_km ?? 0);
+            const billing = Number(data.total_distance_km ?? 0);
             setDistanceKm(billing);
-
-            setTotalKg(Number(data.total_kg ?? 0));
 
             if (data.waypoints) {
                 window.dispatchEvent(new CustomEvent("draw-preview-route", {
@@ -287,6 +252,33 @@ export default function RouteAssignModal({ ruta, onClose }) {
             alert("Error al guardar");
         }
     }
+
+    useEffect(() => {
+        if (!routeDetails) return;
+        if (!Array.isArray(partners) || partners.length === 0) return;
+        if (!routeDetails.waypoints) return;
+        let wps = routeDetails.waypoints;
+        if (typeof wps === 'string') {
+            try { wps = JSON.parse(wps); } catch { wps = []; }
+        }
+        if (!Array.isArray(wps) || wps.length === 0) return;
+
+        const originWp = wps.find(w => w && w.type === 'origin');
+        const destWp = [...wps].reverse().find(w => w && w.type === 'destination');
+
+        if (originWp && originWp.partner_id && originId == null) {
+            setOriginId(originWp.partner_id);
+        }
+
+        if (destWp && destWp.partner_id) {
+            if (originWp && originWp.partner_id === destWp.partner_id) {
+                setSameAsOrigin(true);
+                if (destinationId !== null) setDestinationId(null);
+                setDestinationId(destWp.partner_id);
+                setSameAsOrigin(false);
+            }
+        }
+    }, [routeDetails, partners, originId, destinationId]);
 
     // -------------------------------------------------------------
     // Render
