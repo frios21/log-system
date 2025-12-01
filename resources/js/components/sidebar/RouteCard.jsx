@@ -31,6 +31,29 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const [modalOpen, setModalOpen] = useState(false);
     const [targetStatus, setTargetStatus] = useState(null);
 
+    // Helpers calculados para el card
+    const distance = (ruta.total_distance_km !== undefined && ruta.total_distance_km !== null)
+        ? `${Number(ruta.total_distance_km).toFixed(2)} km`
+        : "—";
+
+    // kg totales desde modelo ruta
+    const totalKg = ruta.total_qnt != null ? Number(ruta.total_qnt) : null;
+    const totalKgLabel = totalKg != null ? `${totalKg.toLocaleString()} kg` : '—';
+
+    // costo por kg desde modelo ruta
+    const costPerKg = ruta.cost_per_kg != null ? Number(ruta.cost_per_kg) : null;
+    const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
+
+    // fecha: si todas las cargas comparten la misma fecha
+    function extractUnifiedDate(loads) {
+        if (!Array.isArray(loads) || !loads.length) return null;
+        const dates = loads.map(l => (l.date || '').split('T')[0]).filter(Boolean);
+        if (!dates.length) return null;
+        const allSame = dates.every(d => d === dates[0]);
+        return allSame ? dates[0] : null;
+    }
+    const unifiedDate = extractUnifiedDate(ruta.loads || []);
+
     function toggleVisible(e) {
         window.dispatchEvent(
             new CustomEvent("toggle-route-visible", {
@@ -100,11 +123,6 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
 
         window.open(url, "_blank");
     }
-
-    const distance =
-        ruta.total_distance_km !== undefined && ruta.total_distance_km !== null
-            ? `${ruta.total_distance_km.toFixed(2)} km`
-            : "—";
 
     // botón dinámico según estado
     const canStart = localStatus === 'draft';
@@ -176,8 +194,23 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                 </div>
             </div>
 
-            <div style={{ marginTop: 8, color: "#333" }}>
-                Cargas: {(ruta.load_ids || []).length}
+            <div style={{ marginTop: 8, color: "#333", display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <div>
+                    <div style={{ fontSize: 11, color: '#666' }}>Fecha</div>
+                    <div>{unifiedDate || '—'}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: 11, color: '#666' }}>Kg totales</div>
+                    <div>{totalKgLabel}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: 11, color: '#666' }}>Costo por kg</div>
+                    <div>{costPerKgLabel}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: 11, color: '#666' }}>Cargas</div>
+                    <div>{(ruta.load_ids || []).length}</div>
+                </div>
             </div>
 
             <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
@@ -201,7 +234,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                     </button>
                 )}
 
-                    <button title="Eliminar ruta" className="btn btn-danger" style={{ background: "#e74c3c", color: "white" }} onClick={onDelete}>🗑</button>
+                <button title="Eliminar ruta" className="btn btn-danger" style={{ background: "#e74c3c", color: "white" }} onClick={onDelete}>🗑</button>
             </div>
 
             {/* Modal de confirmación */}

@@ -14,7 +14,7 @@ class RutasService
         return $this->odoo->searchRead(
             'logistics.route',
             [],
-            ['id','name','status','vehicle_id','total_distance_km','total_cost','waypoints','load_ids','last_recalc']
+            ['id','name','status','vehicle_id','total_distance_km','total_cost','total_qnt','cost_per_kg','waypoints','load_ids','last_recalc']
         );
     }
 
@@ -23,7 +23,7 @@ class RutasService
         $routes = $this->odoo->searchRead(
             'logistics.route',
             [['id','=', $id]],
-            ['id','name','status','vehicle_id','total_distance_km','total_cost','waypoints','load_ids']
+            ['id','name','status','vehicle_id','total_distance_km','total_cost','total_qnt','cost_per_kg','waypoints','load_ids']
         );
 
         $route = $routes[0] ?? null;
@@ -125,11 +125,20 @@ class RutasService
 
         // cargas (en orden)
         $orderedLoads = [];
+        $totalQnt = null; // total en kg/cantidad agregada de cargas
         if (!empty($loadIds)) {
-            $rawLoads = $this->odoo->searchRead('logistics.load', [['id','in',$loadIds]], ['id','name','vendor_id']);
+            $rawLoads = $this->odoo->searchRead('logistics.load', [['id','in',$loadIds]], ['id','name','vendor_id','total_quantity']);
             $map = [];
             foreach ($rawLoads as $l) { $map[$l['id']] = $l; }
             foreach ($loadIds as $lid) { if (isset($map[$lid])) $orderedLoads[] = $map[$lid]; }
+
+            // Calcular total_qnt
+            $sum = 0.0;
+            foreach ($orderedLoads as $l) {
+                $q = $l['total_quantity'] ?? 0;
+                if (is_numeric($q)) $sum += (float)$q;
+            }
+            $totalQnt = $sum;
 
             foreach ($orderedLoads as $l) {
                 $vendorId = is_array($l['vendor_id']) ? ($l['vendor_id'][0] ?? null) : $l['vendor_id'];
@@ -152,6 +161,10 @@ class RutasService
                     $waypoints[] = $wp;
                 }
             }
+            // Si no llegaron nuevas cargas, conservamos total_qnt existente
+            if (isset($existing['total_qnt']) && is_numeric($existing['total_qnt'])) {
+                $totalQnt = (float)$existing['total_qnt'];
+            }
         }
 
         // DESTINO
@@ -173,6 +186,13 @@ class RutasService
 
         $distKm = $this->calcularDistanciaKm($waypoints);
 
+        // Calcular cost_per_kg si tenemos total cost y total_qnt
+        $finalTotalCost = $totalCost !== null ? $totalCost : ($existing['total_cost'] ?? null);
+        $costPerKg = null;
+        if ($finalTotalCost !== null && $totalQnt && $totalQnt > 0) {
+            $costPerKg = (float)$finalTotalCost / (float)$totalQnt;
+        }
+
         // guardar
         $vals = [
             'waypoints' => json_encode($waypoints),
@@ -181,6 +201,8 @@ class RutasService
         if (!empty($loadIds)) $vals['load_ids'] = $loadIds;
         if ($vehicleId) $vals['vehicle_id'] = $vehicleId;
         if ($totalCost !== null) $vals['total_cost'] = $totalCost; // sólo si el front lo envía
+        if ($totalQnt !== null) $vals['total_qnt'] = $totalQnt;
+        if ($costPerKg !== null) $vals['cost_per_kg'] = $costPerKg;
 
         $this->odoo->write('logistics.route', $routeId, $vals);
 
@@ -196,6 +218,8 @@ class RutasService
             'waypoints' => $waypoints,
             'total_distance_km' => $distKm,
             'total_cost' => $totalCost ?? ($existing['total_cost'] ?? null),
+            'total_qnt' => $totalQnt ?? ($existing['total_qnt'] ?? null),
+            'cost_per_kg' => $costPerKg ?? ($existing['cost_per_kg'] ?? null),
         ];
     }
 
@@ -254,7 +278,6 @@ class RutasService
                 $vendorId = is_array($load['vendor_id']) ? ($load['vendor_id'][0] ?? null) : $load['vendor_id'];
                 if (!$vendorId) continue;
 
-                // Nota: Podrías optimizar trayendo todos los partners de una vez, pero esto funciona
                 $p = $this->odoo->searchRead('res.partner', [['id', '=', $vendorId]], ['id','name','latitude','longitude']);
                 $partner = $p[0] ?? null;
 
@@ -264,13 +287,10 @@ class RutasService
                         'lon' => (float)$partner['longitude'],
                         'load_id' => $load['id'],
                         'partner_id' => $partner['id'],
-                        'label' => $load['name'] // o $partner['name']
+                        'label' => $load['name']
                     ];
                 }
             }
-        } else {
-            // Si no hay loadIds nuevos, podríamos mantener los existentes, 
-            // pero en un contexto de "Assign", si la lista está vacía, no hay intermedios.
         }
 
         // 4. Construir DESTINO
