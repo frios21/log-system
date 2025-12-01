@@ -37,7 +37,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     const [costoPorKg, setCostoPorKg] = useState(0);
 
     // -------------------------------------------------------------
-    // 1. CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS (igual que antes)
+    // 1. CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS
     // -------------------------------------------------------------
     useEffect(() => {
         // A. Cargar recursos globales
@@ -91,7 +91,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, [routeId]);
 
     // -------------------------------------------------------------
-    // 2. CÁLCULOS LOCALES (usa billing distance `distanceKm`)
+    // CÁLCULOS LOCALES (usa billing distance `distanceKm`)
     // -------------------------------------------------------------
     useEffect(() => {
         let kg = 0;
@@ -100,7 +100,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
         });
         setTotalKg(kg);
 
-        const costo = distanceKm * COSTO_POR_KM; // distanceKm corresponde a billing_distance_km
+        const costo = distanceKm * COSTO_POR_KM;
         setCostoTotal(costo);
         setCostoPorKg(kg > 0 ? costo / kg : 0);
     }, [ordered, distanceKm]);
@@ -131,7 +131,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
         } else {
             newSelected.delete(id);
             setOrdered(ordered.filter(o => o.id !== id));
-            // also remove from fake if present
             if (fakeSet.has(id)) {
                 const m = new Set(fakeSet);
                 m.delete(id);
@@ -143,23 +142,20 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }
 
     function toggleFake(id, e) {
-        e && e.stopPropagation && e.stopPropagation(); // avoid triggering toggle select
+        e && e.stopPropagation && e.stopPropagation();
         const newFake = new Set(fakeSet);
         if (newFake.has(id)) newFake.delete(id);
         else newFake.add(id);
         setFakeSet(newFake);
 
-        // trigger preview asap
         triggerPreviewDebounced();
     }
 
     // -------------------------------------------------------------
-    // 3. ORQUESTADOR DEL RECALCULO (debounced)
+    // ORQUESTADOR DEL RECALCULO (debounced)
     // -------------------------------------------------------------
     useEffect(() => {
-        // recalc whenever ordered, origin/dest or fakeSet changes
         triggerPreviewDebounced();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordered, originId, destinationId, sameAsOrigin, fakeSet]);
 
     function triggerPreviewDebounced() {
@@ -215,7 +211,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
             lon: destination.longitude
         });
 
-        // 4. Fake loads
         const fakeArray = Array.from(fakeSet);
 
         try {
@@ -231,14 +226,11 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
             const data = await res.json();
 
-            // Billing distance
             const billing = Number(data.billing_distance_km ?? data.total_distance_km ?? 0);
             setDistanceKm(billing);
 
-            // Total kg (incluyendo fake)
             setTotalKg(Number(data.total_kg ?? 0));
 
-            // Pintar ruta
             if (data.waypoints) {
                 window.dispatchEvent(new CustomEvent("draw-preview-route", {
                     detail: { routeId, waypoints: data.waypoints }
@@ -251,7 +243,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }
 
     // -------------------------------------------------------------
-    // 4. DRAG & DROP
+    // DRAG & DROP
     // -------------------------------------------------------------
     useEffect(() => {
         if (!sortableRef.current) return;
@@ -289,7 +281,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     total_cost: costoTotal
                 }),
             });
-            // Puedes ajustar aquí para persistir fake flags si luego lo deseas
             window.location.reload();
             onClose();
         } catch (e) {
