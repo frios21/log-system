@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import RouteConfirmModal from "../modals/RouteConfirmModal";
 
+// Componente que muestra la información de una ruta
+// permite editar nombre, cambiar estado, -> quitar editar nombre (ya tiene correlativo)
+// asignar cargas y vehículo, eliminar ruta
+// incluye función para abrir ruta en Google Maps
+
 function stateColor(status) {
     switch (status) {
         case "draft":
@@ -15,14 +20,14 @@ function stateColor(status) {
 }
 
 export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehicle, onDelete }) {
-    // Estado local para reflejar cambios inmediatos en el card
+    // estado local para reflejar cambios inmediatos en el card
     const [localStatus, setLocalStatus] = useState(ruta.status);
     const color = stateColor(localStatus);
 
     const [editing, setEditing] = useState(false);
     const [tempName, setTempName] = useState(ruta.name);
 
-    // Modal de confirmación de cambio de estado
+    // modal de confirmación de cambio de estado
     const [modalOpen, setModalOpen] = useState(false);
     const [targetStatus, setTargetStatus] = useState(null);
 
@@ -101,13 +106,13 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
             ? `${ruta.total_distance_km.toFixed(2)} km`
             : "—";
 
-    // Botón dinámico según estado
+    // botón dinámico según estado
     const canStart = localStatus === 'draft';
     const canFinish = localStatus === 'assigned';
     const isDone = localStatus === 'done';
 
     function openConfirm(status) {
-        // Enfocar la ruta en el mapa
+        // enfocar la ruta en el mapa
         window.dispatchEvent(new CustomEvent('focus-route', { detail: { routeId: ruta.id } }));
         setTargetStatus(status);
         setModalOpen(true);
@@ -123,7 +128,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
             });
             setModalOpen(false);
             setLocalStatus(targetStatus);
-            // Notificar al mapa para recolorear la ruta
+            // notificar al mapa para recolorear la ruta
             window.dispatchEvent(new CustomEvent('route-status-updated', { detail: { routeId: ruta.id, status: targetStatus } }));
         } catch (e) {
             console.error('No se pudo actualizar el estado de la ruta', e);

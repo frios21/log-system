@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 
+// Componente que lista los contactos 
+// y permite verlos en el mapa
+
 export default function ContactsList() {
     const [contactos, setContactos] = useState([]);
 
@@ -11,7 +14,8 @@ export default function ContactsList() {
                 if (cancelled) return;
                 setContactos(data);
                 // pedir al mapa que dibuje marcadores
-                window.dispatchEvent(new CustomEvent('contacts-markers-show', { detail: data }));
+                window.dispatchEvent(new Event("contacts-markers-clear"));
+                window.dispatchEvent(new CustomEvent("contacts-markers-show", { detail: data }));
             })
             .catch(console.error);
         return () => {

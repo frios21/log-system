@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+// Modal para confirmar inicio o finalización de una ruta
+// Muestra detalles de la ruta: paradas, distancia, cargas asociadas
+// Permite confirmar o cancelar la acción
+// Carga detalles de las cargas asociadas al abrirse
+
 function parseWaypointsField(w) {
   if (!w) return [];
   if (Array.isArray(w)) return w;

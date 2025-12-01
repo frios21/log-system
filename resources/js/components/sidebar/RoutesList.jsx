@@ -3,6 +3,10 @@ import RouteCard from "./RouteCard";
 import RouteAssignModal from "../modals/RouteAssignModal";
 import VehicleAssignModal from "../modals/VehicleAssignModal";
 
+// Componente que lista las rutas
+// permite crear, eliminar, asignar rutas junto a
+// filtros de búsqueda y estado -> falta filtro de fecha
+
 export default function RoutesList() {
     const [rutas, setRutas] = useState([]);
     const [openAssignFor, setOpenAssignFor] = useState(null);

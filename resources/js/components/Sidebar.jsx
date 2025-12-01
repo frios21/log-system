@@ -3,6 +3,9 @@ import CargasList from "./sidebar/CargasList";
 import RutasList from "./sidebar/RoutesList";
 import ContactsList from "./sidebar/ContactsList";
 
+// Sidebar que carga los componentes de listas
+// falta dinamizar el título y componentes según la pestaña activa
+
 export default function Sidebar({ currentView, onChangeView }) {
     return (
         <div className="logistics-main-sidebar">

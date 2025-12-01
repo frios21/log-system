@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import CargaDetailsModal from "../modals/CargaDetailsModal";
 
+// Componente que lista las cargas
+// permite ver detalles de cada carga
+// incluye filtros de búsqueda y estado -> agregar filtro de fechas
+
 export default function CargasList() {
     const [cargas, setCargas] = useState([]);
     const [selectedCarga, setSelectedCarga] = useState(null);

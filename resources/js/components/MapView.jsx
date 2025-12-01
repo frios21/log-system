@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 
-// Íconos y configuración
+// iconos y configuracion
 const cargaIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
   iconSize: [32, 32],
@@ -16,7 +16,7 @@ const estadoColors = {
   cancelled: "#e74c3c", 
 };
 
-// Colores de rutas por estado (alineado con RouteCard borderLeft)
+// colores de rutas por estado
 const routeStatusColor = {
   draft: "#d32f2f",      // rojo
   assigned: "#f9a825",   // amarillo
@@ -59,7 +59,6 @@ export default function MapView() {
     return Object.values(grouped);
   }
 
-  // Helper: parse waypoints field safely
   function parseWaypointsField(w) {
     if (!w) return [];
     if (Array.isArray(w)) return w;
@@ -75,7 +74,7 @@ export default function MapView() {
   }
 
   // -------------------------------------------------------------
-  // INICIALIZACIÓN DEL MAPA
+  // INICIALIZACIÓN DEL MAPA -> cambiar mapa??
   // -------------------------------------------------------------
   useEffect(() => {
     const mapElement = document.getElementById("map");
@@ -101,6 +100,8 @@ export default function MapView() {
   }, []);
 
   /** UBICACIÓN TRACCAR EN TIEMPO REAL */
+  // falta optimizar: solo actualizar si está en linea
+  // desconectodo -> offline (marcador gris)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -163,6 +164,7 @@ export default function MapView() {
     }
 
     // primera ejecución y polling cada 5s
+    // -> definir tiempo de actualización 3-5s?s
     updateDraftVehiclesPositions();
     const interval = setInterval(updateDraftVehiclesPositions, 5000);
 
@@ -173,13 +175,14 @@ export default function MapView() {
   }, [mapRef.current]);
 
   // -------------------------------------------------------------
-  // LÓGICA DE DIBUJO CENTRALIZADA (GraphHopper)
+  // Lógica de dibujo GH -> falta corregir linea en carriles con
+  // sentidos separados (carretera, autopista, avenida grande)
   // -------------------------------------------------------------
   async function drawRouteOnMap(routeId, waypoints, isPreview = false, status = null) {
     const map = mapRef.current;
     if (!map) return false;
 
-    // Normalizar puntos
+    // normalizar puntos
     const cleaned = waypoints
       .map((p) => {
         const lat = p.lat ?? p.latitude;
@@ -190,7 +193,7 @@ export default function MapView() {
       .filter(Boolean);
 
     if (cleaned.length < 2) {
-      // limpiar ruta previa si existe
+
       if (routesLayers.current[routeId]) {
         const { polyline } = routesLayers.current[routeId];
         if (polyline) map.removeLayer(polyline);
@@ -216,7 +219,7 @@ export default function MapView() {
         }
         const geo = gh.paths[0].points;
         if (!geo || !Array.isArray(geo.coordinates)) return null;
-        // coords as [lat, lon]
+        // coords como [lat, lon]
         const coords = geo.coordinates.map((c) => [c[1], c[0]]);
         const distM = gh.paths[0].distance ?? 0;
         return { coords, distM, raw: gh };
@@ -226,25 +229,19 @@ export default function MapView() {
       }
     }
 
-    // Recorremos pares: 0->1, 1->2, ..., n-1 -> n
-    // Para cerrar el ciclo añadimos la última vuelta: last -> first
     const legs = [];
     for (let i = 0; i < cleaned.length - 1; i++) {
       legs.push([cleaned[i], cleaned[i + 1]]);
     }
-    // Añadir vuelta al inicio si es distinto
     const first = cleaned[0];
     const last = cleaned[cleaned.length - 1];
     if (first.lat !== last.lat || first.lon !== last.lon) {
       legs.push([last, first]);
     } else {
-      // si el primero y el último son idénticos queríamos la vuelta, pero GH puede comportarse raro:
-      // en este caso hacemos last->first con un pequeño nudging (offset minúsculo) para evitar colapso
       const nudgedFirst = { lat: first.lat + 1e-6, lon: first.lon + 1e-6 };
       legs.push([last, nudgedFirst]);
     }
 
-    // Ejecutar legs secuencialmente (podrías paralelizar pero así controlarás mejor errores)
     const combinedCoords = [];
     let totalDist = 0;
     for (let i = 0; i < legs.length; i++) {
@@ -252,15 +249,11 @@ export default function MapView() {
       const leg = await fetchLeg(a, b);
       if (!leg) {
         console.warn("No se pudo obtener leg", i, a, b);
-        // fallback: si falla un leg, intentamos con OSRM público (opcional) o abortamos.
-        // Por ahora abortamos el dibujo para que no muestre una ruta incompleta.
         return false;
       }
-      // Concatenar sin duplicar el punto intermedio:
       if (combinedCoords.length === 0) {
         combinedCoords.push(...leg.coords);
       } else {
-        // evitar duplicar el primer punto del leg (es el último punto del combined)
         const lastCombined = combinedCoords[combinedCoords.length - 1];
         const firstLeg = leg.coords[0];
         const isSame = Math.abs(lastCombined[0] - firstLeg[0]) < 1e-8 && Math.abs(lastCombined[1] - firstLeg[1]) < 1e-8;
@@ -271,11 +264,8 @@ export default function MapView() {
         }
       }
       totalDist += (leg.distM || 0);
-      // opcional: pequeña pausa para no saturar GH si muchos tramos
-      // await new Promise(res => setTimeout(res, 50));
     }
 
-    // Dibujar/actualizar polyline
     const baseColor = status && routeStatusColor[status] ? routeStatusColor[status] : routeColor(routeId);
     const color = isPreview ? "#333333" : baseColor;
     const dashArray = isPreview ? "10, 10" : null;
@@ -292,12 +282,10 @@ export default function MapView() {
       routesLayers.current[routeId] = { polyline, markers: [], visible: true };
     }
 
-    // opcional: ajustar bounds
     try {
       map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), { padding: [40, 40] });
     } catch (e) {}
 
-    // si quieres, conviertes totalDist a km y despachas evento
     const totalKm = (totalDist || 0) / 1000;
     window.dispatchEvent(new CustomEvent("route-distance-updated", { detail: { routeId, distanceKm: totalKm } }));
 
@@ -305,7 +293,7 @@ export default function MapView() {
   }
 
   // -------------------------------------------------------------
-  // LISTENER: Cargar todas las rutas existentes al inicio
+  // LISTENER: Cargar todas las rutas existentes en inicio
   // -------------------------------------------------------------
   useEffect(() => {
     let active = true;
@@ -324,10 +312,8 @@ export default function MapView() {
         const waypoints = parseWaypointsField(r.waypoints);
         if (!waypoints.length) continue; 
         
-        // Evitar redibujar si ya existe
         if (routesLayers.current[r.id] && routesLayers.current[r.id].polyline) continue;
 
-        // Dibujar ruta normal (isPreview = false) usando color por estado
         await drawRouteOnMap(r.id, waypoints, false, r.status);
       }
     }
@@ -337,13 +323,14 @@ export default function MapView() {
   }, []);
 
   // -------------------------------------------------------------
-  // LISTENER: Preview Route (Lo que envía el Modal)
+  // LISTENER: Preview ruta 
+  // modal de edición de ruta? -> similar a RouteConfirmModal
   // -------------------------------------------------------------
   useEffect(() => {
     function onDrawPreview(ev) {
         const { routeId, waypoints } = ev.detail;
         if (!routeId || !waypoints) return;
-        // Dibujamos con isPreview = true
+
         drawRouteOnMap(routeId, waypoints, true);
     }
 
@@ -352,7 +339,8 @@ export default function MapView() {
   }, []);
 
   // -------------------------------------------------------------
-  // LISTENER: Toggle Visibilidad
+  // LISTENER: Toggle visibilidad -> falta filtro en sidebar para
+  // mostrar/ocultar todas -> marcar sólo las in_progress??
   // -------------------------------------------------------------
   useEffect(() => {
     function toggleVisibility(ev) {
@@ -375,7 +363,7 @@ export default function MapView() {
   }, []);
 
   // -------------------------------------------------------------
-  // CARGAR MARKERS DE EMPRESAS (Grupos)
+  // CARGAR MARKERS DE EMPRESAS
   // -------------------------------------------------------------
   useEffect(() => {
     fetch("/api/cargas")
@@ -399,7 +387,7 @@ export default function MapView() {
         icon: cargaIconForState(state),
       }).addTo(map);
 
-      // Popup content
+      // popup contacto
       let popupHtml = `<strong>${partner.name}</strong><br/>`;
       if (cargas.length === 1) {
         popupHtml += `<div>${cargas[0].name}</div>`;
@@ -414,7 +402,7 @@ export default function MapView() {
   }, [groups]);
 
   // -------------------------------------------------------------
-  // FOCUS CLIENT
+  // FOCUS CONCTACO
   // -------------------------------------------------------------
   useEffect(() => {
     function focusClient(ev) {
@@ -433,7 +421,79 @@ export default function MapView() {
     return () => window.removeEventListener("focus-client", focusClient);
   }, []);
 
-  // Listener para enfocar una ruta y para recolorear tras cambio de estado
+  /* === CONTACTOS: MARCADORES === */
+  const contactMarkersRef = useRef([]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // mostrar contactos en el mapa
+    function onShowContacts(ev) {
+      const list = ev.detail || [];
+      if (!Array.isArray(list)) return;
+
+      // limpiar anteriores
+      contactMarkersRef.current.forEach(m => map.removeLayer(m));
+      contactMarkersRef.current = [];
+
+      list.forEach(ct => {
+        if (!ct.latitude || !ct.longitude) return;
+
+        const empresaIcon = (emoji = "🏭") => L.divIcon({
+          className: "empresa-icon",
+          html: `
+            <div style="
+              font-size: 24px;
+              line-height: 32px;
+              text-align: center;
+            ">${emoji}</div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+
+        const marker = L.marker(
+          [ct.latitude, ct.longitude],
+          { icon: empresaIcon("🏭") }
+        ).addTo(map);
+
+        marker.bindPopup(`<strong>${ct.name}</strong><br/>${ct.street ?? ""} ${ct.city ?? ""}`);
+        marker.contactId = ct.id;
+        contactMarkersRef.current.push(marker);
+      });
+    }
+
+    // limpiar contactos
+    function onClearContacts() {
+      contactMarkersRef.current.forEach(m => map.removeLayer(m));
+      contactMarkersRef.current = [];
+    }
+
+    // enfocar contacto
+    function onFocusContact(ev) {
+      const ct = ev.detail;
+      if (!ct || !ct.latitude || !ct.longitude) return;
+
+      const marker = contactMarkersRef.current.find(m => m.contactId === ct.id);
+      if (!marker) return;
+
+      map.flyTo(marker.getLatLng(), 16, { duration: 0.8 });
+      setTimeout(() => marker.openPopup(), 900);
+    }
+
+    window.addEventListener("contacts-markers-show", onShowContacts);
+    window.addEventListener("contacts-markers-clear", onClearContacts);
+    window.addEventListener("focus-contact", onFocusContact);
+
+    return () => {
+      window.removeEventListener("contacts-markers-show", onShowContacts);
+      window.removeEventListener("contacts-markers-clear", onClearContacts);
+      window.removeEventListener("focus-contact", onFocusContact);
+    };
+  }, []);
+
+  // listener para enfocar una ruta y para recolorear tras cambio de estado
   useEffect(() => {
     function onFocusRoute(ev) {
       const { routeId } = ev.detail || {};
@@ -451,7 +511,7 @@ export default function MapView() {
       const layer = routesLayers.current[routeId];
       if (!layer || !layer.polyline) return;
 
-      // Reaplicar color por estado
+      // reaplicar color por estado
       const routeStatusColor = {
         draft: "#d32f2f",
         assigned: "#f9a825",

@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
 
+// Modal para asignar vehículo a una ruta
+// Muestra lista de vehículos, permite buscar y filtrar
+// Falta agregar paginación si hay muchos vehículos
+// y agregar un botón para desvincular vehículos
+// -> separar vehículo de chofer (asignar cada uno por separado)
+
 export default function VehicleAssignModal({ ruta, onClose }) {
     const [vehicles, setVehicles] = useState([]);
     const [query, setQuery] = useState("");
