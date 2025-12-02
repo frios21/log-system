@@ -72,13 +72,43 @@ class ContactosService
                 'search_read',
                 [[['active', '=', true]]],
                 [
-                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street'],
+                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street','is_company'],
                     'limit'  => 0,
                 ]
             ]
         );
 
         // Normalizar claves para el frontend (latitude/longitude)
+        return array_map(function ($r) {
+            $r['latitude'] = $r['partner_latitude'] ?? ($r['latitude'] ?? null);
+            $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+            return $r;
+        }, $rows);
+    }
+
+    /**
+     * Devuelve solo contactos que son personas (no empresas)
+     * Utiliza el campo `is_company` de res.partner (Odoo estándar)
+     */
+    public function personas(): array
+    {
+        $rows = $this->call16(
+            'object',
+            'execute_kw',
+            [
+                $this->db16,
+                $this->uid16,
+                $this->apiKey16,
+                'res.partner',
+                'search_read',
+                [[['active', '=', true], ['is_company', '=', false]]],
+                [
+                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street','is_company'],
+                    'limit'  => 0,
+                ]
+            ]
+        );
+
         return array_map(function ($r) {
             $r['latitude'] = $r['partner_latitude'] ?? ($r['latitude'] ?? null);
             $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);

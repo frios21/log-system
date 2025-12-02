@@ -14,7 +14,7 @@ class RutasService
         return $this->odoo->searchRead(
             'logistics.route',
             [],
-            ['id','name','status','vehicle_id','total_distance_km','total_cost','total_qnt','cost_per_kg','waypoints','load_ids','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','total_qnt','cost_per_kg','waypoints','load_ids','last_recalc']
         );
     }
 
@@ -23,7 +23,7 @@ class RutasService
         $routes = $this->odoo->searchRead(
             'logistics.route',
             [['id','=', $id]],
-            ['id','name','status','vehicle_id','total_distance_km','total_cost','total_qnt','cost_per_kg','waypoints','load_ids']
+            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','total_qnt','cost_per_kg','waypoints','load_ids']
         );
 
         $route = $routes[0] ?? null;
@@ -442,6 +442,17 @@ class RutasService
     {
         return $this->odoo->write('logistics.route', $idRuta, [
             'vehicle_id' => $vehicleId
+        ]);
+    }
+
+    /**
+     * Asigna un conductor (partner) a la ruta. Guarda el partner id en el campo
+     * `driver_id` de la ruta (si existe en el modelo de Odoo).
+     */
+    public function asignarConductor(int $idRuta, int $driverId)
+    {
+        return $this->odoo->write('logistics.route', $idRuta, [
+            'driver_id' => $driverId
         ]);
     }
 

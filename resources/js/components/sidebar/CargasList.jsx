@@ -3,7 +3,7 @@ import CargaDetailsModal from "../modals/CargaDetailsModal";
 
 // Componente que lista las cargas
 // permite ver detalles de cada carga
-// incluye filtros de búsqueda y estado -> agregar filtro de fechas
+// incluye filtros de búsqueda, estado y rango de fechas dentro de un desplegable
 
 export default function CargasList() {
     const [cargas, setCargas] = useState([]);
@@ -12,8 +12,17 @@ export default function CargasList() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
 
+    // filtros de fechas
+    const [startDate, setStartDate] = useState(""); // yyyy-mm-dd
+    const [endDate, setEndDate] = useState("");     // yyyy-mm-dd
+
+    // desplegable filtros
+    const [showFilters, setShowFilters] = useState(false);
+
     async function loadData() {
-        const data = await fetch("/api/cargas").then(r => r.json()).catch(() => []);
+        const data = await fetch("/api/cargas")
+            .then(r => r.json())
+            .catch(() => []);
         setCargas(Array.isArray(data) ? data : []);
     }
 
@@ -23,12 +32,13 @@ export default function CargasList() {
 
     useEffect(() => {
         function handleRefresh() { loadData(); }
-        window.addEventListener('cargas-refresh', handleRefresh);
-        return () => window.removeEventListener('cargas-refresh', handleRefresh);
+        window.addEventListener("cargas-refresh", handleRefresh);
+        return () => window.removeEventListener("cargas-refresh", handleRefresh);
     }, []);
 
     function normalizeString(s = "") {
-        return s.toString().normalize("NFD")
+        return s.toString()
+            .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
     }
@@ -50,7 +60,29 @@ export default function CargasList() {
     const q = normalizeString(search.trim());
 
     const visibleCargas = cargas.filter(c => {
+        // 1) filtro por estado
         if (statusFilter && c.state !== statusFilter) return false;
+
+        // 2) filtro por fechas
+        const start = startDate || "";
+        const end = endDate || "";
+        const cargaDatePart = (c.date || "").split(" ")[0]; // "YYYY-MM-DD"
+
+        if (start || end) {
+            // si no tiene fecha y hay filtro de fechas => no mostrar
+            if (!cargaDatePart) return false;
+
+            if (start && !end) {
+                // solo fecha de inicio -> ese día exacto
+                if (cargaDatePart !== start) return false;
+            } else if (!start && end) {
+                // solo fecha de fin -> ese día exacto
+                if (cargaDatePart !== end) return false;
+            } else if (start && end) {
+                // rango inclusivo
+                if (cargaDatePart < start || cargaDatePart > end) return false;
+            }
+        }
 
         if (!q) return true;
 
@@ -62,32 +94,107 @@ export default function CargasList() {
 
     return (
         <>
-            {/* ---- FILTROS ---- */}
-            <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-                <input
-                    className="input"
-                    placeholder="Buscar cargas..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                />
-
-                <select
-                    className="input"
-                    style={{ width: 160 }}
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value)}
+            {/* ---- FILTROS (DESPLEGABLE) ---- */}
+            <div style={{ marginBottom: 10 }}>
+                {/* Botón/Chip "Filtros" que abre/cierra */}
+                <button
+                    type="button"
+                    className="btn btn-outlined"
+                    onClick={() => setShowFilters(v => !v)}
+                    style={{
+                        padding: "2px 8px",
+                        fontSize: 12,
+                        borderRadius: 999,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                    }}
                 >
-                    <option value="">Todas</option>
-                    <option value="draft">Pendientes</option>
-                    <option value="assigned">Asignadas</option>
-                    <option value="done">Completadas</option>
-                </select>
+                    Filtros
+                    <span style={{ fontSize: 10 }}>
+                        {showFilters ? "▲" : "▼"}
+                    </span>
+                </button>
+
+                {showFilters && (
+                    <div
+                        style={{
+                            marginTop: 6,
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 8,
+                            padding: 8,
+                            background: "#f9fafb",
+                            boxSizing: "border-box",
+                            overflowX: "hidden",
+                        }}
+                    >
+                        {/* GRID 2 FILAS x 2 COLUMNAS */}
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                columnGap: 8,
+                                rowGap: 6,
+                                alignItems: "center",
+                            }}
+                        >
+                            {/* FILA 1 - Buscar / Estado */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Buscar</span>
+                                <input
+                                    className="input"
+                                    placeholder="Buscar cargas..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    style={{ width: "100%", boxSizing: "border-box" }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Estado</span>
+                                <select
+                                    className="input"
+                                    value={statusFilter}
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    style={{ width: "75%", boxSizing: "border-box" }}
+                                >
+                                    <option value="">Todas</option>
+                                    <option value="draft">Pendientes</option>
+                                    <option value="assigned">Asignadas</option>
+                                    <option value="done">Completadas</option>
+                                </select>
+                            </div>
+
+                            {/* FILA 2 - Inicio / Fin */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Inicio</span>
+                                <input
+                                    type="date"
+                                    className="input"
+                                    value={startDate}
+                                    onChange={e => setStartDate(e.target.value)}
+                                    style={{ width: "75%", boxSizing: "border-box" }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Fin</span>
+                                <input
+                                    type="date"
+                                    className="input"
+                                    value={endDate}
+                                    onChange={e => setEndDate(e.target.value)}
+                                    style={{ width: "75%", boxSizing: "border-box" }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* LISTA */}
             {visibleCargas.map(carga => (
                 <div className="card" style={stateColor(carga.state)} key={carga.id}>
-
                     {/* HEADER */}
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <div className="card-title">{carga.name}</div>
@@ -102,12 +209,19 @@ export default function CargasList() {
                     {(carga.partner || carga.vendor_id) && (
                         <div
                             className="chip"
-                            style={{ marginTop: "8px", cursor: 'pointer' }}
+                            style={{ marginTop: "8px", cursor: "pointer" }}
                             onClick={() => {
-                                const partnerId = carga.partner?.id
-                                    ?? (Array.isArray(carga.vendor_id) ? carga.vendor_id[0] : carga.vendor_id);
+                                const partnerId =
+                                    carga.partner?.id ??
+                                    (Array.isArray(carga.vendor_id)
+                                        ? carga.vendor_id[0]
+                                        : carga.vendor_id);
 
-                                if (carga.partner && carga.partner.latitude && carga.partner.longitude) {
+                                if (
+                                    carga.partner &&
+                                    carga.partner.latitude &&
+                                    carga.partner.longitude
+                                ) {
                                     const ct = {
                                         id: Number(carga.partner.id),
                                         name: carga.partner.name,
@@ -115,10 +229,20 @@ export default function CargasList() {
                                         longitude: Number(carga.partner.longitude),
                                         street: carga.partner.street,
                                     };
-                                    window.dispatchEvent(new CustomEvent("contacts-markers-show", { detail: [ct] }));
-                                    window.dispatchEvent(new CustomEvent("focus-contact", { detail: ct }));
+                                    window.dispatchEvent(
+                                        new CustomEvent("contacts-markers-show", {
+                                            detail: [ct],
+                                        })
+                                    );
+                                    window.dispatchEvent(
+                                        new CustomEvent("focus-contact", { detail: ct })
+                                    );
                                 } else if (partnerId) {
-                                    window.dispatchEvent(new CustomEvent("focus-client", { detail: Number(partnerId) }));
+                                    window.dispatchEvent(
+                                        new CustomEvent("focus-client", {
+                                            detail: Number(partnerId),
+                                        })
+                                    );
                                 }
                             }}
                         >
@@ -128,8 +252,8 @@ export default function CargasList() {
 
                     {/* Info */}
                     <div className="text-small" style={{ marginTop: "10px" }}>
-                        Cantidad: <strong>{carga.total_quantity} kg</strong> —
-                        Pallets: <strong>{carga.total_pallets}</strong>
+                        Cantidad: <strong>{carga.total_quantity} kg</strong> — Pallets:{" "}
+                        <strong>{carga.total_pallets}</strong>
                     </div>
 
                     {/* BOTÓN DETALLES */}

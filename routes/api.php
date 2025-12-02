@@ -48,6 +48,7 @@ Route::middleware('api')->group(function () {
     Route::post('/rutas/{id}/preview', [RouteController::class, 'preview'])->whereNumber('id');
     Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia'])->whereNumber('id');
     Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle'])->whereNumber('id');
+    Route::patch('/rutas/{id}/update-driver', [RutasApiController::class, 'updateDriver'])->whereNumber('id');
     // Unificar PATCH para actualizar nombre o estado
     Route::patch('/rutas/{id}', [RutasApiController::class, 'update'])->whereNumber('id');
     Route::delete('/rutas/{id}', [RouteController::class, 'destroy'])->whereNumber('id');
@@ -58,6 +59,7 @@ Route::middleware('api')->group(function () {
     // CONTACTOS (res.partner)
     // =====================
     Route::get('/contactos', [ContactosApiController::class, 'index']);
+    Route::get('/contactos/personas', [ContactosApiController::class, 'personas']);
 
     // =====================
     // VEHÍCULOS (fleet.vehicle)

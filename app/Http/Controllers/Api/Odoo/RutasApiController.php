@@ -114,6 +114,22 @@ class RutasApiController extends Controller
         }
     }
 
+    public function updateDriver($id, Request $request)
+    {
+        $driverId = $request->input('driver_id');
+
+        if (!$driverId) {
+            return response()->json(['message' => 'driver_id requerido'], 422);
+        }
+
+        try {
+            $result = $this->rutas->asignarConductor((int)$id, (int)$driverId);
+            return response()->json(['success' => (bool)$result]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
     // Nuevo: PATCH /api/rutas/{id} - actualizar nombre o estado
     public function update($id, Request $request)
     {
