@@ -148,6 +148,10 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
             setLocalStatus(targetStatus);
             // notificar al mapa para recolorear la ruta
             window.dispatchEvent(new CustomEvent('route-status-updated', { detail: { routeId: ruta.id, status: targetStatus } }));
+            // notificar que las cargas pueden haber cambiado de estado
+            if (targetStatus === 'done') {
+                window.dispatchEvent(new Event('cargas-refresh'));
+            }
         } catch (e) {
             console.error('No se pudo actualizar el estado de la ruta', e);
         }

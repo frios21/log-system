@@ -12,10 +12,19 @@ export default function CargasList() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
 
+    async function loadData() {
+        const data = await fetch("/api/cargas").then(r => r.json()).catch(() => []);
+        setCargas(Array.isArray(data) ? data : []);
+    }
+
     useEffect(() => {
-        fetch("/api/cargas")
-            .then(r => r.json())
-            .then(setCargas);
+        loadData();
+    }, []);
+
+    useEffect(() => {
+        function handleRefresh() { loadData(); }
+        window.addEventListener('cargas-refresh', handleRefresh);
+        return () => window.removeEventListener('cargas-refresh', handleRefresh);
     }, []);
 
     function normalizeString(s = "") {

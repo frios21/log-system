@@ -310,7 +310,7 @@ class RutasService
             $waypoints[] = $existingDest;
         }
 
-        // 5. Calcular Distancia (Backend OSRM o similar)
+        // 5. Calcular Distancia
         // Esto nos da la distancia "fiscal" o "de negocio"
         $distKm = $this->calcularDistanciaKm($waypoints);
 
@@ -447,8 +447,29 @@ class RutasService
 
     public function actualizarEstado(int $id, string $status): bool
     {
-        return $this->odoo->write('logistics.route', $id, [
+        // Actualizar estado de la ruta
+        $ok = $this->odoo->write('logistics.route', $id, [
             'status' => $status,
         ]);
+
+        if (!$ok) return false;
+
+        // Si la ruta se finaliza, marcar cargas como 'done'
+        if ($status === 'done') {
+            $ruta = $this->porId($id);
+            $loadIds = $ruta['load_ids'] ?? [];
+            if (!empty($loadIds)) {
+                foreach ($loadIds as $lid) {
+                    // Mejor esfuerzo: continuar aunque alguna falle
+                    try {
+                        $this->odoo->write('logistics.load', $lid, ['state' => 'done']);
+                    } catch (\Throwable $e) {
+                        // noop
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 }
