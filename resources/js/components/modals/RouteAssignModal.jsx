@@ -6,35 +6,64 @@ export default function RouteAssignModal({ ruta, onClose }) {
     const routeId = ruta?.id;
     const [routeDetails, setRouteDetails] = useState(ruta);
 
-    // Datos externos
     const [cargasDraft, setCargasDraft] = useState([]);
     const [partners, setPartners] = useState([]);
 
-    // Estados de selección y orden
     const [selected, setSelected] = useState(new Set());
     const [ordered, setOrdered] = useState([]);
     const [fakeSet, setFakeSet] = useState(new Set()); // cargas marcadas como "falso"
 
-    // Referencias
     const sortableRef = useRef(null);
     const recalcTimeoutRef = useRef(null);
 
-    // Inicializar vehículo (no usado para preview pero lo dejo)
     const [vehicleId, setVehicleId] = useState(
         ruta.vehicle_id ? (Array.isArray(ruta.vehicle_id) ? ruta.vehicle_id[0] : ruta.vehicle_id) : null
     );
 
-    // Estados de formulario
     const [originId, setOriginId] = useState(null);
     const [destinationId, setDestinationId] = useState(null);
     const [sameAsOrigin, setSameAsOrigin] = useState(true);
 
-    // Cálculos
     const COSTO_POR_KM = 1000;
-    const [distanceKm, setDistanceKm] = useState(ruta.total_distance_km ?? 0); // billing distance used for cost
+    const [distanceKm, setDistanceKm] = useState(ruta.total_distance_km ?? 0);
     const [totalKg, setTotalKg] = useState(0);
     const [costoTotal, setCostoTotal] = useState(0);
     const [costoPorKg, setCostoPorKg] = useState(0);
+
+    const [originQuery, setOriginQuery] = useState("");
+    const [destQuery, setDestQuery] = useState("");
+    const [isOriginOpen, setIsOriginOpen] = useState(false);
+    const [isDestOpen, setIsDestOpen] = useState(false);
+
+    function normalize(s = "") {
+        return s.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    const filteredOrigins = Array.isArray(partners)
+        ? partners.filter(p => !originQuery || normalize(p.name).includes(normalize(originQuery)))
+        : [];
+
+    const filteredDestinations = Array.isArray(partners)
+        ? partners.filter(p => !destQuery || normalize(p.name).includes(normalize(destQuery)))
+        : [];
+
+    useEffect(() => {
+        if (originId && Array.isArray(partners)) {
+            const p = partners.find(pt => pt.id === originId);
+            if (p) setOriginQuery(p.name);
+        }
+    }, [originId, partners]);
+
+    useEffect(() => {
+        if (destinationId && Array.isArray(partners)) {
+            const p = partners.find(pt => pt.id === destinationId);
+            if (p) setDestQuery(p.name);
+        }
+    }, [destinationId, partners]);
+
+    useEffect(() => { if (originId) setIsOriginOpen(false); }, [originId]);
+    useEffect(() => { if (destinationId) setIsDestOpen(false); }, [destinationId]);
+    useEffect(() => { if (sameAsOrigin) setIsDestOpen(false); }, [sameAsOrigin]);
 
     // -------------------------------------------------------------
     // 1. CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS
@@ -293,10 +322,39 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     {/* Origen */}
                     <div className="section">
                         <label className="section-label">Origen de la ruta</label>
-                        <select className="input" value={originId || ""} onChange={e => setOriginId(Number(e.target.value))}>
-                            <option value="">-- Seleccione Origen --</option>
-                            {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                        <div className="input" style={{ position: 'relative', padding: 0 }}>
+                            <input
+                                className="input"
+                                style={{ border: 'none', width: '100%' }}
+                                placeholder="Buscar por nombre"
+                                value={originQuery}
+                                onFocus={() => setIsOriginOpen(true)}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    setOriginQuery(v);
+                                    setOriginId(null);
+                                    setIsOriginOpen(Boolean(v));
+                                }}
+                                onKeyDown={e => { if (e.key === 'Escape') setIsOriginOpen(false); }}
+                                onBlur={() => setTimeout(() => setIsOriginOpen(false), 150)}
+                            />
+                            {isOriginOpen && originQuery && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #ddd', zIndex: 10 }}>
+                                    {filteredOrigins.slice(0, 20).map(p => (
+                                        <div
+                                            key={p.id}
+                                            style={{ padding: '8px 10px', cursor: 'pointer' }}
+                                            onMouseDown={(e) => { e.preventDefault(); setOriginId(p.id); setOriginQuery(p.name); setIsOriginOpen(false); }}
+                                        >
+                                            {p.name}
+                                        </div>
+                                    ))}
+                                    {!filteredOrigins.length && (
+                                        <div style={{ padding: '8px 10px', color: '#666' }}>Sin resultados</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                      {/* Cargas */}
@@ -333,15 +391,40 @@ export default function RouteAssignModal({ ruta, onClose }) {
                             <input type="checkbox" checked={sameAsOrigin} onChange={e => setSameAsOrigin(e.target.checked)} />
                             <span>Mismo que origen</span>
                         </div>
-                        <select
-                            className="input"
-                            value={sameAsOrigin ? originId || "" : destinationId || ""}
-                            disabled={sameAsOrigin}
-                            onChange={e => setDestinationId(Number(e.target.value))}
-                        >
-                            <option value="">-- Seleccione Destino --</option>
-                            {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                        <div className="input" style={{ position: 'relative', padding: 0 }}>
+                            <input
+                                className="input"
+                                style={{ border: 'none', width: '100%' }}
+                                placeholder="Buscar por nombre"
+                                value={sameAsOrigin ? originQuery : destQuery}
+                                disabled={sameAsOrigin}
+                                onFocus={() => { if (!sameAsOrigin) setIsDestOpen(true); }}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    setDestQuery(v);
+                                    setDestinationId(null);
+                                    if (!sameAsOrigin) setIsDestOpen(Boolean(v));
+                                }}
+                                onKeyDown={e => { if (e.key === 'Escape') setIsDestOpen(false); }}
+                                onBlur={() => setTimeout(() => setIsDestOpen(false), 150)}
+                            />
+                            {!sameAsOrigin && isDestOpen && destQuery && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #ddd', zIndex: 10 }}>
+                                    {filteredDestinations.slice(0, 20).map(p => (
+                                        <div
+                                            key={p.id}
+                                            style={{ padding: '8px 10px', cursor: 'pointer' }}
+                                            onMouseDown={(e) => { e.preventDefault(); setDestinationId(p.id); setDestQuery(p.name); setIsDestOpen(false); }}
+                                        >
+                                            {p.name}
+                                        </div>
+                                    ))}
+                                    {!filteredDestinations.length && (
+                                        <div style={{ padding: '8px 10px', color: '#666' }}>Sin resultados</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="buttons">

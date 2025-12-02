@@ -93,11 +93,24 @@ export default function CargasList() {
                     {(carga.partner || carga.vendor_id) && (
                         <div
                             className="chip"
-                            style={{ marginTop: "8px" }}
+                            style={{ marginTop: "8px", cursor: 'pointer' }}
                             onClick={() => {
                                 const partnerId = carga.partner?.id
                                     ?? (Array.isArray(carga.vendor_id) ? carga.vendor_id[0] : carga.vendor_id);
-                                window.dispatchEvent(new CustomEvent("focus-client", { detail: partnerId }));
+
+                                if (carga.partner && carga.partner.latitude && carga.partner.longitude) {
+                                    const ct = {
+                                        id: Number(carga.partner.id),
+                                        name: carga.partner.name,
+                                        latitude: Number(carga.partner.latitude),
+                                        longitude: Number(carga.partner.longitude),
+                                        street: carga.partner.street,
+                                    };
+                                    window.dispatchEvent(new CustomEvent("contacts-markers-show", { detail: [ct] }));
+                                    window.dispatchEvent(new CustomEvent("focus-contact", { detail: ct }));
+                                } else if (partnerId) {
+                                    window.dispatchEvent(new CustomEvent("focus-client", { detail: Number(partnerId) }));
+                                }
                             }}
                         >
                             {carga.vendor_name || carga.partner?.name}
