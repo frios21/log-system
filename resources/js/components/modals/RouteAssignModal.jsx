@@ -2,6 +2,18 @@ import { useEffect, useState, useRef } from "react";
 import Sortable from "sortablejs";
 import "../../../css/RouteAssignModal.css";
 
+function normalize(s = "") {
+    return s.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function issetLoadId(wp) {
+    return wp && (wp.load_id !== undefined && wp.load_id !== null);
+}
+
+function intVal(v) {
+    return typeof v === "string" ? parseInt(v, 10) : v;
+}
+
 export default function RouteAssignModal({ ruta, onClose }) {
     const routeId = ruta?.id;
     const [routeDetails, setRouteDetails] = useState(ruta);
@@ -38,10 +50,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // para no volver a pisar origen/destino después de inicializarlos
     const initializedFromRouteRef = useRef(false);
 
-    function normalize(s = "") {
-        return s.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    }
-
     const filteredOrigins = Array.isArray(partners)
         ? partners.filter(p => !originQuery || normalize(p.name).includes(normalize(originQuery)))
         : [];
@@ -69,61 +77,72 @@ export default function RouteAssignModal({ ruta, onClose }) {
     useEffect(() => { if (sameAsOrigin) setIsDestOpen(false); }, [sameAsOrigin]);
 
     // -------------------------------------------------------------
-    // 1. CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS
+    // CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS
     // -------------------------------------------------------------
     useEffect(() => {
-        // A. Cargar recursos globales
         fetch(`/api/cargas?state=draft`).then(r => r.json()).then(setCargasDraft);
         fetch(`/api/contactos`).then(r => r.json()).then(setPartners);
 
-        // B. Cargar la RUTA COMPLETA
-        if (routeId) {
-            fetch(`/api/rutas/${routeId}`)
-                .then(r => r.json())
-                .then(fullRoute => {
-                    setRouteDetails(fullRoute);
-                    if (fullRoute.vehicle_id) {
-                        const vId = Array.isArray(fullRoute.vehicle_id) ? fullRoute.vehicle_id[0] : fullRoute.vehicle_id;
-                        setVehicleId(vId);
+        if (!routeId) return;
+
+        (async () => {
+            try {
+                const fullRoute = await fetch(`/api/rutas/${routeId}`).then(r => r.json());
+                setRouteDetails(fullRoute);
+
+                if (fullRoute.vehicle_id) {
+                    const vId = Array.isArray(fullRoute.vehicle_id)
+                        ? fullRoute.vehicle_id[0]
+                        : fullRoute.vehicle_id;
+                    setVehicleId(vId);
+                }
+
+                // ids de cargas asignadas a la ruta
+                const loadIdsFromRoute = Array.isArray(fullRoute.load_ids) ? fullRoute.load_ids : [];
+
+                let assignedUnsorted = [];
+
+                if (loadIdsFromRoute.length > 0) {
+                    const promises = loadIdsFromRoute.map(id =>
+                        fetch(`/api/cargas/${id}`)
+                            .then(r => r.json())
+                            .catch(() => null)
+                    );
+                    const results = await Promise.all(promises);
+                    assignedUnsorted = results.filter(Boolean);
+                }
+
+                // ordenar según waypoints -> agregar el resto
+                let waypoints = fullRoute.waypoints;
+                if (typeof waypoints === "string") {
+                    try { waypoints = JSON.parse(waypoints); } catch { waypoints = []; }
+                }
+                if (!Array.isArray(waypoints)) waypoints = [];
+
+                const loadMap = new Map(assignedUnsorted.map(c => [c.id, c]));
+                const sortedLoads = [];
+
+                // primero: en el orden de los waypoints
+                waypoints.forEach(wp => {
+                    if (issetLoadId(wp) && loadMap.has(intVal(wp.load_id))) {
+                        sortedLoads.push(loadMap.get(intVal(wp.load_id)));
+                        loadMap.delete(intVal(wp.load_id));
                     }
+                });
 
-                    const assignedUnsorted = Array.isArray(fullRoute.loads) ? fullRoute.loads : [];
+                // luego: cualquiera que haya quedado sin ordenar
+                loadMap.forEach(load => sortedLoads.push(load));
 
-                    let waypoints = fullRoute.waypoints;
-                    if (typeof waypoints === 'string') {
-                        try { waypoints = JSON.parse(waypoints); } catch { waypoints = []; }
-                    }
-                    if (!Array.isArray(waypoints)) waypoints = [];
-
-                    const sortedLoads = [];
-                    const loadMap = new Map(assignedUnsorted.map(c => [c.id, c]));
-
-                    waypoints.forEach(wp => {
-                        if (issetLoadId(wp) && loadMap.has(intVal(wp.load_id))) {
-                            sortedLoads.push(loadMap.get(intVal(wp.load_id)));
-                            loadMap.delete(intVal(wp.load_id));
-                        }
-                    });
-
-                    loadMap.forEach(load => sortedLoads.push(load));
-
-                    setOrdered(sortedLoads);
-                    setSelected(new Set(sortedLoads.map(c => c.id)));
-                })
-                .catch(err => console.error("Error cargando detalles de ruta:", err));
-        }
-
-        function issetLoadId(wp) {
-            return wp && (wp.load_id !== undefined && wp.load_id !== null);
-        }
-        function intVal(v) {
-            return typeof v === 'string' ? parseInt(v, 10) : v;
-        }
-
+                setOrdered(sortedLoads);
+                setSelected(new Set(sortedLoads.map(c => c.id)));
+            } catch (err) {
+                console.error("Error cargando detalles de ruta:", err);
+            }
+        })();
     }, [routeId]);
 
     // -------------------------------------------------------------
-    // CÁLCULOS LOCALES (usa billing distance `distanceKm`)
+    // CÁLCULOS LOCALES
     // -------------------------------------------------------------
     useEffect(() => {
         let kg = 0;
@@ -141,7 +160,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // COMBINAR CARGAS: ordered + draft
     // -------------------------------------------------------------
     const allLoads = [
-        ...(ordered),
+        ...ordered,
         ...cargasDraft.filter(d => !selected.has(d.id))
     ];
 
@@ -184,7 +203,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }
 
     // -------------------------------------------------------------
-    // ORQUESTADOR DEL RECALCULO (debounced)
+    // ORQUESTADOR DEL RECÁLCULO (debounced)
     // -------------------------------------------------------------
     useEffect(() => {
         triggerPreviewDebounced();
@@ -200,11 +219,11 @@ export default function RouteAssignModal({ ruta, onClose }) {
     async function performPreview() {
         if (!routeId) return;
 
-        // 1. Obtener ORIGEN
+        // 1. Origen
         const origin = partners.find(p => p.id === originId);
         if (!origin) return;
 
-        // 2. Obtener DESTINO
+        // 2. Destino
         let destId = sameAsOrigin ? originId : destinationId;
         const destination = partners.find(p => p.id === destId);
         if (!destination) return;
@@ -260,7 +279,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, [ordered]);
 
     // -------------------------------------------------------------
-    // GUARDAR (assign)
+    // GUARDAR
     // -------------------------------------------------------------
     async function save() {
         const loadIds = ordered.map(c => c.id);
@@ -295,13 +314,13 @@ export default function RouteAssignModal({ ruta, onClose }) {
         if (!routeDetails.waypoints) return;
 
         let wps = routeDetails.waypoints;
-        if (typeof wps === 'string') {
+        if (typeof wps === "string") {
             try { wps = JSON.parse(wps); } catch { wps = []; }
         }
         if (!Array.isArray(wps) || wps.length === 0) return;
 
-        const originWp = wps.find(w => w && w.type === 'origin');
-        const destWp = [...wps].reverse().find(w => w && w.type === 'destination');
+        const originWp = wps.find(w => w && w.type === "origin");
+        const destWp = [...wps].reverse().find(w => w && w.type === "destination");
 
         if (originWp && originWp.partner_id) {
             setOriginId(originWp.partner_id);
@@ -309,7 +328,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
         if (destWp && destWp.partner_id) {
             if (originWp && originWp.partner_id === destWp.partner_id) {
-                // origen == destino
                 setSameAsOrigin(true);
                 setDestinationId(null);
             } else {
@@ -334,10 +352,10 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     {/* Origen */}
                     <div className="section">
                         <label className="section-label">Origen de la ruta</label>
-                        <div className="input" style={{ position: 'relative', padding: 0 }}>
+                        <div className="input" style={{ position: "relative", padding: 0 }}>
                             <input
                                 className="input"
-                                style={{ border: 'none', width: '100%' }}
+                                style={{ border: "none", width: "100%" }}
                                 placeholder="Buscar por nombre"
                                 value={originQuery}
                                 onFocus={() => setIsOriginOpen(true)}
@@ -347,22 +365,22 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                     setOriginId(null);
                                     setIsOriginOpen(Boolean(v));
                                 }}
-                                onKeyDown={e => { if (e.key === 'Escape') setIsOriginOpen(false); }}
+                                onKeyDown={e => { if (e.key === "Escape") setIsOriginOpen(false); }}
                                 onBlur={() => setTimeout(() => setIsOriginOpen(false), 150)}
                             />
                             {isOriginOpen && originQuery && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #ddd', zIndex: 10 }}>
+                                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
                                     {filteredOrigins.slice(0, 20).map(p => (
                                         <div
                                             key={p.id}
-                                            style={{ padding: '8px 10px', cursor: 'pointer' }}
+                                            style={{ padding: "8px 10px", cursor: "pointer" }}
                                             onMouseDown={(e) => { e.preventDefault(); setOriginId(p.id); setOriginQuery(p.name); setIsOriginOpen(false); }}
                                         >
                                             {p.name}
                                         </div>
                                     ))}
                                     {!filteredOrigins.length && (
-                                        <div style={{ padding: '8px 10px', color: '#666' }}>Sin resultados</div>
+                                        <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
                                     )}
                                 </div>
                             )}
@@ -375,10 +393,10 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         <div className="cargas-list">
                             {allLoads.map(c => (
                                 <div key={c.id}
-                                     className={`carga-item ${selected.has(c.id) ? 'selected' : ''}`}
+                                     className={`carga-item ${selected.has(c.id) ? "selected" : ""}`}
                                      onClick={() => toggle(c.id)}
                                 >
-                                    <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                    <div style={{display: "flex", gap: "8px", alignItems: "center"}}>
                                         <div style={{flex: 1}}>
                                             <div className="carga-title">{c.name}</div>
                                             <div className="carga-sub">{c.vendor_name}</div>
@@ -400,13 +418,17 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     <div className="section">
                          <label className="section-label">Destino de la ruta</label>
                          <div className="same-origin">
-                            <input type="checkbox" checked={sameAsOrigin} onChange={e => setSameAsOrigin(e.target.checked)} />
+                            <input
+                                type="checkbox"
+                                checked={sameAsOrigin}
+                                onChange={e => setSameAsOrigin(e.target.checked)}
+                            />
                             <span>Mismo que origen</span>
                         </div>
-                        <div className="input" style={{ position: 'relative', padding: 0 }}>
+                        <div className="input" style={{ position: "relative", padding: 0 }}>
                             <input
                                 className="input"
-                                style={{ border: 'none', width: '100%' }}
+                                style={{ border: "none", width: "100%" }}
                                 placeholder="Buscar por nombre"
                                 value={sameAsOrigin ? originQuery : destQuery}
                                 disabled={sameAsOrigin}
@@ -417,22 +439,22 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                     setDestinationId(null);
                                     if (!sameAsOrigin) setIsDestOpen(Boolean(v));
                                 }}
-                                onKeyDown={e => { if (e.key === 'Escape') setIsDestOpen(false); }}
+                                onKeyDown={e => { if (e.key === "Escape") setIsDestOpen(false); }}
                                 onBlur={() => setTimeout(() => setIsDestOpen(false), 150)}
                             />
                             {!sameAsOrigin && isDestOpen && destQuery && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #ddd', zIndex: 10 }}>
+                                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
                                     {filteredDestinations.slice(0, 20).map(p => (
                                         <div
                                             key={p.id}
-                                            style={{ padding: '8px 10px', cursor: 'pointer' }}
+                                            style={{ padding: "8px 10px", cursor: "pointer" }}
                                             onMouseDown={(e) => { e.preventDefault(); setDestinationId(p.id); setDestQuery(p.name); setIsDestOpen(false); }}
                                         >
                                             {p.name}
                                         </div>
                                     ))}
                                     {!filteredDestinations.length && (
-                                        <div style={{ padding: '8px 10px', color: '#666' }}>Sin resultados</div>
+                                        <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
                                     )}
                                 </div>
                             )}
@@ -452,12 +474,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         {ordered.map(c => (
                             <div key={c.id} className="order-item">
                                 <span className="drag-handle">☰</span>
-                                <div style={{display: 'flex', alignItems:'center', justifyContent:'space-between', width: '100%'}}>
+                                <div style={{display: "flex", alignItems:"center", justifyContent:"space-between", width: "100%"}}>
                                     <div>
                                         <div className="carga-title">{c.name}</div>
                                         <div className="carga-sub">{c.vendor_name}</div>
                                     </div>
-                                    <label style={{display:'flex', alignItems:'center', gap:6}}>
+                                    <label style={{display:"flex", alignItems:"center", gap:6}}>
                                         <input
                                             type="checkbox"
                                             checked={fakeSet.has(c.id)}
