@@ -230,6 +230,13 @@ class RutasService
             'waypoints'         => json_encode($waypoints),
             'total_distance_km' => $distKm,
         ];
+
+        if (!empty($loadIds)) {
+            $vals['load_ids'] = [[6, 0, array_map('intval', $loadIds)]];
+        } else {
+            return 0;
+        }
+
         if (!empty($loadIds))   $vals['load_ids']   = $loadIds;
         if ($vehicleId)         $vals['vehicle_id'] = $vehicleId;
         if ($totalCost !== null) $vals['total_cost'] = $totalCost;
