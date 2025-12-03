@@ -24,13 +24,59 @@ class CargasService
         );
     }
 
+    public function porId(int $id): ?array
+    {
+        $rows = $this->odoo->searchRead(
+            'logistics.load',
+            [['id', '=', $id]],
+            [
+                'id',
+                'name',
+                'vendor_id',
+                'vendor_name',
+                'date',
+                'total_quantity',
+                'total_pallets',
+                'total_cost',
+                'state',
+                'line_ids',
+            ],
+            1
+        );
+
+        $load = $rows[0] ?? null;
+        if (!$load) {
+            return null;
+        }
+
+        $load['lines'] = $this->getLoadLines($load['line_ids'] ?? []);
+
+        $vendor     = $load['vendor_id'] ?? null;
+        $vendorName = $load['vendor_name'] ?? null;
+
+        $partner = $this->getPartnerCoordinates($vendor ?? $vendorName);
+
+        if ($partner) {
+            $load['partner'] = [
+                'id'        => $partner['id'],
+                'name'      => $partner['name'],
+                'latitude'  => $partner['latitude'],
+                'longitude' => $partner['longitude'],
+                'street'    => $partner['street'],
+            ];
+        } else {
+            $load['partner'] = null;
+        }
+
+        return $load;
+    }
+
     public function getPartnerById(int $id)
     {
         $partner = $this->odoo->searchRead(
             'res.partner',
             [['id', '=', $id]],
-            ['id', 'name', 'street', 'latitude', 'longitude'],
-            1
+            ['id', 'name', 'street', 'latitude', 'longitude']
         );
 
         return $partner[0] ?? null;
@@ -78,16 +124,6 @@ class CargasService
 
         // Si no encontramos nada mejor, devolvemos lo que tengamos (aunque sea sin coords)
         return $partner19;
-    }
-
-    public function porId(int $id): ?array
-    {
-        return $this->odoo->searchRead(
-            'logistics.load',
-            [['id', '=', $id]],
-            ['*'],
-            1
-        )[0] ?? null;
     }
 
     public function getLoadLines(array $ids)

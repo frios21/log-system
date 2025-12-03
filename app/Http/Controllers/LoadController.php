@@ -42,10 +42,12 @@ class LoadController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Load $load)
+    public function show(int $id, CargasService $cargas)
     {
-        //
+        $carga = $cargas->porId($id);
+        return response()->json($carga);
     }
+
 
     /**
      * Show the form for editing the specified resource.
