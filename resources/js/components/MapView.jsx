@@ -192,8 +192,8 @@ export default function MapView() {
       })
       .filter(Boolean);
 
+    // necesitamos al menos 2 puntos
     if (cleaned.length < 2) {
-
       if (routesLayers.current[routeId]) {
         const { polyline } = routesLayers.current[routeId];
         if (polyline) map.removeLayer(polyline);
@@ -201,72 +201,62 @@ export default function MapView() {
       return false;
     }
 
-    // helper: peticion GH pairwise (dos puntos)
-    async function fetchLeg(a, b) {
+    // helper: una sola petición GH con TODOS los puntos
+    async function fetchFullRoute(points) {
       const base = "http://167.114.114.51:8989/route?";
-      const params = `point=${a.lat},${a.lon}&point=${b.lat},${b.lon}&profile=truck&points_encoded=false&instructions=false&ch.disable=true`;
-      const url = base + params;
+
+      // construimos todos los point=lat,lon
+      const pointsPart = points
+        .map((p) => `point=${p.lat},${p.lon}`)
+        .join("&");
+
+      const params =
+        "&profile=truck" +
+        "&points_encoded=false" +
+        "&instructions=false" +
+        "&ch.disable=true";
+
+      const url = base + pointsPart + params;
+
       try {
         const res = await fetch(url);
         if (!res.ok) {
-          console.warn("GH leg failed status", res.status, url);
+          console.warn("GH full route failed", res.status, url);
           return null;
         }
         const gh = await res.json();
-        if (!gh || !gh.paths || !gh.paths[0]) {
-          console.warn("GH leg returned no path", gh, url);
+        if (!gh || !gh.paths || !gh.paths[0] || !gh.paths[0].points) {
+          console.warn("GH full route returned no path", gh, url);
           return null;
         }
+
         const geo = gh.paths[0].points;
         if (!geo || !Array.isArray(geo.coordinates)) return null;
-        // coords como [lat, lon]
+
+        // GH devuelve [lon, lat] -> Leaflet usa [lat, lon]
         const coords = geo.coordinates.map((c) => [c[1], c[0]]);
         const distM = gh.paths[0].distance ?? 0;
-        return { coords, distM, raw: gh };
+
+        return { coords, distM };
       } catch (err) {
-        console.error("Error fetching GH leg", err);
+        console.error("Error fetching GH full route", err);
         return null;
       }
     }
 
-    const legs = [];
-    for (let i = 0; i < cleaned.length - 1; i++) {
-      legs.push([cleaned[i], cleaned[i + 1]]);
-    }
-    const first = cleaned[0];
-    const last = cleaned[cleaned.length - 1];
-    if (first.lat !== last.lat || first.lon !== last.lon) {
-      legs.push([last, first]);
-    } else {
-      const nudgedFirst = { lat: first.lat + 1e-6, lon: first.lon + 1e-6 };
-      legs.push([last, nudgedFirst]);
-    }
+    // llamada única a GH con todos los puntos (incluido retorno si ya viene en waypoints)
+    const full = await fetchFullRoute(cleaned);
+    if (!full) return false;
 
-    const combinedCoords = [];
-    let totalDist = 0;
-    for (let i = 0; i < legs.length; i++) {
-      const [a, b] = legs[i];
-      const leg = await fetchLeg(a, b);
-      if (!leg) {
-        console.warn("No se pudo obtener leg", i, a, b);
-        return false;
-      }
-      if (combinedCoords.length === 0) {
-        combinedCoords.push(...leg.coords);
-      } else {
-        const lastCombined = combinedCoords[combinedCoords.length - 1];
-        const firstLeg = leg.coords[0];
-        const isSame = Math.abs(lastCombined[0] - firstLeg[0]) < 1e-8 && Math.abs(lastCombined[1] - firstLeg[1]) < 1e-8;
-        if (isSame) {
-          combinedCoords.push(...leg.coords.slice(1));
-        } else {
-          combinedCoords.push(...leg.coords);
-        }
-      }
-      totalDist += (leg.distM || 0);
-    }
+    const combinedCoords = full.coords;
+    const totalDist = full.distM || 0;
 
-    const baseColor = status && routeStatusColor[status] ? routeStatusColor[status] : routeColor(routeId);
+    // estilos según estado / preview
+    const baseColor =
+      status && routeStatusColor[status]
+        ? routeStatusColor[status]
+        : routeColor(routeId);
+
     const color = isPreview ? "#333333" : baseColor;
     const dashArray = isPreview ? "10, 10" : null;
     const weight = isPreview ? 4 : 5;
@@ -278,16 +268,29 @@ export default function MapView() {
       existing.polyline.setStyle({ color, dashArray, weight, opacity });
       existing.visible = true;
     } else {
-      const polyline = L.polyline(combinedCoords, { color, weight, opacity, dashArray }).addTo(map);
+      const polyline = L.polyline(combinedCoords, {
+        color,
+        weight,
+        opacity,
+        dashArray,
+      }).addTo(map);
       routesLayers.current[routeId] = { polyline, markers: [], visible: true };
     }
 
+    // ajustar mapa a la ruta
     try {
-      map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), { padding: [40, 40] });
+      map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), {
+        padding: [40, 40],
+      });
     } catch (e) {}
 
-    const totalKm = (totalDist || 0) / 1000;
-    window.dispatchEvent(new CustomEvent("route-distance-updated", { detail: { routeId, distanceKm: totalKm } }));
+    // notificar distancia total a otros componentes
+    const totalKm = totalDist / 1000;
+    window.dispatchEvent(
+      new CustomEvent("route-distance-updated", {
+        detail: { routeId, distanceKm: totalKm },
+      })
+    );
 
     return true;
   }

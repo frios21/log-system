@@ -86,6 +86,35 @@ class ContactosService
         }, $rows);
     }
 
+    public function buscarPorNombre(string $name): ?array
+    {
+        $rows = $this->call16(
+            'object',
+            'execute_kw',
+            [
+                $this->db16,
+                $this->uid16,
+                $this->apiKey16,
+                'res.partner',
+                'search_read',
+                // ilike para que sea más tolerante a mayúsculas/espacios
+                [[['active', '=', true], ['name', 'ilike', $name]]],
+                [
+                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street','is_company'],
+                    'limit'  => 1,
+                ]
+            ]
+        );
+
+        if (empty($rows)) return null;
+
+        $r = $rows[0];
+        $r['latitude']  = $r['partner_latitude']  ?? ($r['latitude'] ?? null);
+        $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+
+        return $r;
+    }
+
     /**
      * Devuelve solo contactos que son personas (no empresas)
      * Utiliza el campo `is_company` de res.partner (Odoo estándar)

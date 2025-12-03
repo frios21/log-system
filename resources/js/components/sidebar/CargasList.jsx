@@ -1,6 +1,30 @@
 import { useEffect, useState } from "react";
 import CargaDetailsModal from "../modals/CargaDetailsModal";
 
+function formatCargaDate(raw) {
+    if (!raw) return { date: "", time: "" };
+
+    const [d, t] = raw.split(" ");
+    if (!d || !t) return { date: raw, time: "" };
+
+    const [year, month, day] = d.split("-").map(Number);
+    const [hour, minute, second] = t.split(":").map(Number);
+
+    // Creamos la fecha asumiendo que viene tal cual desde Odoo
+    const dt = new Date(year, month - 1, day, hour, minute, second || 0);
+
+    // Restamos 3 horas
+    const fixed = new Date(dt.getTime() - 3 * 60 * 60 * 1000);
+
+    const date = fixed.toLocaleDateString("es-CL");
+    const time = fixed.toLocaleTimeString("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+
+    return { date, time };
+}
+
 // Componente que lista las cargas
 // permite ver detalles de cada carga
 // incluye filtros de búsqueda, estado y rango de fechas dentro de un desplegable
@@ -193,81 +217,85 @@ export default function CargasList() {
             </div>
 
             {/* LISTA */}
-            {visibleCargas.map(carga => (
-                <div className="card" style={stateColor(carga.state)} key={carga.id}>
-                    {/* HEADER */}
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <div className="card-title">{carga.name}</div>
+            {visibleCargas.map(carga => {
+                const { date, time } = formatCargaDate(carga.date);
 
-                        <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
-                            {carga.date?.split(" ")[0]}<br />
-                            {carga.date?.split(" ")[1]}
+                return (
+                    <div className="card" style={stateColor(carga.state)} key={carga.id}>
+                        {/* HEADER */}
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <div className="card-title">{carga.name}</div>
+
+                            <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                                {date}<br />
+                                {time}
+                            </div>
+                        </div>
+
+                        {/* Cliente */}
+                        {(carga.partner || carga.vendor_id) && (
+                            <div
+                                className="chip"
+                                style={{ marginTop: "8px", cursor: "pointer" }}
+                                onClick={() => {
+                                    const partnerId =
+                                        carga.partner?.id ??
+                                        (Array.isArray(carga.vendor_id)
+                                            ? carga.vendor_id[0]
+                                            : carga.vendor_id);
+
+                                    if (
+                                        carga.partner &&
+                                        carga.partner.latitude &&
+                                        carga.partner.longitude
+                                    ) {
+                                        const ct = {
+                                            id: Number(carga.partner.id),
+                                            name: carga.partner.name,
+                                            latitude: Number(carga.partner.latitude),
+                                            longitude: Number(carga.partner.longitude),
+                                            street: carga.partner.street,
+                                        };
+                                        window.dispatchEvent(
+                                            new CustomEvent("contacts-markers-show", {
+                                                detail: [ct],
+                                            })
+                                        );
+                                        window.dispatchEvent(
+                                            new CustomEvent("focus-contact", { detail: ct })
+                                        );
+                                    } else if (partnerId) {
+                                        window.dispatchEvent(
+                                            new CustomEvent("focus-client", {
+                                                detail: Number(partnerId),
+                                            })
+                                        );
+                                    }
+                                }}
+                            >
+                                {carga.vendor_name || carga.partner?.name}
+                            </div>
+                        )}
+
+                        {/* Info */}
+                        <div className="text-small" style={{ marginTop: "10px" }}>
+                            Cantidad: <strong>{carga.total_quantity} kg</strong> — Pallets:{" "}
+                            <strong>{carga.total_pallets}</strong>
+                        </div>
+
+                        {/* BOTÓN DETALLES */}
+                        <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+                            <button
+                                className="btn btn-outlined"
+                                style={{ flex: 1 }}
+                                onClick={() => setSelectedCarga(carga)}
+                            >
+                                Detalles
+                            </button>
                         </div>
                     </div>
-
-                    {/* Cliente */}
-                    {(carga.partner || carga.vendor_id) && (
-                        <div
-                            className="chip"
-                            style={{ marginTop: "8px", cursor: "pointer" }}
-                            onClick={() => {
-                                const partnerId =
-                                    carga.partner?.id ??
-                                    (Array.isArray(carga.vendor_id)
-                                        ? carga.vendor_id[0]
-                                        : carga.vendor_id);
-
-                                if (
-                                    carga.partner &&
-                                    carga.partner.latitude &&
-                                    carga.partner.longitude
-                                ) {
-                                    const ct = {
-                                        id: Number(carga.partner.id),
-                                        name: carga.partner.name,
-                                        latitude: Number(carga.partner.latitude),
-                                        longitude: Number(carga.partner.longitude),
-                                        street: carga.partner.street,
-                                    };
-                                    window.dispatchEvent(
-                                        new CustomEvent("contacts-markers-show", {
-                                            detail: [ct],
-                                        })
-                                    );
-                                    window.dispatchEvent(
-                                        new CustomEvent("focus-contact", { detail: ct })
-                                    );
-                                } else if (partnerId) {
-                                    window.dispatchEvent(
-                                        new CustomEvent("focus-client", {
-                                            detail: Number(partnerId),
-                                        })
-                                    );
-                                }
-                            }}
-                        >
-                            {carga.vendor_name || carga.partner?.name}
-                        </div>
-                    )}
-
-                    {/* Info */}
-                    <div className="text-small" style={{ marginTop: "10px" }}>
-                        Cantidad: <strong>{carga.total_quantity} kg</strong> — Pallets:{" "}
-                        <strong>{carga.total_pallets}</strong>
-                    </div>
-
-                    {/* BOTÓN DETALLES */}
-                    <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
-                        <button
-                            className="btn btn-outlined"
-                            style={{ flex: 1 }}
-                            onClick={() => setSelectedCarga(carga)}
-                        >
-                            Detalles
-                        </button>
-                    </div>
-                </div>
-            ))}
+                );
+            })}
 
             {selectedCarga && (
                 <CargaDetailsModal
