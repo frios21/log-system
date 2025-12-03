@@ -3,11 +3,15 @@
 namespace App\Services\Odoo;
 
 use App\Services\Odoo\OdooJsonRpc;
+use App\Services\Odoo\CService;
 use Illuminate\Support\Facades\Http;
 
 class RutasService
 {
-    public function __construct(private readonly OdooJsonRpc $odoo) {}
+    public function __construct(
+        private readonly OdooJsonRpc $odoo,
+        private readonly CargasService $cargas
+    ) {}
 
     public function todas(): array
     {
@@ -261,35 +265,34 @@ class RutasService
 
         // 3. Construir CARGAS (Intermedios) estrictamente en el orden de $loadIds
         if (!empty($loadIds)) {
-            // Traemos todas las cargas involucradas de una sola vez
-            $rawLoads = $this->odoo->searchRead('logistics.load', [['id', 'in', $loadIds]], ['id', 'name', 'vendor_id']);
-            
-            // Indexamos para acceso rápido
-            $loadsMap = [];
-            foreach ($rawLoads as $l) {
-                $loadsMap[$l['id']] = $l;
+
+            $orderedLoads = [];
+            foreach ($loadIds as $lid) {
+                // Reutilizamos la misma lógica que /api/cargas/{id}
+                $carga = $this->cargas->porId((int)$lid);
+                if ($carga) {
+                    $orderedLoads[] = $carga;
+                }
             }
 
-            // Iteramos sobre el array ORDENADO de IDs que envió el frontend
-            foreach ($loadIds as $lid) {
-                if (!isset($loadsMap[$lid])) continue;
-                $load = $loadsMap[$lid];
+            foreach ($orderedLoads as $load) {
+                $partner = $load['partner'] ?? null;
+                if (!$partner) continue;
 
-                $vendorId = is_array($load['vendor_id']) ? ($load['vendor_id'][0] ?? null) : $load['vendor_id'];
-                if (!$vendorId) continue;
+                $lat = $partner['latitude'] ?? null;
+                $lon = $partner['longitude'] ?? null;
 
-                $p = $this->odoo->searchRead('res.partner', [['id', '=', $vendorId]], ['id','name','latitude','longitude']);
-                $partner = $p[0] ?? null;
+                // ignorar si no hay coords válidas
+                if ($lat === null || $lon === null) continue;
+                if ($lat == 0 && $lon == 0) continue;
 
-                if ($partner && $partner['latitude'] && $partner['longitude']) {
-                    $waypoints[] = [
-                        'lat' => (float)$partner['latitude'],
-                        'lon' => (float)$partner['longitude'],
-                        'load_id' => $load['id'],
-                        'partner_id' => $partner['id'],
-                        'label' => $load['name']
-                    ];
-                }
+                $waypoints[] = [
+                    'lat'        => (float)$lat,
+                    'lon'        => (float)$lon,
+                    'load_id'    => $load['id'],
+                    'partner_id' => $partner['id'],
+                    'label'      => $load['name'],
+                ];
             }
         }
 
