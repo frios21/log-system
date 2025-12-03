@@ -20,6 +20,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
         ruta.vehicle_id ? (Array.isArray(ruta.vehicle_id) ? ruta.vehicle_id[0] : ruta.vehicle_id) : null
     );
 
+    const initializedFromRouteRef = useRef(false);
     const [originId, setOriginId] = useState(null);
     const [destinationId, setDestinationId] = useState(null);
     const [sameAsOrigin, setSameAsOrigin] = useState(true);
@@ -283,31 +284,44 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }
 
     useEffect(() => {
+        if (initializedFromRouteRef.current) return;
+
         if (!routeDetails) return;
         if (!Array.isArray(partners) || partners.length === 0) return;
         if (!routeDetails.waypoints) return;
+
         let wps = routeDetails.waypoints;
-        if (typeof wps === 'string') {
-            try { wps = JSON.parse(wps); } catch { wps = []; }
+        if (typeof wps === "string") {
+            try {
+                wps = JSON.parse(wps);
+            } catch {
+                wps = [];
+            }
         }
         if (!Array.isArray(wps) || wps.length === 0) return;
 
-        const originWp = wps.find(w => w && w.type === 'origin');
-        const destWp = [...wps].reverse().find(w => w && w.type === 'destination');
+        const originWp = wps.find((w) => w && w.type === "origin");
+        const destWp = [...wps].reverse().find((w) => w && w.type === "destination");
 
-        if (originWp && originWp.partner_id && originId == null) {
+        // origen inicial
+        if (originWp && originWp.partner_id) {
             setOriginId(originWp.partner_id);
         }
 
+        // destino inicial
         if (destWp && destWp.partner_id) {
             if (originWp && originWp.partner_id === destWp.partner_id) {
+                // mismo origen/destino
                 setSameAsOrigin(true);
-                if (destinationId !== null) setDestinationId(null);
-                setDestinationId(destWp.partner_id);
+                setDestinationId(originWp.partner_id);
+            } else {
                 setSameAsOrigin(false);
+                setDestinationId(destWp.partner_id);
             }
         }
-    }, [routeDetails, partners, originId, destinationId]);
+
+        initializedFromRouteRef.current = true;
+    }, [routeDetails, partners]);
 
     // -------------------------------------------------------------
     // Render
