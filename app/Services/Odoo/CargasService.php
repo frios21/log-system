@@ -188,4 +188,27 @@ class CargasService
 
         return $loads;
     }
+
+    public function resetAllToDraft(): void
+    {
+        $loads = $this->odoo->searchRead(
+            'logistics.load',
+            [], // sin dominio -> todas
+            ['id', 'state']
+        );
+
+        foreach ($loads as $load) {
+            if (($load['state'] ?? null) === 'draft') {
+                continue;
+            }
+
+            try {
+                $this->odoo->write('logistics.load', $load['id'], [
+                    'state' => 'draft',
+                ]);
+            } catch (\Throwable $e) {
+                // ignorar errores individuales
+            }
+        }
+    }
 }

@@ -9,7 +9,7 @@ use App\Services\Odoo\CargasService;
 class LoadController extends Controller
 {
 
-    public function __construct(private CargasService $service) {}
+    public function __construct(private readonly CargasService $service) {}
 
     /**
      * Display a listing of the resource.
@@ -23,24 +23,9 @@ class LoadController extends Controller
         );
     }
 
-    public function resetAll(OdooJsonRpc $odoo)
+    public function resetAll()
     {
-        // obtener todas las cargas
-        $loads = $odoo->searchRead(
-            'logistics.load',
-            [],
-            ['id']
-        );
-
-        foreach ($loads as $load) {
-            try {
-                $odoo->write('logistics.load', $load['id'], [
-                    'state' => 'draft'
-                ]);
-            } catch (\Throwable $e) {
-                // ignorar errores individuales
-            }
-        }
+        $this->service->resetAllToDraft();
 
         return response()->json(['ok' => true]);
     }
