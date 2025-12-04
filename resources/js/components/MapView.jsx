@@ -182,18 +182,11 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map) return false;
 
-    // normalizar puntos
-    const cleaned = waypoints
-      .map((p) => {
-        const lat = p.lat ?? p.latitude;
-        const lon = p.lon ?? p.longitude ?? p.lon;
-        if (lat == null || lon == null) return null;
-        return { lat: Number(lat), lon: Number(lon) };
-      })
-      .filter(Boolean);
+    // usar graphhopper cloud para toda la ruta de una sola vez
+    const { coords: combinedCoords, distM: totalDist } =
+      await fetchRouteFromGraphhopperCloud(waypoints, "car"); // o "truck" si quieres otro perfil
 
-    // necesitamos al menos 2 puntos
-    if (cleaned.length < 2) {
+    if (!combinedCoords || combinedCoords.length < 2) {
       if (routesLayers.current[routeId]) {
         const { polyline } = routesLayers.current[routeId];
         if (polyline) map.removeLayer(polyline);
@@ -201,62 +194,10 @@ export default function MapView() {
       return false;
     }
 
-    // helper: una sola petición GH con TODOS los puntos
-    async function fetchFullRoute(points) {
-      const base = "http://167.114.114.51:8989/route?";
-
-      // construimos todos los point=lat,lon
-      const pointsPart = points
-        .map((p) => `point=${p.lat},${p.lon}`)
-        .join("&");
-
-      const params =
-        "&profile=truck" +
-        "&points_encoded=false" +
-        "&instructions=false" +
-        "&ch.disable=true";
-
-      const url = base + pointsPart + params;
-
-      try {
-        const res = await fetch(url);
-        if (!res.ok) {
-          console.warn("GH full route failed", res.status, url);
-          return null;
-        }
-        const gh = await res.json();
-        if (!gh || !gh.paths || !gh.paths[0] || !gh.paths[0].points) {
-          console.warn("GH full route returned no path", gh, url);
-          return null;
-        }
-
-        const geo = gh.paths[0].points;
-        if (!geo || !Array.isArray(geo.coordinates)) return null;
-
-        // GH devuelve [lon, lat] -> Leaflet usa [lat, lon]
-        const coords = geo.coordinates.map((c) => [c[1], c[0]]);
-        const distM = gh.paths[0].distance ?? 0;
-
-        return { coords, distM };
-      } catch (err) {
-        console.error("Error fetching GH full route", err);
-        return null;
-      }
-    }
-
-    // llamada única a GH con todos los puntos (incluido retorno si ya viene en waypoints)
-    const full = await fetchFullRoute(cleaned);
-    if (!full) return false;
-
-    const combinedCoords = full.coords;
-    const totalDist = full.distM || 0;
-
-    // estilos según estado / preview
     const baseColor =
       status && routeStatusColor[status]
         ? routeStatusColor[status]
         : routeColor(routeId);
-
     const color = isPreview ? "#333333" : baseColor;
     const dashArray = isPreview ? "10, 10" : null;
     const weight = isPreview ? 4 : 5;
@@ -277,15 +218,13 @@ export default function MapView() {
       routesLayers.current[routeId] = { polyline, markers: [], visible: true };
     }
 
-    // ajustar mapa a la ruta
     try {
       map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), {
         padding: [40, 40],
       });
     } catch (e) {}
 
-    // notificar distancia total a otros componentes
-    const totalKm = totalDist / 1000;
+    const totalKm = (totalDist || 0) / 1000;
     window.dispatchEvent(
       new CustomEvent("route-distance-updated", {
         detail: { routeId, distanceKm: totalKm },
@@ -293,6 +232,93 @@ export default function MapView() {
     );
 
     return true;
+
+    /* --- versión antigua usando tu propio servidor graphhopper por tramos pairwise ---
+    // normalizar puntos
+    const cleaned = waypoints
+      .map((p) => {
+        const lat = p.lat ?? p.latitude;
+        const lon = p.lon ?? p.longitude ?? p.lon;
+        if (lat == null || lon == null) return null;
+        return { lat: Number(lat), lon: Number(lon) };
+      })
+      .filter(Boolean);
+
+    if (cleaned.length < 2) {
+      if (routesLayers.current[routeId]) {
+        const { polyline } = routesLayers.current[routeId];
+        if (polyline) map.removeLayer(polyline);
+      }
+      return false;
+    }
+
+    async function fetchLeg(a, b) {
+      const base = "http://167.114.114.51:8989/route?";
+      const params = `point=${a.lat},${a.lon}&point=${b.lat},${b.lon}&profile=truck&points_encoded=false&instructions=false&ch.disable=true`;
+      const url = base + params;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          console.warn("GH leg failed status", res.status, url);
+          return null;
+        }
+        const gh = await res.json();
+        if (!gh || !gh.paths || !gh.paths[0]) {
+          console.warn("GH leg returned no path", gh, url);
+          return null;
+        }
+        const geo = gh.paths[0].points;
+        if (!geo || !Array.isArray(geo.coordinates)) return null;
+        const coords = geo.coordinates.map((c) => [c[1], c[0]]);
+        const distM = gh.paths[0].distance ?? 0;
+        return { coords, distM, raw: gh };
+      } catch (err) {
+        console.error("Error fetching GH leg", err);
+        return null;
+      }
+    }
+
+    const legs = [];
+    for (let i = 0; i < cleaned.length - 1; i++) {
+      legs.push([cleaned[i], cleaned[i + 1]]);
+    }
+    const first = cleaned[0];
+    const last = cleaned[cleaned.length - 1];
+    if (first.lat !== last.lat || first.lon !== last.lon) {
+      legs.push([last, first]);
+    } else {
+      const nudgedFirst = { lat: first.lat + 1e-6, lon: first.lon + 1e-6 };
+      legs.push([last, nudgedFirst]);
+    }
+
+    const combinedCoordsOld = [];
+    let totalDistOld = 0;
+    for (let i = 0; i < legs.length; i++) {
+      const [a, b] = legs[i];
+      const leg = await fetchLeg(a, b);
+      if (!leg) {
+        console.warn("No se pudo obtener leg", i, a, b);
+        return false;
+      }
+      if (combinedCoordsOld.length === 0) {
+        combinedCoordsOld.push(...leg.coords);
+      } else {
+        const lastCombined = combinedCoordsOld[combinedCoordsOld.length - 1];
+        const firstLeg = leg.coords[0];
+        const isSame =
+          Math.abs(lastCombined[0] - firstLeg[0]) < 1e-8 &&
+          Math.abs(lastCombined[1] - firstLeg[1]) < 1e-8;
+        if (isSame) {
+          combinedCoordsOld.push(...leg.coords.slice(1));
+        } else {
+          combinedCoordsOld.push(...leg.coords);
+        }
+      }
+      totalDistOld += leg.distM || 0;
+    }
+
+    // ... resto del código que pintaba la polyline ...
+    --- fin versión antigua --- */
   }
 
   // -------------------------------------------------------------
