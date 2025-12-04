@@ -23,6 +23,65 @@ const routeStatusColor = {
   done: "#2e7d32",       // verde
 };
 
+const GRAPHHOPPER_API_KEY = "600ab2f1-f867-44a9-9b60-bdabcd6db589";
+
+// helper global para pedir ruta a graphhopper cloud
+function fetchRouteFromGraphhopperCloud(waypoints, profile = "car") {
+  // lo dejamos como function normal para que esté hoisted
+  return (async () => {
+    const cleaned = waypoints
+      .map((p) => {
+        const lat = p.lat ?? p.latitude;
+        const lon = p.lon ?? p.longitude ?? p.lon;
+        if (lat == null || lon == null) return null;
+        return { lat: Number(lat), lon: Number(lon) };
+      })
+      .filter(Boolean);
+
+    if (cleaned.length < 2) {
+      return { coords: [], distM: 0 };
+    }
+
+    const points = [...cleaned];
+    const first = cleaned[0];
+    const last = cleaned[cleaned.length - 1];
+    const same =
+      Math.abs(first.lat - last.lat) < 1e-8 &&
+      Math.abs(first.lon - last.lon) < 1e-8;
+
+    if (!same) {
+      points.push(first);
+    }
+
+    const params = new URLSearchParams();
+    points.forEach((p) => params.append("point", `${p.lat},${p.lon}`));
+    params.set("profile", profile);
+    params.set("points_encoded", "false");
+    params.set("instructions", "false");
+    params.set("locale", "es");
+    params.set("key", GRAPHHOPPER_API_KEY);
+
+    const url = `https://graphhopper.com/api/1/route?${params.toString()}`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn("graphhopper cloud error", res.status, url);
+      return { coords: [], distM: 0 };
+    }
+
+    const json = await res.json();
+    const path = json.paths && json.paths[0];
+    if (!path || !path.points || !Array.isArray(path.points.coordinates)) {
+      return { coords: [], distM: 0 };
+    }
+
+    const coords = path.points.coordinates.map((c) => [c[1], c[0]]);
+    const distM = path.distance ?? 0;
+
+    return { coords, distM };
+  })();
+}
+
 export default function MapView() {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -182,9 +241,9 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map) return false;
 
-    // usar graphhopper cloud para toda la ruta de una sola vez
+    // usar graphhopper cloud
     const { coords: combinedCoords, distM: totalDist } =
-      await fetchRouteFromGraphhopperCloud(waypoints, "car"); // o "truck" si quieres otro perfil
+      await fetchRouteFromGraphhopperCloud(waypoints, "car");
 
     if (!combinedCoords || combinedCoords.length < 2) {
       if (routesLayers.current[routeId]) {
