@@ -400,43 +400,70 @@ class RutasService
     {
         if (count($waypoints) < 2) return 0;
 
-        $ghBase = env('GRAPHHOPPER_URL') ?: env('GRAPHOPPER_URL'); // soportar typo alterno
-        $ghKey  = env('GRAPHHOPPER_KEY');
-        if (!$ghBase) {
-            // Si no está configurado, no calculamos (evita usar OSRM)
-            return 0;
-        }
+        $cloudKey = env('GRAPHHOPPER_CLOUD_KEY');
+        $localUrl = env('GRAPHHOPPER_URL') ?: env('GRAPHOPPER_URL');
+        $localKey = env('GRAPHHOPPER_KEY');
 
         try {
-            $base = rtrim($ghBase, '/');
-            if (!str_ends_with($base, '/route')) {
-                $base .= '/route';
+            if ($cloudKey) {
+
+                $base = "https://graphhopper.com/api/1/route?profile=car&points_encoded=false&instructions=false";
+                $qs = "";
+
+                foreach ($waypoints as $w) {
+                    if (!isset($w['lat'], $w['lon'])) continue;
+                    $qs .= "&point=" . rawurlencode($w['lat'] . "," . $w['lon']);
+                }
+
+                $url = $base . $qs . "&key=" . $cloudKey;
+
+                $res = Http::timeout(20)->get($url);
+                if (!$res->ok()) return 0;
+
+                $json  = $res->json();
+                $distM = $json['paths'][0]['distance'] ?? null;
+
+                return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
 
-            $pointsQs = '';
-            foreach ($waypoints as $w) {
-                if (!isset($w['lat'], $w['lon'])) continue;
-                $pointsQs .= 'point=' . rawurlencode($w['lat'] . ',' . $w['lon']) . '&';
+            if ($localUrl) {
+                $base = rtrim($localUrl, '/');
+                if (!str_ends_with($base, '/route')) {
+                    $base .= '/route';
+                }
+
+                $pointsQs = "";
+                foreach ($waypoints as $w) {
+                    if (!isset($w['lat'], $w['lon'])) continue;
+                    $pointsQs .= "point=" . rawurlencode($w['lat'] . ',' . $w['lon']) . "&";
+                }
+
+                $params = [
+                    'profile'         => 'truck',
+                    'points_encoded'  => 'false',
+                    'instructions'    => 'false',
+                    'ch.disable'      => 'true',
+                ];
+
+                if ($localKey) $params['key'] = $localKey;
+
+                $qs  = $pointsQs . http_build_query($params);
+                $url = $base . '?' . $qs;
+
+                $res = Http::timeout(20)->get($url);
+                if (!$res->ok()) return 0;
+
+                $json  = $res->json();
+                $distM = $json['paths'][0]['distance'] ?? null;
+
+                return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
 
-            $params = [
-                'profile' => 'truck',
-                'points_encoded' => 'false',
-                'instructions' => 'false',
-                'ch.disable' => 'true',
-            ];
-            if ($ghKey) $params['key'] = $ghKey;
-            $qs = $pointsQs . http_build_query($params);
-            $url = $base . '?' . $qs;
-
-            $res = Http::timeout(20)->get($url);
-            if (!$res->ok()) return 0;
-            $json = $res->json();
-            $distM = $json['paths'][0]['distance'] ?? null;
-            return is_numeric($distM) ? floatval($distM) / 1000.0 : 0;
         } catch (\Throwable $e) {
             return 0;
         }
+
+        return 0;
     }
 
     public function actualizarNombre($id, $name)
