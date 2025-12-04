@@ -211,7 +211,7 @@ export default function MapView() {
         .join("&");
 
       const params =
-        "&profile=truck" +
+        "&profile=car" +
         "&points_encoded=false" +
         "&instructions=false" +
         "&ch.disable=true";
