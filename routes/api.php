@@ -31,6 +31,7 @@ Route::middleware('api')->group(function () {
     // =====================
     Route::get('/cargas', [LoadController::class, 'index']);
     Route::get('/cargas/{id}', [LoadController::class, 'show']);
+    Route::post('/cargas/reset', [LoadController::class, 'resetAll']);
 
     // =====================
     // TRACCAR API (colocar antes de /rutas/{id} para evitar colisión)
