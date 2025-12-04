@@ -97,6 +97,11 @@ class RutasService
         $existingOrigin = null;
         $existingDest   = null;
 
+        $previousLoadIds = [];
+        if ($existing && !empty($existing['load_ids']) && is_array($existing['load_ids'])) {
+            $previousLoadIds = array_map('intval', $existing['load_ids']);
+        }
+
         if (is_array($existingWaypoints) && !empty($existingWaypoints)) {
             $first     = $existingWaypoints[0] ?? null;
             $lastIndex = max(count($existingWaypoints) - 1, 0);
@@ -231,25 +236,25 @@ class RutasService
             'total_distance_km' => $distKm,
         ];
 
-        if (!empty($loadIds)) {
-            $vals['load_ids'] = [[6, 0, array_map('intval', $loadIds)]];
-        } else {
-            return 0;
-        }
+        $newLoadIds = array_map('intval', $loadIds);
 
-        if (!empty($loadIds))   $vals['load_ids']   = $loadIds;
-        if ($vehicleId)         $vals['vehicle_id'] = $vehicleId;
-        if ($totalCost !== null) $vals['total_cost'] = $totalCost;
-        if ($totalQnt !== null)  $vals['total_qnt']  = $totalQnt;
-        if ($costPerKg !== null) $vals['cost_per_kg'] = $costPerKg;
+        $vals['load_ids'] = [[6, 0, $newLoadIds]];
+
+        if ($vehicleId)          $vals['vehicle_id']   = $vehicleId;
+        if ($totalCost !== null) $vals['total_cost']   = $totalCost;
+        if ($totalQnt !== null)  $vals['total_qnt']    = $totalQnt;
+        if ($costPerKg !== null) $vals['cost_per_kg']  = $costPerKg;
 
         $this->odoo->write('logistics.route', $routeId, $vals);
 
-        // actualizar estado de cargas
-        if (!empty($loadIds)) {
-            foreach ($loadIds as $lid) {
-                $this->odoo->write('logistics.load', $lid, ['state' => 'assigned']);
-            }
+        // ---------------- ESTADOS DE LAS CARGAS ----------------
+        $removedLoadIds = array_diff($previousLoadIds, $newLoadIds);
+        foreach ($removedLoadIds as $lid) {
+            $this->odoo->write('logistics.load', $lid, ['state' => 'draft']);
+        }
+
+        foreach ($newLoadIds as $lid) {
+            $this->odoo->write('logistics.load', $lid, ['state' => 'assigned']);
         }
 
         return [
