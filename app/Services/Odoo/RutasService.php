@@ -429,16 +429,15 @@ class RutasService
 
                 $json   = $res->json();
 
-                // distancia desde summary de nivel raíz
-                $summary = $json['summary'] ?? null;
-                $distM   = $summary['distance'] ?? null;
+                    $distM = null;
 
-                // fallback por si algún perfil devuelve summary dentro de routes[0]
-                if (!is_numeric($distM)) {
-                    $route  = $json['routes'][0] ?? null;
-                    $routeSummary = $route['summary'] ?? null;
-                    $distM = $routeSummary['distance'] ?? null;
-                }
+                    if (isset($json['routes'][0]['summary']['distance'])) {
+                        $distM = $json['routes'][0]['summary']['distance'];
+                    }
+
+                    if (!is_numeric($distM) && isset($json['summary']['distance'])) {
+                        $distM = $json['summary']['distance'];
+                    }
 
                 return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
