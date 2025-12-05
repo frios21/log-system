@@ -26,7 +26,7 @@ const routeStatusColor = {
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBiYWUyYWNlZjc0OTQxMGE5ZmMwODY1N2M2MTk0YzlmIiwiaCI6Im11cm11cjY0In0=";
 
 // helper global para pedir ruta a OpenRouteService (perfil truck)
-function fetchRouteFromORS(waypoints, profile = "truck") {
+function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
   // lo dejamos como function normal para que esté hoisted
   return (async () => {
     const cleaned = waypoints
