@@ -427,13 +427,18 @@ class RutasService
                     return 0;
                 }
 
-                $json  = $res->json();
-                $route = $json['routes'][0] ?? null;
-                if (!$route) {
-                    return 0;
-                }
+                $json   = $res->json();
 
-                $distM = $route['summary']['distance'] ?? null;
+                // distancia desde summary de nivel raíz
+                $summary = $json['summary'] ?? null;
+                $distM   = $summary['distance'] ?? null;
+
+                // fallback por si algún perfil devuelve summary dentro de routes[0]
+                if (!is_numeric($distM)) {
+                    $route  = $json['routes'][0] ?? null;
+                    $routeSummary = $route['summary'] ?? null;
+                    $distM = $routeSummary['distance'] ?? null;
+                }
 
                 return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
