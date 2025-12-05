@@ -31,7 +31,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const [modalOpen, setModalOpen] = useState(false);
     const [targetStatus, setTargetStatus] = useState(null);
 
-    // Helpers calculados para el card
+    // helpers calculados para el card
     const distance = (ruta.total_distance_km !== undefined && ruta.total_distance_km !== null)
         ? `${Number(ruta.total_distance_km).toFixed(2)} km`
         : "—";
