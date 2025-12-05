@@ -435,8 +435,8 @@ class RutasService
                         $distM = $json['routes'][0]['summary']['distance'];
                     }
 
-                    if (!is_numeric($distM) && isset($json['route']['summary']['distance'])) {
-                        $distM = $json['route']['summary']['distance'];
+                    if (!is_numeric($distM) && isset($json['summary']['distance'])) {
+                        $distM = $json['summary']['distance'];
                     }
 
                 return is_numeric($distM) ? ($distM / 1000.0) : 0;
