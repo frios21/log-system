@@ -236,7 +236,7 @@ export default function MapView() {
 
     // usar OpenRouteService (perfil truck) sólo en frontend
     const { coords: combinedCoords, distM: totalDist } =
-      await fetchRouteFromORS(waypoints, "truck");
+      await fetchRouteFromORS(waypoints, "driving-hgv");
 
     if (!combinedCoords || combinedCoords.length < 2) {
       if (routesLayers.current[routeId]) {
