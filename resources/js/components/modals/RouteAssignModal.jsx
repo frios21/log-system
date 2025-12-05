@@ -145,15 +145,15 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // ESCUCHAR DISTANCIA DESDE EL MAPA (ORS en frontend)
     // -------------------------------------------------------------
     useEffect(() => {
-        function handleOrsDistance(e) {
+        function handleRouteDistance(e) {
             const km = Number(e.detail?.distanceKm ?? 0);
             if (!isNaN(km)) {
                 setDistanceKm(km);
             }
         }
 
-        window.addEventListener("ors-distance", handleOrsDistance);
-        return () => window.removeEventListener("ors-distance", handleOrsDistance);
+        window.addEventListener("route-distance-updated", handleRouteDistance);
+        return () => window.removeEventListener("route-distance-updated", handleRouteDistance);
     }, []);
 
     // -------------------------------------------------------------
