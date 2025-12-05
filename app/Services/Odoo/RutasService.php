@@ -444,11 +444,12 @@ class RutasService
                         $distM = $json['summary']['distance'];
                     }
 
-                \Log::info('ORS respuesta', [
-                    'json'  => $json,
-                    'distM' => $distM,
+                \Log::info('calcularDistanciaKm ORS debug', [
+                    'coordinates' => $coordinates,
+                    'status'      => $res->status(),
+                    'json'        => $json,
+                    'dist_raw'    => $json['routes'][0]['summary']['distance'] ?? null,
                 ]);
-
                 return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
         } catch (\Throwable $e) {
