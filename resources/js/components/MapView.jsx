@@ -53,7 +53,11 @@ function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
         "Content-Type": "application/json",
         Authorization: ORS_API_KEY,
       },
-      body: JSON.stringify({ coordinates }),
+      body: JSON.stringify({
+        coordinates,
+        geometry: true,
+        geometry_format: "geojson",
+      }),
     });
 
     if (!res.ok) {
