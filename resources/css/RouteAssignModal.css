@@ -1,27 +1,22 @@
 /* Modal container */
 .route-modal {
-    width: 900px; /* antes 780 */
-    max-height: 80vh;
+    width: clamp(1000px, 90vw, 1500px);
+    height: clamp(600px, 90vh, 900px);
     display: flex;
     gap: 24px; /* más espacio entre columnas */
     background: white;
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 6px 22px rgba(0,0,0,0.12);
+    overflow: hidden; /* scroll interno en paneles, no en el modal */
 }
 
 /* Left / right panels */
 .left-panel {
-    flex: 1.4; /* más espacio para la columna izquierda */
+    flex: 0 0 30%;
+    min-width: 280px;
     overflow-y: auto;
     padding-right: 10px; /* separación con la barra de scroll */
-}
-
-.order-panel {
-    flex: 1;
-    border-left: 2px solid #e5e5e5;
-    padding-left: 20px; /* más espacio visual */
-    overflow-y: auto;
 }
 
 /* Titles */
@@ -137,12 +132,14 @@
 /* -------- PANEL DERECHO (orden + cálculo) -------- */
 
 .order-panel {
-    flex: 1.2;
+    flex: 0 0 40%;
+    min-width: 360px; /* dar más espacio a la columna del medio */
     border-left: 2px solid #e5e5e5;
     padding-left: 24px;
     display: flex;
     flex-direction: column;
     gap: 20px;
+    overflow-y: auto;
 }
 
 /* Título de la sección */
@@ -230,11 +227,14 @@
 
 /* ====== PANEL DE CÁLCULO ====== */
 .calc-panel {
+    flex: 0 0 25%;
+    min-width: 260px;
     background: #ffffff;
     padding: 16px;
     border-radius: 14px;
     border: 1px solid #e5e7eb;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow-y: auto;
 }
 
 .calc-title {
