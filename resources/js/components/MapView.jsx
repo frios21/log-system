@@ -25,6 +25,41 @@ const routeStatusColor = {
 
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBiYWUyYWNlZjc0OTQxMGE5ZmMwODY1N2M2MTk0YzlmIiwiaCI6Im11cm11cjY0In0=";
 
+// Decode encoded polyline (ORS/Google-style) -> array [lat, lon]
+function decodePolyline(str, precision = 5) {
+  let index = 0;
+  const len = str.length;
+  let lat = 0;
+  let lng = 0;
+  const coordinates = [];
+  const factor = Math.pow(10, precision);
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lng += dlng;
+
+    coordinates.push([lat / factor, lng / factor]); // [lat, lon]
+  }
+
+  return coordinates;
+}
+
 // helper global para pedir ruta a OpenRouteService (perfil truck)
 function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
   // lo dejamos como function normal para que esté hoisted
@@ -53,11 +88,7 @@ function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
         "Content-Type": "application/json",
         Authorization: ORS_API_KEY,
       },
-      body: JSON.stringify({
-        coordinates,
-        geometry: true,
-        geometry_format: "geojson",
-      }),
+      body: JSON.stringify({ coordinates }),
     });
 
     if (!res.ok) {
@@ -67,12 +98,13 @@ function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
 
     const json = await res.json();
     const route = json.routes && json.routes[0];
-    if (!route || !route.geometry || !Array.isArray(route.geometry.coordinates)) {
+    if (!route || !route.geometry) {
       return { coords: [], distM: 0 };
     }
 
-    // ORS geometry: [lon, lat] -> Leaflet: [lat, lon]
-    const coords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+    // geometry viene como string codificada -> decodificar
+    const decoded = decodePolyline(route.geometry, 5);
+    const coords = Array.isArray(decoded) ? decoded : [];
     const distM = route.summary?.distance ?? 0;
 
     return { coords, distM };
