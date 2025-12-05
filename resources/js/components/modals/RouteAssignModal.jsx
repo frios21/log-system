@@ -142,6 +142,21 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, [routeId]);
 
     // -------------------------------------------------------------
+    // ESCUCHAR DISTANCIA DESDE EL MAPA (ORS en frontend)
+    // -------------------------------------------------------------
+    useEffect(() => {
+        function handleOrsDistance(e) {
+            const km = Number(e.detail?.distanceKm ?? 0);
+            if (!isNaN(km)) {
+                setDistanceKm(km);
+            }
+        }
+
+        window.addEventListener("ors-distance", handleOrsDistance);
+        return () => window.removeEventListener("ors-distance", handleOrsDistance);
+    }, []);
+
+    // -------------------------------------------------------------
     // CÁLCULOS LOCALES
     // -------------------------------------------------------------
     useEffect(() => {
@@ -239,13 +254,14 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     load_ids: loadIds,
                     origin_id: originId,
                     destination_id: destId,
+                    distance_km: distanceKm,
                 })
             });
 
             const data = await res.json();
-
-            const billing = Number(data.total_distance_km ?? 0);
-            setDistanceKm(billing);
+            // preferimos la distancia que viene desde el frontend (ya en distanceKm)
+            const billing = Number(data.total_distance_km ?? distanceKm ?? 0);
+            setDistanceKm(isNaN(billing) ? 0 : billing);
 
             if (data.waypoints) {
                 window.dispatchEvent(new CustomEvent("draw-preview-route", {
@@ -294,7 +310,8 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     vehicle_id: vehicleId,
                     origin_id: originId,
                     destination_id: dest,
-                    total_cost: costoTotal
+                    total_cost: costoTotal,
+                    total_distance_km: distanceKm,
                 }),
             });
             window.location.reload();

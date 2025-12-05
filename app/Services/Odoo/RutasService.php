@@ -222,7 +222,11 @@ class RutasService
         }
 
         // ---------------- DISTANCIA / COSTOS ----------------
-        $distKm = $this->calcularDistanciaKm($waypoints);
+        // La distancia viene calculada desde el frontend (ORS en el navegador)
+        $distKm = null;
+        if (request()->has('total_distance_km')) {
+            $distKm = (float) request()->input('total_distance_km');
+        }
 
         $finalTotalCost = $totalCost !== null ? $totalCost : ($existing['total_cost'] ?? null);
         $costPerKg = null;
@@ -232,9 +236,12 @@ class RutasService
 
         // ---------------- GUARDAR EN ODOO ----------------
         $vals = [
-            'waypoints'         => json_encode($waypoints),
-            'total_distance_km' => $distKm,
+            'waypoints' => json_encode($waypoints),
         ];
+
+        if ($distKm !== null) {
+            $vals['total_distance_km'] = $distKm;
+        }
 
         $newLoadIds = array_map('intval', $loadIds);
 
@@ -353,14 +360,16 @@ class RutasService
             $waypoints[] = $existingDest;
         }
 
-        // 5. Calcular Distancia
-        // Esto nos da la distancia "fiscal" o "de negocio"
-        $distKm = $this->calcularDistanciaKm($waypoints);
+        // 5. Distancia: viene calculada desde el frontend (ORS en el navegador)
+        $distKm = 0.0;
+        if (request()->has('distance_km')) {
+            $distKm = (float) request()->input('distance_km');
+        }
 
         return [
             'route_id' => $routeId,
-            'waypoints' => $waypoints,       // El frontend usará esto para dibujar
-            'total_distance_km' => $distKm,  // El frontend usará esto para costos
+            'waypoints' => $waypoints,        // El frontend usará esto para dibujar
+            'total_distance_km' => $distKm,   // El frontend usará esto para costos
         ];
     }
 
