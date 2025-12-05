@@ -399,66 +399,44 @@ class RutasService
     private function calcularDistanciaKm($waypoints)
     {
         if (count($waypoints) < 2) return 0;
-
-        $cloudKey = env('GRAPHHOPPER_CLOUD_KEY');
-        $localUrl = env('GRAPHHOPPER_URL') ?: env('GRAPHOPPER_URL');
-        $localKey = env('GRAPHHOPPER_KEY');
+        $orsUrl = env('ORS_DIRECTIONS_URL', 'https://api.openrouteservice.org/v2/directions/driving-hgv');
+        $orsKey = env('ORS_API_KEY');
 
         try {
-            if ($cloudKey) {
-
-                $base = "https://graphhopper.com/api/1/route?profile=car&points_encoded=false&instructions=false";
-                $qs = "";
-
+            if ($orsKey && $orsUrl) {
+                $coordinates = [];
                 foreach ($waypoints as $w) {
                     if (!isset($w['lat'], $w['lon'])) continue;
-                    $qs .= "&point=" . rawurlencode($w['lat'] . "," . $w['lon']);
+                    $coordinates[] = [(float) $w['lon'], (float) $w['lat']];
                 }
 
-                $url = $base . $qs . "&key=" . $cloudKey;
+                if (count($coordinates) < 2) {
+                    return 0;
+                }
 
-                $res = Http::timeout(20)->get($url);
-                if (!$res->ok()) return 0;
+                $res = Http::timeout(20)
+                    ->withHeaders([
+                        'Authorization' => $orsKey,
+                        'Content-Type'  => 'application/json',
+                    ])
+                    ->post($orsUrl, [
+                        'coordinates' => $coordinates,
+                    ]);
+
+                if (!$res->ok()) {
+                    return 0;
+                }
 
                 $json  = $res->json();
-                $distM = $json['paths'][0]['distance'] ?? null;
+                $route = $json['routes'][0] ?? null;
+                if (!$route) {
+                    return 0;
+                }
+
+                $distM = $route['summary']['distance'] ?? null;
 
                 return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
-
-            if ($localUrl) {
-                $base = rtrim($localUrl, '/');
-                if (!str_ends_with($base, '/route')) {
-                    $base .= '/route';
-                }
-
-                $pointsQs = "";
-                foreach ($waypoints as $w) {
-                    if (!isset($w['lat'], $w['lon'])) continue;
-                    $pointsQs .= "point=" . rawurlencode($w['lat'] . ',' . $w['lon']) . "&";
-                }
-
-                $params = [
-                    'profile'         => 'truck',
-                    'points_encoded'  => 'false',
-                    'instructions'    => 'false',
-                    'ch.disable'      => 'true',
-                ];
-
-                if ($localKey) $params['key'] = $localKey;
-
-                $qs  = $pointsQs . http_build_query($params);
-                $url = $base . '?' . $qs;
-
-                $res = Http::timeout(20)->get($url);
-                if (!$res->ok()) return 0;
-
-                $json  = $res->json();
-                $distM = $json['paths'][0]['distance'] ?? null;
-
-                return is_numeric($distM) ? ($distM / 1000.0) : 0;
-            }
-
         } catch (\Throwable $e) {
             return 0;
         }
