@@ -357,11 +357,6 @@ class RutasService
         // Esto nos da la distancia "fiscal" o "de negocio"
         $distKm = $this->calcularDistanciaKm($waypoints);
 
-        \Log::info('previewCargas distancia', [
-            'distKm'    => $distKm,
-            'waypoints' => $waypoints,
-        ]);
-
         return [
             'route_id' => $routeId,
             'waypoints' => $waypoints,       // El frontend usará esto para dibujar
@@ -440,16 +435,10 @@ class RutasService
                         $distM = $json['routes'][0]['summary']['distance'];
                     }
 
-                    if (!is_numeric($distM) && isset($json['summary']['distance'])) {
-                        $distM = $json['summary']['distance'];
+                    if (!is_numeric($distM) && isset($json['route']['summary']['distance'])) {
+                        $distM = $json['route']['summary']['distance'];
                     }
 
-                \Log::info('calcularDistanciaKm ORS debug', [
-                    'coordinates' => $coordinates,
-                    'status'      => $res->status(),
-                    'json'        => $json,
-                    'dist_raw'    => $json['routes'][0]['summary']['distance'] ?? null,
-                ]);
                 return is_numeric($distM) ? ($distM / 1000.0) : 0;
             }
         } catch (\Throwable $e) {
