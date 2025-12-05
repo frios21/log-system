@@ -36,8 +36,8 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
         ? `${Number(ruta.total_distance_km).toFixed(2)} km`
         : "—";
 
-    // kg totales desde modelo ruta
-    const totalKg = ruta.total_qnt != null ? Number(ruta.total_qnt) : null;
+    // cantidad total esperada desde modelo ruta
+    const totalKg = ruta.expected_qnt != null ? Number(ruta.expected_qnt) : null;
     const totalKgLabel = totalKg != null ? `${totalKg.toLocaleString()} kg` : '—';
 
     // costo por kg desde modelo ruta
@@ -204,11 +204,11 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                     <div>{unifiedDate || '—'}</div>
                 </div>
                 <div>
-                    <div style={{ fontSize: 11, color: '#666' }}>Kg totales</div>
+                    <div style={{ fontSize: 11, color: '#666' }}>Cantidad total esperada</div>
                     <div>{totalKgLabel}</div>
                 </div>
                 <div>
-                    <div style={{ fontSize: 11, color: '#666' }}>Costo por kg</div>
+                    <div style={{ fontSize: 11, color: '#666' }}>Costo por kg estimado</div>
                     <div>{costPerKgLabel}</div>
                 </div>
                 <div>

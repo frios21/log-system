@@ -38,7 +38,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
     const COSTO_POR_KM = 1000;
     const [distanceKm, setDistanceKm] = useState(ruta.total_distance_km ?? 0);
-    const [totalKg, setTotalKg] = useState(0);
+    const [totalKg, setTotalKg] = useState(0); // cantidad total esperada (estimada)
     const [costoTotal, setCostoTotal] = useState(0);
     const [costoPorKg, setCostoPorKg] = useState(0);
 
@@ -157,9 +157,11 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, []);
 
     // -------------------------------------------------------------
-    // CÁLCULOS LOCALES
+    // CÁLCULOS LOCALES (cantidad total esperada y costes)
     // -------------------------------------------------------------
     useEffect(() => {
+        // Por ahora seguimos usando total_quantity de las cargas como
+        // aproximación local. El backend calcula expected_qnt real.
         let kg = 0;
         ordered.forEach((c) => {
             kg += Number(c.total_quantity || 0);
@@ -561,9 +563,9 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         <span>Distancia total (facturable):</span>
                         <strong>{distanceKm.toFixed(2)} km</strong>
                     </div>
-                     <div className="calc-row">
-                        <span>Total kg:</span>
-                        <strong>{totalKg} kg</strong>
+                            <div className="calc-row">
+                                <span>Cantidad total esperada:</span>
+                                <strong>{totalKg} kg</strong>
                     </div>
                      <div className="calc-row">
                         <span>Costo por km:</span>
@@ -575,7 +577,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         <strong>${costoTotal.toLocaleString()}</strong>
                     </div>
                     <div className="calc-row">
-                        <span>Costo por kg:</span>
+                        <span>Costo por kg estimado:</span>
                         <strong>${Math.round(costoPorKg).toLocaleString()}</strong>
                     </div>
                 </div>

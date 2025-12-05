@@ -144,11 +144,12 @@ class RutasService
         }
 
         // ---------------- CARGAS (INTERMEDIOS) ----------------
-        $totalQnt = null;
+        // expected_qnt: cantidad esperada en base a pallets y tipo de fruta
+        $expectedQnt = null;
 
         if (!empty($loadIds)) {
             $orderedLoads = [];
-            $sum = 0.0;
+            $sumExpected = 0.0;
 
             // Usamos CargasService->porId() para cada carga (misma lógica que /api/cargas/{id})
             foreach ($loadIds as $lid) {
@@ -158,12 +159,47 @@ class RutasService
                 }
                 $orderedLoads[] = $carga;
 
-                $q = $carga['total_quantity'] ?? 0;
-                if (is_numeric($q)) {
-                    $sum += (float)$q;
+                // Calcular esperado de esta carga: por líneas
+                $lines = $carga['lines'] ?? [];
+                if (is_array($lines)) {
+                    foreach ($lines as $line) {
+                        $productName = $line['product_name'] ?? '';
+                        $nPallets    = $line['n_pallets'] ?? 0;
+
+                        if (!is_numeric($nPallets) || $nPallets <= 0) {
+                            continue;
+                        }
+
+                        // extraer prefijo numérico de 3 dígitos dentro de corchetes, ej [103122000] -> 103
+                        $code = null;
+                        if (is_string($productName)) {
+                            if (preg_match('/(\d{3})/', $productName, $m)) {
+                                $code = $m[1];
+                            }
+                        }
+
+                        if (!$code || $code[0] !== '1') {
+                            continue; // no es fruta conocida
+                        }
+
+                        $avgKg = 0;
+                        if ($code === '101') {          // arándano
+                            $avgKg = 550;
+                        } elseif ($code === '102') {   // frambuesa
+                            $avgKg = 500;
+                        } elseif ($code === '103') {   // frutilla
+                            $avgKg = 700;
+                        } else {
+                            $avgKg = 0; // por ahora sin promedio definido para otros códigos
+                        }
+
+                        if ($avgKg > 0) {
+                            $sumExpected += ((float)$nPallets * (float)$avgKg);
+                        }
+                    }
                 }
             }
-            $totalQnt = $sum;
+            $expectedQnt = $sumExpected;
 
             foreach ($orderedLoads as $carga) {
                 $partner = $carga['partner'] ?? null;
@@ -193,9 +229,9 @@ class RutasService
                     $waypoints[] = $wp;
                 }
             }
-            // Si no llegaron nuevas cargas, conservamos total_qnt existente
-            if (isset($existing['total_qnt']) && is_numeric($existing['total_qnt'])) {
-                $totalQnt = (float)$existing['total_qnt'];
+            // Si no llegaron nuevas cargas, conservamos expected_qnt existente
+            if (isset($existing['expected_qnt']) && is_numeric($existing['expected_qnt'])) {
+                $expectedQnt = (float)$existing['expected_qnt'];
             }
         }
 
@@ -230,8 +266,8 @@ class RutasService
 
         $finalTotalCost = $totalCost !== null ? $totalCost : ($existing['total_cost'] ?? null);
         $costPerKg = null;
-        if ($finalTotalCost !== null && $totalQnt && $totalQnt > 0) {
-            $costPerKg = (float)$finalTotalCost / (float)$totalQnt;
+        if ($finalTotalCost !== null && $expectedQnt && $expectedQnt > 0) {
+            $costPerKg = (float)$finalTotalCost / (float)$expectedQnt;
         }
 
         // ---------------- GUARDAR EN ODOO ----------------
@@ -249,7 +285,8 @@ class RutasService
 
         if ($vehicleId)          $vals['vehicle_id']   = $vehicleId;
         if ($totalCost !== null) $vals['total_cost']   = $totalCost;
-        if ($totalQnt !== null)  $vals['total_qnt']    = $totalQnt;
+        // Guardamos cantidad esperada; total_qnt se usará más adelante para la cantidad real
+        if ($expectedQnt !== null)  $vals['expected_qnt'] = $expectedQnt;
         if ($costPerKg !== null) $vals['cost_per_kg']  = $costPerKg;
 
         $this->odoo->write('logistics.route', $routeId, $vals);
@@ -269,7 +306,7 @@ class RutasService
             'waypoints'        => $waypoints,
             'total_distance_km'=> $distKm,
             'total_cost'       => $totalCost ?? ($existing['total_cost'] ?? null),
-            'total_qnt'        => $totalQnt ?? ($existing['total_qnt'] ?? null),
+            'expected_qnt'     => $expectedQnt ?? ($existing['expected_qnt'] ?? null),
             'cost_per_kg'      => $costPerKg ?? ($existing['cost_per_kg'] ?? null),
         ];
     }
