@@ -23,10 +23,10 @@ const routeStatusColor = {
   done: "#2e7d32",       // verde
 };
 
-const GRAPHHOPPER_API_KEY = "600ab2f1-f867-44a9-9b60-bdabcd6db589";
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBiYWUyYWNlZjc0OTQxMGE5ZmMwODY1N2M2MTk0YzlmIiwiaCI6Im11cm11cjY0In0=";
 
-// helper global para pedir ruta a graphhopper cloud
-function fetchRouteFromGraphhopperCloud(waypoints, profile = "car") {
+// helper global para pedir ruta a OpenRouteService (perfil truck)
+function fetchRouteFromORS(waypoints, profile = "truck") {
   // lo dejamos como function normal para que esté hoisted
   return (async () => {
     const cleaned = waypoints
@@ -42,41 +42,34 @@ function fetchRouteFromGraphhopperCloud(waypoints, profile = "car") {
       return { coords: [], distM: 0 };
     }
 
-    const points = [...cleaned];
-    const first = cleaned[0];
-    const last = cleaned[cleaned.length - 1];
-    const same =
-      Math.abs(first.lat - last.lat) < 1e-8 &&
-      Math.abs(first.lon - last.lon) < 1e-8;
+    // ORS espera [lon, lat]
+    const coordinates = cleaned.map((p) => [p.lon, p.lat]);
 
-    if (!same) {
-      points.push(first);
-    }
+    const url = `https://api.openrouteservice.org/v2/directions/${profile}`;
 
-    const params = new URLSearchParams();
-    points.forEach((p) => params.append("point", `${p.lat},${p.lon}`));
-    params.set("profile", profile);
-    params.set("points_encoded", "false");
-    params.set("instructions", "false");
-    params.set("locale", "es");
-    params.set("key", GRAPHHOPPER_API_KEY);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: ORS_API_KEY,
+      },
+      body: JSON.stringify({ coordinates }),
+    });
 
-    const url = `https://graphhopper.com/api/1/route?${params.toString()}`;
-
-    const res = await fetch(url);
     if (!res.ok) {
-      console.warn("graphhopper cloud error", res.status, url);
+      console.warn("ORS error", res.status, url);
       return { coords: [], distM: 0 };
     }
 
     const json = await res.json();
-    const path = json.paths && json.paths[0];
-    if (!path || !path.points || !Array.isArray(path.points.coordinates)) {
+    const route = json.routes && json.routes[0];
+    if (!route || !route.geometry || !Array.isArray(route.geometry.coordinates)) {
       return { coords: [], distM: 0 };
     }
 
-    const coords = path.points.coordinates.map((c) => [c[1], c[0]]);
-    const distM = path.distance ?? 0;
+    // ORS geometry: [lon, lat] -> Leaflet: [lat, lon]
+    const coords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+    const distM = route.summary?.distance ?? 0;
 
     return { coords, distM };
   })();
@@ -241,9 +234,9 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map) return false;
 
-    // usar graphhopper cloud
+    // usar OpenRouteService (perfil truck) sólo en frontend
     const { coords: combinedCoords, distM: totalDist } =
-      await fetchRouteFromGraphhopperCloud(waypoints, "car");
+      await fetchRouteFromORS(waypoints, "truck");
 
     if (!combinedCoords || combinedCoords.length < 2) {
       if (routesLayers.current[routeId]) {

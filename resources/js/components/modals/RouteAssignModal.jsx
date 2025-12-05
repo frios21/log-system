@@ -349,26 +349,46 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 <div className="left-panel">
                      <h3 className="modal-title">Asignar cargas a <strong>{routeDetails?.name}</strong></h3>
 
-                    {/* Origen */}
-                    <div className="section">
-                        <label className="section-label">Origen de la ruta</label>
-                        <div className="input" style={{ position: "relative", padding: 0 }}>
-                            <input
-                                className="input"
-                                style={{ border: "none", width: "100%" }}
-                                placeholder="Buscar por nombre"
-                                value={originQuery}
-                                onFocus={() => setIsOriginOpen(true)}
-                                onChange={e => {
-                                    const v = e.target.value;
-                                    setOriginQuery(v);
-                                    setOriginId(null);
-                                    setIsOriginOpen(Boolean(v));
-                                }}
-                                onKeyDown={e => { if (e.key === "Escape") setIsOriginOpen(false); }}
-                                onBlur={() => setTimeout(() => setIsOriginOpen(false), 150)}
-                            />
-                            {isOriginOpen && originQuery && (
+                        {ordered.map(c => {
+                            let fechaLabel = "";
+                            if (c.date) {
+                                const d = new Date(c.date);
+                                if (!isNaN(d.getTime())) {
+                                    const dd = String(d.getDate()).padStart(2, "0");
+                                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                                    const yy = String(d.getFullYear()).slice(-2);
+                                    fechaLabel = `${dd}/${mm}/${yy}`;
+                                }
+                            }
+
+                            return (
+                                <div key={c.id} className="order-item">
+                                    <span className="drag-handle">☰</span>
+                                    <div style={{display: "flex", alignItems:"center", justifyContent:"space-between", width: "100%"}}>
+                                        <div>
+                                            {fechaLabel && (
+                                                <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
+                                                    {fechaLabel}
+                                                </div>
+                                            )}
+                                            <div className="carga-title">{c.name}</div>
+                                            <div className="carga-sub">{c.vendor_name}</div>
+                                            <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                                                Pallets: {c.total_pallets ?? "-"}
+                                            </div>
+                                        </div>
+                                        <label style={{display:"flex", alignItems:"center", gap:6}}>
+                                            <input
+                                                type="checkbox"
+                                                checked={fakeSet.has(c.id)}
+                                                onChange={(e) => toggleFake(c.id, e)}
+                                            />
+                                            <small>F</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            );
+                        })}
                                 <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
                                     {filteredOrigins.slice(0, 20).map(p => (
                                         <div
@@ -383,9 +403,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                         <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    </div>
 
                      {/* Cargas */}
                     <div className="section">
@@ -492,25 +509,46 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 <div className="order-panel">
                      <label className="section-label">Orden de las cargas (Arrastrar)</label>
                     <div ref={sortableRef} className="order-list">
-                        {ordered.map(c => (
-                            <div key={c.id} className="order-item">
-                                <span className="drag-handle">☰</span>
-                                <div style={{display: "flex", alignItems:"center", justifyContent:"space-between", width: "100%"}}>
-                                    <div>
-                                        <div className="carga-title">{c.name}</div>
-                                        <div className="carga-sub">{c.vendor_name}</div>
+                        {ordered.map(c => {
+                            let fechaLabel = "";
+                            if (c.date) {
+                                const d = new Date(c.date);
+                                if (!isNaN(d.getTime())) {
+                                    const dd = String(d.getDate()).padStart(2, "0");
+                                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                                    const yy = String(d.getFullYear()).slice(-2);
+                                    fechaLabel = `${dd}/${mm}/${yy}`;
+                                }
+                            }
+
+                            return (
+                                <div key={c.id} className="order-item">
+                                    <span className="drag-handle">☰</span>
+                                    <div style={{display: "flex", alignItems:"center", justifyContent:"space-between", width: "100%"}}>
+                                        <div>
+                                            {fechaLabel && (
+                                                <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
+                                                    {fechaLabel}
+                                                </div>
+                                            )}
+                                            <div className="carga-title">{c.name}</div>
+                                            <div className="carga-sub">{c.vendor_name}</div>
+                                            <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                                                Pallets: {c.total_pallets ?? "-"}
+                                            </div>
+                                        </div>
+                                        <label style={{display:"flex", alignItems:"center", gap:6}}>
+                                            <input
+                                                type="checkbox"
+                                                checked={fakeSet.has(c.id)}
+                                                onChange={(e) => toggleFake(c.id, e)}
+                                            />
+                                            <small>F</small>
+                                        </label>
                                     </div>
-                                    <label style={{display:"flex", alignItems:"center", gap:6}}>
-                                        <input
-                                            type="checkbox"
-                                            checked={fakeSet.has(c.id)}
-                                            onChange={(e) => toggleFake(c.id, e)}
-                                        />
-                                        <small>F</small>
-                                    </label>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
