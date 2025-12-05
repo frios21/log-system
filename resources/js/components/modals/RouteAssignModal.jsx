@@ -391,26 +391,45 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     <div className="section">
                         <label className="section-label">Cargas disponibles</label>
                         <div className="cargas-list">
-                            {allLoads.map(c => (
-                                <div key={c.id}
-                                     className={`carga-item ${selected.has(c.id) ? "selected" : ""}`}
-                                     onClick={() => toggle(c.id)}
-                                >
-                                    <div style={{display: "flex", gap: "8px", alignItems: "center"}}>
-                                        <div style={{flex: 1}}>
-                                            <div className="carga-title">{c.name}</div>
-                                            <div className="carga-sub">{c.vendor_name}</div>
-                                        </div>
+                            {allLoads.map(c => {
+                                let fechaLabel = "";
+                                if (c.date) {
+                                    const d = new Date(c.date);
+                                    if (!isNaN(d.getTime())) {
+                                        const dd = String(d.getDate()).padStart(2, "0");
+                                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                                        const yy = String(d.getFullYear()).slice(-2);
+                                        fechaLabel = `${dd}/${mm}/${yy}`;
+                                    }
+                                }
 
-                                        <input
-                                            type="checkbox"
-                                            checked={selected.has(c.id)}
-                                            onChange={() => toggle(c.id)}
-                                            style={{marginLeft: 8}}
-                                        />
+                                return (
+                                    <div key={c.id}
+                                         className={`carga-item ${selected.has(c.id) ? "selected" : ""}`}
+                                         onClick={() => toggle(c.id)}
+                                    >
+                                        <div style={{display: "flex", gap: "8px", alignItems: "center"}}>
+                                            <div style={{flex: 1}}>
+                                                <div className="carga-title">{c.name}</div>
+                                                <div className="carga-sub">{c.vendor_name}</div>
+                                            </div>
+
+                                            {fechaLabel && (
+                                                <div style={{ fontSize: 11, color: "#666", minWidth: 60, textAlign: "right" }}>
+                                                    {fechaLabel}
+                                                </div>
+                                            )}
+
+                                            <input
+                                                type="checkbox"
+                                                checked={selected.has(c.id)}
+                                                onChange={() => toggle(c.id)}
+                                                style={{marginLeft: 8}}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
