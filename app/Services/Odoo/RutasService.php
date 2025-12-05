@@ -348,16 +348,61 @@ class RutasService
         }
 
         // 3. Construir CARGAS (Intermedios) estrictamente en el orden de $loadIds
+        //    y calcular cantidad total esperada (expected_qnt) igual que en asignarCargas
+        $expectedQnt = null;
         if (!empty($loadIds)) {
 
             $orderedLoads = [];
+            $sumExpected = 0.0;
+
             foreach ($loadIds as $lid) {
                 // Reutilizamos la misma lógica que /api/cargas/{id}
                 $carga = $this->cargas->porId((int)$lid);
-                if ($carga) {
-                    $orderedLoads[] = $carga;
+                if (!$carga) {
+                    continue;
+                }
+                $orderedLoads[] = $carga;
+
+                $lines = $carga['lines'] ?? [];
+                if (is_array($lines)) {
+                    foreach ($lines as $line) {
+                        $productName = $line['product_name'] ?? '';
+                        $nPallets    = $line['n_pallets'] ?? 0;
+
+                        if (!is_numeric($nPallets) || $nPallets <= 0) {
+                            continue;
+                        }
+
+                        $code = null;
+                        if (is_string($productName)) {
+                            if (preg_match('/(\d{3})/', $productName, $m)) {
+                                $code = $m[1];
+                            }
+                        }
+
+                        if (!$code || $code[0] !== '1') {
+                            continue;
+                        }
+
+                        $avgKg = 0;
+                        if ($code === '101') {          // arándano
+                            $avgKg = 550;
+                        } elseif ($code === '102') {   // frambuesa
+                            $avgKg = 500;
+                        } elseif ($code === '103') {   // frutilla
+                            $avgKg = 700;
+                        } else {
+                            $avgKg = 0;
+                        }
+
+                        if ($avgKg > 0) {
+                            $sumExpected += ((float)$nPallets * (float)$avgKg);
+                        }
+                    }
                 }
             }
+
+            $expectedQnt = $sumExpected;
 
             foreach ($orderedLoads as $load) {
                 $partner = $load['partner'] ?? null;
@@ -377,6 +422,11 @@ class RutasService
                     'partner_id' => $partner['id'],
                     'label'      => $load['name'],
                 ];
+            }
+        } else {
+            // si no llegaron nuevas cargas, conservamos expected_qnt existente para el preview
+            if (isset($existing['expected_qnt']) && is_numeric($existing['expected_qnt'])) {
+                $expectedQnt = (float)$existing['expected_qnt'];
             }
         }
 
@@ -403,10 +453,25 @@ class RutasService
             $distKm = (float) request()->input('distance_km');
         }
 
+        // Para el preview también devolvemos cantidad esperada y coste por kg estimado
+        $totalCost = null;
+        if (request()->has('total_cost')) {
+            $totalCost = (float) request()->input('total_cost');
+        } elseif (isset($existing['total_cost']) && is_numeric($existing['total_cost'])) {
+            $totalCost = (float)$existing['total_cost'];
+        }
+
+        $costPerKg = null;
+        if ($totalCost !== null && $expectedQnt && $expectedQnt > 0) {
+            $costPerKg = (float)$totalCost / (float)$expectedQnt;
+        }
+
         return [
-            'route_id' => $routeId,
-            'waypoints' => $waypoints,        // El frontend usará esto para dibujar
-            'total_distance_km' => $distKm,   // El frontend usará esto para costos
+            'route_id'          => $routeId,
+            'waypoints'         => $waypoints,       // El frontend usará esto para dibujar
+            'total_distance_km' => $distKm,          // El frontend usará esto para costos
+            'expected_qnt'      => $expectedQnt,     // cantidad total esperada
+            'cost_per_kg'       => $costPerKg,       // coste por kg estimado
         ];
     }
 

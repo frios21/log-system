@@ -157,21 +157,13 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, []);
 
     // -------------------------------------------------------------
-    // CÁLCULOS LOCALES (cantidad total esperada y costes)
+    // CÁLCULOS LOCALES (costes) basados en distancia y cantidad esperada
     // -------------------------------------------------------------
     useEffect(() => {
-        // Por ahora seguimos usando total_quantity de las cargas como
-        // aproximación local. El backend calcula expected_qnt real.
-        let kg = 0;
-        ordered.forEach((c) => {
-            kg += Number(c.total_quantity || 0);
-        });
-        setTotalKg(kg);
-
         const costo = distanceKm * COSTO_POR_KM;
         setCostoTotal(costo);
-        setCostoPorKg(kg > 0 ? costo / kg : 0);
-    }, [ordered, distanceKm]);
+        setCostoPorKg(totalKg > 0 ? costo / totalKg : 0);
+    }, [distanceKm, totalKg]);
 
     // -------------------------------------------------------------
     // COMBINAR CARGAS: ordered + draft
@@ -220,7 +212,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }
 
     // -------------------------------------------------------------
-    // ORQUESTADOR DEL RECÁLCULO (debounced)
+    // ORQUESTADOR DEL RECÁLCULO
     // -------------------------------------------------------------
     useEffect(() => {
         triggerPreviewDebounced();
@@ -257,6 +249,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     origin_id: originId,
                     destination_id: destId,
                     distance_km: distanceKm,
+                    total_cost: COSTO_POR_KM * distanceKm,
                 })
             });
 
@@ -264,6 +257,14 @@ export default function RouteAssignModal({ ruta, onClose }) {
             // preferimos la distancia que viene desde el frontend (ya en distanceKm)
             const billing = Number(data.total_distance_km ?? distanceKm ?? 0);
             setDistanceKm(isNaN(billing) ? 0 : billing);
+
+            // actualizar cantidad esperada y coste por kg desde el backend
+            if (typeof data.expected_qnt === "number") {
+                setTotalKg(data.expected_qnt);
+            }
+            if (typeof data.cost_per_kg === "number") {
+                setCostoPorKg(data.cost_per_kg);
+            }
 
             if (data.waypoints) {
                 window.dispatchEvent(new CustomEvent("draw-preview-route", {
