@@ -408,17 +408,19 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                          className={`carga-item ${selected.has(c.id) ? "selected" : ""}`}
                                          onClick={() => toggle(c.id)}
                                     >
-                                        <div style={{display: "flex", gap: "8px", alignItems: "center"}}>
+                                        <div style={{display: "flex", gap: "8px", alignItems: "center", width: "100%"}}>
                                             <div style={{flex: 1}}>
+                                                {fechaLabel && (
+                                                    <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
+                                                        {fechaLabel}
+                                                    </div>
+                                                )}
                                                 <div className="carga-title">{c.name}</div>
                                                 <div className="carga-sub">{c.vendor_name}</div>
-                                            </div>
-
-                                            {fechaLabel && (
-                                                <div style={{ fontSize: 11, color: "#666", minWidth: 60, textAlign: "right" }}>
-                                                    {fechaLabel}
+                                                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                                                    Pallets: {c.total_pallets ?? "-"}
                                                 </div>
-                                            )}
+                                            </div>
 
                                             <input
                                                 type="checkbox"
