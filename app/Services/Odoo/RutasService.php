@@ -151,7 +151,7 @@ class RutasService
             $orderedLoads = [];
             $sumExpected = 0.0;
 
-            // Usamos CargasService->porId() para cada carga (misma lógica que /api/cargas/{id})
+            // usamos CargasService->porId() para cada carga (misma lógica que /api/cargas/{id})
             foreach ($loadIds as $lid) {
                 $carga = $this->cargas->porId((int)$lid);
                 if (!$carga) {
@@ -159,7 +159,7 @@ class RutasService
                 }
                 $orderedLoads[] = $carga;
 
-                // Calcular esperado de esta carga: por líneas
+                // calcular esperado de esta carga: por líneas
                 $lines = $carga['lines'] ?? [];
                 if (is_array($lines)) {
                     foreach ($lines as $line) {
