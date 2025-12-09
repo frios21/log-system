@@ -24,9 +24,6 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const [localStatus, setLocalStatus] = useState(ruta.status);
     const color = stateColor(localStatus);
 
-    const [editing, setEditing] = useState(false);
-    const [tempName, setTempName] = useState(ruta.name);
-
     // modal de confirmación de cambio de estado
     const [modalOpen, setModalOpen] = useState(false);
     const [targetStatus, setTargetStatus] = useState(null);
@@ -65,36 +62,6 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                 detail: { id: ruta.id, visible: e.target.checked }
             })
         );
-    }
-
-    async function saveName() {
-        if (!tempName.trim()) {
-            setTempName(ruta.name);
-            setEditing(false);
-            return;
-        }
-
-        await fetch(`/api/rutas/${ruta.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: tempName }),
-        });
-
-        window.dispatchEvent(
-            new CustomEvent("route-distance-updated", {
-                detail: { routeId: ruta.id },
-            })
-        );
-
-        setEditing(false);
-    }
-
-    function handleKey(e) {
-        if (e.key === "Enter") saveName();
-        if (e.key === "Escape") {
-            setTempName(ruta.name);
-            setEditing(false);
-        }
     }
 
     function openInGoogleMaps() {
@@ -176,26 +143,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                         defaultChecked={localStatus !== 'done'}
                         onChange={toggleVisible}
                     />
-                    {editing ? (
-                        <input
-                            autoFocus
-                            value={tempName}
-                            onChange={(e) => setTempName(e.target.value)}
-                            onBlur={saveName}
-                            onKeyDown={handleKey}
-                            style={{
-                                padding: "2px 4px",
-                                fontSize: "14px",
-                                width: "160px",
-                                borderRadius: 4,
-                                border: "1px solid #bbb",
-                            }}
-                        />
-                    ) : (
-                        <span onDoubleClick={() => setEditing(true)} style={{ cursor: "pointer" }}>
-                            {ruta.name}
-                        </span>
-                    )}
+                    <span>{ruta.name}</span>
                 </label>
 
                 <div style={{ fontSize: 12, color: "#444" }}>
@@ -247,7 +195,13 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                             onDoubleClick={() => setEditingDate(true)}
                             style={{ cursor: "pointer", minHeight: 18 }}
                         >
-                            {routeDate ? routeDate.split("T")[0] : "—"}
+                            {routeDate
+                                ? (() => {
+                                      const [y, m, d] = routeDate.split("T")[0].split("-");
+                                      if (!y || !m || !d) return routeDate;
+                                      return `${d}-${m}-${y}`;
+                                  })()
+                                : "—"}
                         </div>
                     )}
                 </div>
