@@ -58,8 +58,6 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
 
     const [routeDate, setRouteDate] = useState(ruta.date || "");
 
-    const unifiedDate = getFirstLoadDate(ruta.loads || []);
-
     function toggleVisible(e) {
         window.dispatchEvent(
             new CustomEvent("toggle-route-visible", {
