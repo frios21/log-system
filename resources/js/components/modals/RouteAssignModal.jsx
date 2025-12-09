@@ -549,10 +549,8 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                         className="carga-item selected"
                                         style={{
                                             cursor: "grab",
-                                            borderColor: hasLocation ? undefined : "#e74c3c",
-                                            boxShadow: hasLocation
-                                                ? undefined
-                                                : "0 0 0 1px rgba(231,76,60,0.4)",
+                                            backgroundColor: hasLocation ? undefined : "#fdecea",
+                                            color: hasLocation ? undefined : "#c0392b",
                                         }}
                                     >
                                         <div style={{display: "flex", gap: "8px", alignItems: "center", width: "100%"}}>
