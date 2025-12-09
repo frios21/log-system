@@ -152,6 +152,7 @@ class RutasApiController extends Controller
     {
         $status = $request->input('status');
         $name = $request->input('name');
+        $date = $request->input('date');
 
         if ($status !== null) {
             // Validación simple de estado
@@ -169,6 +170,12 @@ class RutasApiController extends Controller
             return response()->json(['success' => (bool)$ok, 'name' => $name]);
         }
 
-        return response()->json(['error' => 'name or status required'], 422);
+        if ($date !== null) {
+            // Opcional: podrías validar formato YYYY-MM-DD aquí si lo necesitas
+            $ok = $this->rutas->actualizarFecha((int)$id, $date);
+            return response()->json(['success' => (bool)$ok, 'date' => $date]);
+        }
+
+        return response()->json(['error' => 'name, status or date required'], 422);
     }
 }

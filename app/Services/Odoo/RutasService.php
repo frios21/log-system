@@ -83,6 +83,13 @@ class RutasService
         return ['id' => $id];
     }
 
+    public function actualizarFecha(int $routeId, string $date): bool
+    {
+        return $this->odoo->write('logistics.route', $routeId, [
+            'date' => $date,
+        ]);
+    }
+
     public function asignarCargas(
         int $routeId,
         array $loadIds,
