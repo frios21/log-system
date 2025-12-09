@@ -86,7 +86,7 @@ class RutasService
     public function actualizarFecha(int $routeId, string $date): bool
     {
         return $this->odoo->write('logistics.route', $routeId, [
-            'date' => $date,
+            'expected_date' => $date,
         ]);
     }
 
