@@ -229,7 +229,20 @@ export default function RouteAssignModal({ ruta, onClose }) {
         if (!routeId) return;
 
         // 1. Origen
-        const origin = partners.find(p => p.id === originId);
+        let origin = partners.find(p => p.id === originId);
+
+        if (!origin) {
+          // fallback: usar el partner de la primera carga seleccionada
+          const firstLoad = ordered[0];
+          const loadPartnerId =
+            firstLoad?.partner?.id ??
+            (Array.isArray(firstLoad?.vendor_id) ? firstLoad.vendor_id[0] : firstLoad?.vendor_id);
+
+          if (loadPartnerId) {
+            origin = partners.find(p => p.id === loadPartnerId);
+          }
+        }
+
         if (!origin) return;
 
         // 2. Destino
