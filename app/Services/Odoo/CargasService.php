@@ -211,4 +211,11 @@ class CargasService
             }
         }
     }
+
+    public function updateTotalPallets(int $id, ?float $totalPallets): void
+    {
+        $this->odoo->write('logistics.load', $id, [
+            'total_pallets' => $totalPallets,
+        ]);
+    }
 }
