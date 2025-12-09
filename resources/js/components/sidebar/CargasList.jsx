@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import CargaDetailsModal from "../modals/CargaDetailsModal";
+import { useCargas } from "../../api/cargas";
 
 function formatCargaDate(raw) {
     if (!raw) return { date: "", time: "" };
@@ -28,7 +29,7 @@ function formatCargaDate(raw) {
 // incluye filtros de búsqueda, estado y rango de fechas dentro de un desplegable
 
 export default function CargasList() {
-    const [cargas, setCargas] = useState([]);
+    const { data: cargasData = [], isLoading, isFetching } = useCargas();
     const [selectedCarga, setSelectedCarga] = useState(null);
     const [editingPalletsFor, setEditingPalletsFor] = useState(null); // id carga (no usado ahora, pero dejamos por si se reusa)
     const [tempPallets, setTempPallets] = useState("");
@@ -44,16 +45,8 @@ export default function CargasList() {
     // desplegable filtros
     const [showFilters, setShowFilters] = useState(false);
 
-    async function loadData() {
-        const data = await fetch("/api/cargas")
-            .then(r => r.json())
-            .catch(() => []);
-        setCargas(Array.isArray(data) ? data : []);
-    }
-
-    useEffect(() => {
-        loadData();
-    }, []);
+    // datos base desde React Query
+    const cargas = Array.isArray(cargasData) ? cargasData : [];
 
     useEffect(() => {
         function handleRefresh() { loadData(); }

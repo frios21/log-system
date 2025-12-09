@@ -2,29 +2,22 @@ import React, { useEffect, useState } from "react";
 import RouteCard from "./RouteCard";
 import RouteAssignModal from "../modals/RouteAssignModal";
 import VehicleAssignModal from "../modals/VehicleAssignModal";
+import { useRutas } from "../../api/rutas";
 
 // Componente que lista las rutas
 // permite crear, eliminar, asignar rutas junto a
 // filtros de búsqueda y estado -> falta filtro de fecha
 
 export default function RoutesList() {
-    const [rutas, setRutas] = useState([]);
+    const { data: rutasData = [], refetch } = useRutas();
     const [openAssignFor, setOpenAssignFor] = useState(null);
     const [openVehicleAssignFor, setOpenVehicleAssignFor] = useState(null);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
 
-    useEffect(() => {
-        refetch();
-    }, []);
-
-    function refetch() {
-        fetch("/api/rutas")
-            .then((r) => r.json())
-            .then(setRutas)
-            .catch(console.error);
-    }
+    // datos base desde React Query
+    const rutas = Array.isArray(rutasData) ? rutasData : [];
 
     async function createRoute() {
         try {

@@ -1,32 +1,24 @@
 import { useEffect, useState } from "react";
+import { useContactos } from "../../api/contactos";
 
 // Componente que lista los contactos 
 // y permite verlos en el mapa
 
 export default function ContactsList() {
-    const [contactos, setContactos] = useState([]);
+    const { data: contactosData = [] } = useContactos();
     const [search, setSearch] = useState("");
 
-    useEffect(() => {
-        let cancelled = false;
-        fetch('/api/contactos')
-            .then(r => r.json())
-            .then(data => {
-                if (cancelled) return;
-                setContactos(data);
+    const contactos = Array.isArray(contactosData) ? contactosData : [];
 
-                // pedir al mapa que dibuje marcadores
-                window.dispatchEvent(new Event("contacts-markers-clear"));
-                window.dispatchEvent(new CustomEvent("contacts-markers-show", { detail: data }));
-            })
-            .catch(console.error);
+    useEffect(() => {
+        // cuando cambian contactos, actualizamos marcadores del mapa
+        window.dispatchEvent(new Event("contacts-markers-clear"));
+        window.dispatchEvent(new CustomEvent("contacts-markers-show", { detail: contactos }));
 
         return () => {
-            cancelled = true;
-            // limpiar marcadores al salir de la pestaña
-            window.dispatchEvent(new Event('contacts-markers-clear'));
+            window.dispatchEvent(new Event("contacts-markers-clear"));
         };
-    }, []);
+    }, [contactos]);
 
     function focus(id) {
         window.dispatchEvent(new CustomEvent('focus-client', { detail: id }));
