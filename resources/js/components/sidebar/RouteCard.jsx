@@ -36,12 +36,24 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
         ? `${Number(ruta.total_distance_km).toFixed(2)} km`
         : "—";
 
-    // cantidad total esperada desde modelo ruta
-    const totalKg = ruta.expected_qnt != null ? Number(ruta.expected_qnt) : null;
+    // cantidad total: esperada si no está done, real (total_qnt) si está done
+    const expectedKg = ruta.expected_qnt != null ? Number(ruta.expected_qnt) : null;
+    const realKg = ruta.total_qnt != null ? Number(ruta.total_qnt) : null;
+
+    const isDone = localStatus === 'done';
+
+    const totalKg = isDone
+        ? (realKg != null ? realKg : expectedKg)
+        : expectedKg;
     const totalKgLabel = totalKg != null ? `${totalKg.toLocaleString()} kg` : '—';
 
-    // costo por kg desde modelo ruta
-    const costPerKg = ruta.cost_per_kg != null ? Number(ruta.cost_per_kg) : null;
+    // costo por kg: estimado si no está done, real si está done (usa total_qnt y total_cost si existe)
+    const estimatedCostPerKg = ruta.cost_per_kg != null ? Number(ruta.cost_per_kg) : null;
+    const realCostPerKg = (isDone && ruta.total_cost != null && realKg)
+        ? Number(ruta.total_cost) / realKg
+        : null;
+
+    const costPerKg = isDone ? (realCostPerKg ?? estimatedCostPerKg) : estimatedCostPerKg;
     const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
 
     // fecha: si todas las cargas comparten la misma fecha
@@ -127,7 +139,6 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     // botón dinámico según estado
     const canStart = localStatus === 'draft';
     const canFinish = localStatus === 'assigned';
-    const isDone = localStatus === 'done';
 
     function openConfirm(status) {
         // enfocar la ruta en el mapa
@@ -204,11 +215,15 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                     <div>{unifiedDate || '—'}</div>
                 </div>
                 <div>
-                    <div style={{ fontSize: 11, color: '#666' }}>Cantidad total esperada</div>
+                    <div style={{ fontSize: 11, color: '#666' }}>
+                        {isDone ? 'Cantidad total' : 'Cantidad total esperada'}
+                    </div>
                     <div>{totalKgLabel}</div>
                 </div>
                 <div>
-                    <div style={{ fontSize: 11, color: '#666' }}>Costo por kg estimado</div>
+                    <div style={{ fontSize: 11, color: '#666' }}>
+                        {isDone ? 'Costo por kg real' : 'Costo por kg estimado'}
+                    </div>
                     <div>{costPerKgLabel}</div>
                 </div>
                 <div>
