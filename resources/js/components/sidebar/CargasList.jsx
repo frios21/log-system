@@ -117,8 +117,19 @@ export default function CargasList() {
 
         const name = normalizeString(c.name || "");
         const idStr = String(c.id || "");
+        const vendorName = normalizeString(c.vendor_name || c.partner?.name || "");
 
-        return name.includes(q) || idStr.includes(q);
+        const qtyStr = String(c.total_quantity ?? "");
+        const palletsStr = String(c.total_pallets ?? "");
+
+        const combined = `${name} ${vendorName} ${qtyStr} ${palletsStr}`;
+
+        return (
+            name.includes(q) ||
+            idStr.includes(q) ||
+            vendorName.includes(q) ||
+            combined.includes(q)
+        );
     });
 
     return (
