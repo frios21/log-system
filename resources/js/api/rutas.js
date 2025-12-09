@@ -142,13 +142,13 @@ export function useActualizarEstadoRuta() {
     });
 }
 
-// Actualizar cantidad real (real_qnt) de una ruta
-export function useUpdateRutaRealQnt() {
+// Actualizar cantidad total (total_qnt) de una ruta
+export function useUpdateRutaTotalQnt() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, real_qnt }) => {
-            const { data } = await apiClient.patch(`/rutas/${id}/real-qnt`, { real_qnt });
+        mutationFn: async ({ id, total_qnt }) => {
+            const { data } = await apiClient.patch(`/rutas/${id}/total-qnt`, { total_qnt });
             return data;
         },
         onSuccess: (_data, variables) => {

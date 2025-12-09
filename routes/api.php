@@ -50,7 +50,7 @@ Route::middleware('api')->group(function () {
     Route::post('/rutas/{id}/assign', [RouteController::class, 'assign'])->whereNumber('id');
     Route::post('/rutas/{id}/preview', [RouteController::class, 'preview'])->whereNumber('id');
     Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia'])->whereNumber('id');
-    Route::patch('/rutas/{id}/real-qnt', [RutasApiController::class, 'updateRealQnt'])->whereNumber('id');
+    Route::patch('/rutas/{id}/total-qnt', [RutasApiController::class, 'updateTotalQnt'])->whereNumber('id');
     Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle'])->whereNumber('id');
     Route::patch('/rutas/{id}/update-driver', [RutasApiController::class, 'updateDriver'])->whereNumber('id');
     // Unificar PATCH para actualizar nombre o estado

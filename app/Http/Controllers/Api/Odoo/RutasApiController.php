@@ -67,14 +67,14 @@ class RutasApiController extends Controller
         ]);
     }
 
-    public function updateRealQnt(int $id, Request $request)
+    public function updateTotalQnt(int $id, Request $request)
     {
         $data = $request->validate([
-            'real_qnt' => ['required', 'numeric', 'min:0'],
+            'total_qnt' => ['required', 'numeric', 'min:0'],
         ]);
 
         try {
-            $ok = $this->rutas->actualizarRealQnt($id, (float) $data['real_qnt']);
+            $ok = $this->rutas->actualizarTotalQnt($id, (float) $data['total_qnt']);
             return response()->json(['success' => (bool) $ok]);
         } catch (\Throwable $e) {
             return response()->json([

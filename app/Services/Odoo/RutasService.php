@@ -646,10 +646,10 @@ class RutasService
         return true;
     }
 
-    public function actualizarRealQnt(int $routeId, float $realQnt): bool
+    public function actualizarTotalQnt(int $routeId, float $totalQnt): bool
     {
         return $this->odoo->write('logistics.route', $routeId, [
-            'real_qnt' => $realQnt,
+            'total_qnt' => $totalQnt,
         ]);
     }
 }

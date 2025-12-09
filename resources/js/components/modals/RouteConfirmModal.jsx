@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { useCargas } from "../../api/cargas";
+import { useUpdateRutaTotalQnt } from "../../api/rutas";
 
 // Modal para confirmar inicio o finalización de una ruta
 // Muestra detalles de la ruta: paradas, distancia, cargas asociadas
@@ -23,6 +24,7 @@ function parseWaypointsField(w) {
 
 export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targetStatus }) {
   const { data: cargasData = [] } = useCargas();
+  const { mutateAsync: updateTotalQnt } = useUpdateRutaTotalQnt();
 
   const loadsDetails = Array.isArray(cargasData) && ruta && Array.isArray(ruta.load_ids)
     ? cargasData.filter(l => ruta.load_ids.includes(l.id))
@@ -66,7 +68,15 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
   const title = targetStatus === 'assigned' ? 'Comenzar ruta' : targetStatus === 'done' ? 'Finalizar ruta' : 'Confirmar';
   const totalDist = ruta.total_distance_km != null ? `${Number(ruta.total_distance_km).toFixed(2)} km` : '—';
-  const totalKg = load.expected_qnt
+
+  const [totalQnt, setTotalQnt] = useState(() => Number(ruta.total_qnt ?? ruta.expected_qnt ?? 0));
+  const [editingTotalQnt, setEditingTotalQnt] = useState(false);
+  const [tempTotalQnt, setTempTotalQnt] = useState(totalQnt);
+
+  const handleSaveTotalQnt = () => {
+    setTotalQnt(Number(tempTotalQnt) || 0);
+    setEditingTotalQnt(false);
+  };
 
   const modalContent = (
     <div style={{
@@ -120,11 +130,37 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
             <div style={{ color: '#666' }}>Sin cargas asociadas</div>
           )}
         </div>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}> Cantidad total estimada: {totalKg} kg </div>
+        <div
+          style={{ fontWeight: 600, marginTop: 8, cursor: 'pointer' }}
+          onDoubleClick={() => { setEditingTotalQnt(true); setTempTotalQnt(totalQnt); }}
+        >
+          Cantidad total: {editingTotalQnt ? (
+            <input
+              autoFocus
+              type="number"
+              value={tempTotalQnt}
+              onChange={(e) => setTempTotalQnt(e.target.value)}
+              onBlur={handleSaveTotalQnt}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveTotalQnt()}
+              style={{ width: 80, padding: 4 }}
+            />
+          ) : (
+            `${totalQnt} kg`
+          )}
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid #eee', justifyContent: 'flex-end' }}>
         <button className="btn" onClick={onClose} style={{ background: '#f5f5f5' }}>Cancelar</button>
-        <button className="btn btn-primary" onClick={onConfirm}>
+        <button className="btn btn-primary" onClick={async () => {
+          if (targetStatus === 'done') {
+            try {
+              await updateTotalQnt({ id: ruta.id, total_qnt: totalQnt });
+            } catch (e) {
+              console.error('Error actualizando total_qnt', e);
+            }
+          }
+          onConfirm();
+        }}>
           {targetStatus === 'assigned' ? 'Confirmar inicio' : targetStatus === 'done' ? 'Confirmar fin' : 'Confirmar'}
         </button>
       </div>
