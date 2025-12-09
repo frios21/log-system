@@ -30,7 +30,7 @@ function formatCargaDate(raw) {
 export default function CargasList() {
     const [cargas, setCargas] = useState([]);
     const [selectedCarga, setSelectedCarga] = useState(null);
-    const [editingPalletsFor, setEditingPalletsFor] = useState(null); // id carga
+    const [editingPalletsFor, setEditingPalletsFor] = useState(null); // id carga (no usado ahora, pero dejamos por si se reusa)
     const [tempPallets, setTempPallets] = useState("");
     const [palletsStatus, setPalletsStatus] = useState({}); // { cargaId: 'success' | 'error' }
 
@@ -61,40 +61,9 @@ export default function CargasList() {
         return () => window.removeEventListener("cargas-refresh", handleRefresh);
     }, []);
 
-    async function savePallets(cargaId) {
-        const value = tempPallets.trim();
-        const num = value === "" ? null : Number(value);
-
-        if (value !== "" && (isNaN(num) || num < 0)) {
-            setEditingPalletsFor(null);
-            return;
-        }
-
-        try {
-            const res = await fetch(`/api/cargas/${cargaId}/pallets`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ total_pallets: num }),
-            });
-            if (!res.ok) {
-                throw new Error("Respuesta no OK");
-            }
-            await loadData();
-            setPalletsStatus(prev => ({ ...prev, [cargaId]: "success" }));
-        } catch (e) {
-            console.error("No se pudo actualizar los pallets", e);
-            setPalletsStatus(prev => ({ ...prev, [cargaId]: "error" }));
-        } finally {
-            setEditingPalletsFor(null);
-            setTimeout(() => {
-                setPalletsStatus(prev => {
-                    const copy = { ...prev };
-                    delete copy[cargaId];
-                    return copy;
-                });
-            }, 2000);
-        }
-    }
+    // Mantengo palletsStatus por si en el futuro queremos marcar visualmente
+    // que la carga fue recalculada en base a líneas. Por ahora no hay edición
+    // directa de total_pallets aquí.
 
     function normalizeString(s = "") {
         return s.toString()
@@ -316,44 +285,16 @@ export default function CargasList() {
                         {/* Info */}
                         <div className="text-small" style={{ marginTop: "10px" }}>
                             Cantidad: <strong>{carga.total_quantity} kg</strong> — Pallets:{" "}
-                            {editingPalletsFor === carga.id ? (
-                                <input
-                                    autoFocus
-                                    value={tempPallets}
-                                    onChange={e => setTempPallets(e.target.value)}
-                                    onBlur={() => savePallets(carga.id)}
-                                    onKeyDown={e => {
-                                        if (e.key === "Enter") savePallets(carga.id);
-                                        if (e.key === "Escape") setEditingPalletsFor(null);
-                                    }}
-                                    style={{
-                                        width: 60,
-                                        fontSize: 12,
-                                        padding: "0 4px",
-                                        marginLeft: 4,
-                                    }}
-                                />
-                            ) : (
-                                <span
-                                    onDoubleClick={() => {
-                                        setEditingPalletsFor(carga.id);
-                                        setTempPallets(
-                                            carga.total_pallets != null
-                                                ? String(carga.total_pallets)
-                                                : ""
-                                        );
-                                    }}
-                                    style={{ cursor: "pointer", marginLeft: 4, display: "inline-flex", alignItems: "center", gap: 6 }}
-                                >
-                                    <strong>{carga.total_pallets}</strong>
-                                    {palletsStatus[carga.id] === "success" && (
-                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e" }} />
-                                    )}
-                                    {palletsStatus[carga.id] === "error" && (
-                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444" }} />
-                                    )}
-                                </span>
-                            )}
+                            {/* Mostrar siempre total_pallets calculado desde backend (suma de n_pallets) */}
+                            <span style={{ marginLeft: 4 }}>
+                                <strong>{carga.total_pallets}</strong>
+                                {palletsStatus[carga.id] === "success" && (
+                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", marginLeft: 6, display: "inline-block" }} />
+                                )}
+                                {palletsStatus[carga.id] === "error" && (
+                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", marginLeft: 6, display: "inline-block" }} />
+                                )}
+                            </span>
                         </div>
 
                         {/* BOTÓN DETALLES */}

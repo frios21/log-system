@@ -218,4 +218,11 @@ class CargasService
             'total_pallets' => $totalPallets,
         ]);
     }
+
+    public function updateLinePallets(int $lineId, ?float $nPallets): void
+    {
+        $this->odoo->write('logistics.load.line', $lineId, [
+            'n_pallets' => $nPallets,
+        ]);
+    }
 }

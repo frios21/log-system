@@ -367,7 +367,7 @@ class RutasService
                 if (is_array($lines)) {
                     foreach ($lines as $line) {
                         $productName = $line['product_name'] ?? '';
-                        $nPallets    = $line['total_pallets'] ?? 0;
+                        $nPallets    = $line['n_pallets'] ?? 0;
 
                         if (!is_numeric($nPallets) || $nPallets <= 0) {
                             continue;
