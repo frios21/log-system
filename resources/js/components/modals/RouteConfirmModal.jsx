@@ -31,6 +31,12 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   if (!open || !ruta) return null;
 
   const waypoints = parseWaypointsField(ruta.waypoints);
+
+  const hasExplicitOrigin = waypoints.some(wp => wp && wp.type === 'origin');
+  const inferredOriginLabel = !hasExplicitOrigin && loadsDetails.length
+    ? `${loadsDetails[0].vendor_name || loadsDetails[0].name || `Carga #${loadsDetails[0].id}`}`
+    : null;
+
   const title = targetStatus === 'assigned' ? 'Comenzar ruta' : targetStatus === 'done' ? 'Finalizar ruta' : 'Confirmar';
   const totalDist = ruta.total_distance_km != null ? `${Number(ruta.total_distance_km).toFixed(2)} km` : '—';
 
@@ -44,6 +50,12 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         {title}: {ruta.name}
       </div>
       <div style={{ maxHeight: 380, overflowY: 'auto', padding: 12 }}>
+        {inferredOriginLabel && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Origen</div>
+            <div style={{ color: '#333' }}>{inferredOriginLabel}</div>
+          </div>
+        )}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>Secuencia de paradas</div>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
