@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import Sortable from "sortablejs";
 import "../../../css/RouteAssignModal.css";
+import { useCargas } from "../../api/cargas";
 
 function normalize(s = "") {
     return s.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -17,8 +18,7 @@ function intVal(v) {
 export default function RouteAssignModal({ ruta, onClose }) {
     const routeId = ruta?.id;
     const [routeDetails, setRouteDetails] = useState(ruta);
-
-    const [cargasDraft, setCargasDraft] = useState([]);
+    const { data: cargasData = [] } = useCargas();
     const [partners, setPartners] = useState([]);
 
     const [selected, setSelected] = useState(new Set());
@@ -77,11 +77,11 @@ export default function RouteAssignModal({ ruta, onClose }) {
     useEffect(() => { if (sameAsOrigin) setIsDestOpen(false); }, [sameAsOrigin]);
 
     // -------------------------------------------------------------
-    // CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS
+    // CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS (usando caché de cargas)
     // -------------------------------------------------------------
     useEffect(() => {
-        fetch(`/api/cargas?state=draft`).then(r => r.json()).then(setCargasDraft);
-        fetch(`/api/contactos`).then(r => r.json()).then(setPartners);
+        // contactos siguen viniendo directo del backend (no cacheados aún)
+        fetch(`/api/contactos`).then(r => r.json()).then(setPartners).catch(() => setPartners([]));
 
         if (!routeId) return;
 
@@ -100,17 +100,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 // ids de cargas asignadas a la ruta
                 const loadIdsFromRoute = Array.isArray(fullRoute.load_ids) ? fullRoute.load_ids : [];
 
-                let assignedUnsorted = [];
-
-                if (loadIdsFromRoute.length > 0) {
-                    const promises = loadIdsFromRoute.map(id =>
-                        fetch(`/api/cargas/${id}`)
-                            .then(r => r.json())
-                            .catch(() => null)
-                    );
-                    const results = await Promise.all(promises);
-                    assignedUnsorted = results.filter(Boolean);
-                }
+                // usamos las cargas en caché si están disponibles; si no, saltamos
+                const allCargas = Array.isArray(cargasData) ? cargasData : [];
+                const loadMapFromCache = new Map(allCargas.map(c => [c.id, c]));
+                const assignedUnsorted = loadIdsFromRoute
+                    .map(id => loadMapFromCache.get(id))
+                    .filter(Boolean);
 
                 // ordenar según waypoints -> agregar el resto
                 let waypoints = fullRoute.waypoints;
@@ -139,7 +134,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 console.error("Error cargando detalles de ruta:", err);
             }
         })();
-    }, [routeId]);
+    }, [routeId, cargasData]);
 
     // -------------------------------------------------------------
     // ESCUCHAR DISTANCIA DESDE EL MAPA (ORS en frontend)
@@ -166,8 +161,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
     }, [distanceKm, totalKg]);
 
     // -------------------------------------------------------------
-    // COMBINAR CARGAS: ordered + draft
+    // COMBINAR CARGAS: ordered + draft (usando cargas del caché)
     // -------------------------------------------------------------
+    const cargasDraft = (Array.isArray(cargasData)
+        ? cargasData.filter(c => c.state === "draft")
+        : []);
+
     const allLoads = [
         ...ordered,
         ...cargasDraft.filter(d => !selected.has(d.id))
