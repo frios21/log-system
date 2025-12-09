@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useCargas } from "../../api/cargas";
 
 // Modal para confirmar inicio o finalización de una ruta
 // Muestra detalles de la ruta: paradas, distancia, cargas asociadas
@@ -21,27 +22,11 @@ function parseWaypointsField(w) {
 }
 
 export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targetStatus }) {
-  const [loadsDetails, setLoadsDetails] = useState([]);
+  const { data: cargasData = [] } = useCargas();
 
-  useEffect(() => {
-    async function fetchLoads() {
-      if (!open || !ruta || !Array.isArray(ruta.load_ids) || !ruta.load_ids.length) {
-        setLoadsDetails([]);
-        return;
-      }
-      try {
-        // Cargar todas y filtrar; evita múltiples requests si no existe endpoint individual
-        const all = await fetch('/api/cargas').then(r => r.json()).catch(() => []);
-        if (Array.isArray(all)) {
-          const filtered = all.filter(l => ruta.load_ids.includes(l.id));
-          setLoadsDetails(filtered);
-        }
-      } catch {
-        setLoadsDetails([]);
-      }
-    }
-    fetchLoads();
-  }, [open, ruta]);
+  const loadsDetails = Array.isArray(cargasData) && ruta && Array.isArray(ruta.load_ids)
+    ? cargasData.filter(l => ruta.load_ids.includes(l.id))
+    : [];
 
   if (!open || !ruta) return null;
 
@@ -79,9 +64,10 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
             <ul style={{ margin: 0, paddingLeft: 16 }}>
               {loadsDetails.map(load => {
                 const lines = load.lines || load.load_lines || load.products || [];
+                const displayName = `${load.name || load.code || `Carga #${load.id}`} ${load.vendor_name ? `- ${load.vendor_name}` : ""}`.trim();
                 return (
                   <li key={load.id} style={{ marginBottom: 6 }}>
-                    <strong>{load.name || load.code || `Carga #${load.id}`}</strong>
+                    <strong>{displayName}</strong>
                     {Array.isArray(lines) && lines.length ? (
                       <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
                         {lines.map((ln, i) => (
