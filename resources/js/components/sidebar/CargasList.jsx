@@ -32,6 +32,7 @@ export default function CargasList() {
     const [selectedCarga, setSelectedCarga] = useState(null);
     const [editingPalletsFor, setEditingPalletsFor] = useState(null); // id carga
     const [tempPallets, setTempPallets] = useState("");
+    const [palletsStatus, setPalletsStatus] = useState({}); // { cargaId: 'success' | 'error' }
 
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
@@ -70,16 +71,28 @@ export default function CargasList() {
         }
 
         try {
-            await fetch(`/api/cargas/${cargaId}/pallets`, {
+            const res = await fetch(`/api/cargas/${cargaId}/pallets`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ total_pallets: num }),
             });
+            if (!res.ok) {
+                throw new Error("Respuesta no OK");
+            }
             await loadData();
+            setPalletsStatus(prev => ({ ...prev, [cargaId]: "success" }));
         } catch (e) {
             console.error("No se pudo actualizar los pallets", e);
+            setPalletsStatus(prev => ({ ...prev, [cargaId]: "error" }));
         } finally {
             setEditingPalletsFor(null);
+            setTimeout(() => {
+                setPalletsStatus(prev => {
+                    const copy = { ...prev };
+                    delete copy[cargaId];
+                    return copy;
+                });
+            }, 2000);
         }
     }
 
@@ -321,7 +334,7 @@ export default function CargasList() {
                                     }}
                                 />
                             ) : (
-                                <strong
+                                <span
                                     onDoubleClick={() => {
                                         setEditingPalletsFor(carga.id);
                                         setTempPallets(
@@ -330,10 +343,16 @@ export default function CargasList() {
                                                 : ""
                                         );
                                     }}
-                                    style={{ cursor: "pointer", marginLeft: 4 }}
+                                    style={{ cursor: "pointer", marginLeft: 4, display: "inline-flex", alignItems: "center", gap: 6 }}
                                 >
-                                    {carga.total_pallets}
-                                </strong>
+                                    <strong>{carga.total_pallets}</strong>
+                                    {palletsStatus[carga.id] === "success" && (
+                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e" }} />
+                                    )}
+                                    {palletsStatus[carga.id] === "error" && (
+                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444" }} />
+                                    )}
+                                </span>
                             )}
                         </div>
 
