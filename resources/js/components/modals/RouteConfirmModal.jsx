@@ -22,7 +22,9 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   const { mutateAsync: updateTotalQnt } = useUpdateRutaTotalQnt();
 
   const [totalQnt, setTotalQnt] = useState(() =>
-    Number(ruta?.total_qnt ?? ruta?.expected_qnt ?? 0)
+    ruta?.total_qnt != null
+      ? Number(ruta.total_qnt)
+      : Number(ruta?.expected_qnt ?? 0)
   );
   const [editingTotalQnt, setEditingTotalQnt] = useState(false);
   const [tempTotalQnt, setTempTotalQnt] = useState(totalQnt);
@@ -79,6 +81,9 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   const totalDist =
     ruta.total_distance_km != null ? `${Number(ruta.total_distance_km).toFixed(2)} km` : "—";
 
+  const expectedTotal =
+    ruta?.expected_qnt != null ? Number(ruta.expected_qnt) : Number(totalQnt);
+
   const handleSaveTotalQnt = () => {
     setTotalQnt(Number(tempTotalQnt) || 0);
     setEditingTotalQnt(false);
@@ -134,10 +139,12 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
             )}
           </ol>
         </div>
+
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Distancia total</div>
           <div style={{ color: "#333" }}>{totalDist}</div>
         </div>
+
         <div>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>Cargas</div>
           {loadsDetails.length ? (
@@ -170,28 +177,35 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
             <div style={{ color: "#666" }}>Sin cargas asociadas</div>
           )}
         </div>
-        <div
-          style={{ fontWeight: 600, marginTop: 8, cursor: "pointer" }}
-          onDoubleClick={() => {
-            setEditingTotalQnt(true);
-            setTempTotalQnt(totalQnt);
-          }}
-        >
-          Cantidad total:{" "}
-          {editingTotalQnt ? (
-            <input
-              autoFocus
-              type="number"
-              value={tempTotalQnt}
-              onChange={(e) => setTempTotalQnt(e.target.value)}
-              onBlur={handleSaveTotalQnt}
-              onKeyDown={(e) => e.key === "Enter" && handleSaveTotalQnt()}
-              style={{ width: 80, padding: 4 }}
-            />
-          ) : (
-            `${totalQnt} kg`
-          )}
+
+        <div style={{ fontWeight: 600, marginTop: 8 }}>
+          Cantidad total esperada: {expectedTotal} kg
         </div>
+
+        {targetStatus === "done" && (
+          <div
+            style={{ fontWeight: 600, marginTop: 6, cursor: "pointer" }}
+            onDoubleClick={() => {
+              setEditingTotalQnt(true);
+              setTempTotalQnt(totalQnt);
+            }}
+          >
+            Cantidad total real: {" "}
+            {editingTotalQnt ? (
+              <input
+                autoFocus
+                type="number"
+                value={tempTotalQnt}
+                onChange={(e) => setTempTotalQnt(e.target.value)}
+                onBlur={handleSaveTotalQnt}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveTotalQnt()}
+                style={{ width: 80, padding: 4 }}
+              />
+            ) : (
+              `${totalQnt} kg`
+            )}
+          </div>
+        )}
       </div>
       <div
         style={{
