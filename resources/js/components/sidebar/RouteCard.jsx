@@ -56,16 +56,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const costPerKg = isDone ? (realCostPerKg ?? estimatedCostPerKg) : estimatedCostPerKg;
     const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
 
-    // fecha: usar la date de la primera carga asociada
-    function getFirstLoadDate(loads) {
-        if (!Array.isArray(loads) || !loads.length) return null;
-        const first = loads[0];
-        if (!first || !first.date) return null;
-
-        // first.date viene tipo "2025-12-09T00:00:00" o "2025-12-09"
-        const raw = first.date.split("T")[0]; // "YYYY-MM-DD"
-        return raw || null;
-    }
+    const [routeDate, setRouteDate] = useState(ruta.date || "");
 
     const unifiedDate = getFirstLoadDate(ruta.loads || []);
 
@@ -216,7 +207,30 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
             <div style={{ marginTop: 8, color: "#333", display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 <div>
                     <div style={{ fontSize: 11, color: '#666' }}>Fecha</div>
-                    <div>{unifiedDate || '—'}</div>
+                    <input
+                        type="date"
+                        value={routeDate ? routeDate.split("T")[0] : ""}
+                        onChange={(e) => setRouteDate(e.target.value)}
+                        onBlur={async () => {
+                            if (!routeDate) return;
+                            try {
+                                await fetch(`/api/rutas/${ruta.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ date: routeDate }),
+                                });
+                            } catch (err) {
+                                console.error("No se pudo actualizar la fecha de la ruta", err);
+                            }
+                        }}
+                        style={{
+                            fontSize: 12,
+                            padding: "2px 4px",
+                            borderRadius: 4,
+                            border: "1px solid #ccc",
+                            width: "100%",
+                        }}
+                    />
                 </div>
                 <div>
                     <div style={{ fontSize: 11, color: '#666' }}>
