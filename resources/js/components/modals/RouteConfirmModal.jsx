@@ -104,7 +104,7 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
                       <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
                         {lines.map((ln, i) => (
                           <li key={i} style={{ marginBottom: 2 }}>
-                            {(ln.product_name || ln.product || ln.name || 'Producto')} — {(ln.quantity ?? ln.qty ?? ln.cantidad ?? 0)}
+                            {(ln.product_name || ln.product || ln.name || 'Producto')} — {(ln.quantity ?? ln.qty ?? ln.cantidad ?? 0)} kg
                           </li>
                         ))}
                       </ul>
