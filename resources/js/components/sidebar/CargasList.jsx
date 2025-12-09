@@ -10,10 +10,8 @@ function formatCargaDate(raw) {
     const [year, month, day] = d.split("-").map(Number);
     const [hour, minute, second] = t.split(":").map(Number);
 
-    // Creamos la fecha asumiendo que viene tal cual desde Odoo
     const dt = new Date(year, month - 1, day, hour, minute, second || 0);
 
-    // Restamos 3 horas
     const fixed = new Date(dt.getTime() - 3 * 60 * 60 * 1000);
 
     const date = fixed.toLocaleDateString("es-CL");
@@ -32,6 +30,8 @@ function formatCargaDate(raw) {
 export default function CargasList() {
     const [cargas, setCargas] = useState([]);
     const [selectedCarga, setSelectedCarga] = useState(null);
+    const [editingPalletsFor, setEditingPalletsFor] = useState(null); // id carga
+    const [tempPallets, setTempPallets] = useState("");
 
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
@@ -59,6 +59,29 @@ export default function CargasList() {
         window.addEventListener("cargas-refresh", handleRefresh);
         return () => window.removeEventListener("cargas-refresh", handleRefresh);
     }, []);
+
+    async function savePallets(cargaId) {
+        const value = tempPallets.trim();
+        const num = value === "" ? null : Number(value);
+
+        if (value !== "" && (isNaN(num) || num < 0)) {
+            setEditingPalletsFor(null);
+            return;
+        }
+
+        try {
+            await fetch(`/api/cargas/${cargaId}/pallets`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ total_pallets: num }),
+            });
+            await loadData();
+        } catch (e) {
+            console.error("No se pudo actualizar los pallets", e);
+        } finally {
+            setEditingPalletsFor(null);
+        }
+    }
 
     function normalizeString(s = "") {
         return s.toString()
@@ -280,7 +303,38 @@ export default function CargasList() {
                         {/* Info */}
                         <div className="text-small" style={{ marginTop: "10px" }}>
                             Cantidad: <strong>{carga.total_quantity} kg</strong> — Pallets:{" "}
-                            <strong>{carga.total_pallets}</strong>
+                            {editingPalletsFor === carga.id ? (
+                                <input
+                                    autoFocus
+                                    value={tempPallets}
+                                    onChange={e => setTempPallets(e.target.value)}
+                                    onBlur={() => savePallets(carga.id)}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter") savePallets(carga.id);
+                                        if (e.key === "Escape") setEditingPalletsFor(null);
+                                    }}
+                                    style={{
+                                        width: 60,
+                                        fontSize: 12,
+                                        padding: "0 4px",
+                                        marginLeft: 4,
+                                    }}
+                                />
+                            ) : (
+                                <strong
+                                    onDoubleClick={() => {
+                                        setEditingPalletsFor(carga.id);
+                                        setTempPallets(
+                                            carga.total_pallets != null
+                                                ? String(carga.total_pallets)
+                                                : ""
+                                        );
+                                    }}
+                                    style={{ cursor: "pointer", marginLeft: 4 }}
+                                >
+                                    {carga.total_pallets}
+                                </strong>
+                            )}
                         </div>
 
                         {/* BOTÓN DETALLES */}

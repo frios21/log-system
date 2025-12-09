@@ -79,4 +79,23 @@ class LoadController extends Controller
     {
         //
     }
+
+    public function updatePallets(int $id, Request $request)
+    {
+        $validated = $request->validate([
+            'total_pallets' => ['nullable', 'numeric', 'min:0'],
+        ]);
+    
+        $value = $validated['total_pallets'] ?? null;
+    
+        try {
+            $this->service->updateTotalPallets($id, $value);
+            return response()->json(['ok' => true]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
