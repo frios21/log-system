@@ -56,15 +56,21 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const costPerKg = isDone ? (realCostPerKg ?? estimatedCostPerKg) : estimatedCostPerKg;
     const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
 
-    // fecha: si todas las cargas comparten la misma fecha
-    function extractUnifiedDate(loads) {
+    // fecha: usar la date de la primera carga de la lista
+    function getFirstLoadDate(loads) {
         if (!Array.isArray(loads) || !loads.length) return null;
-        const dates = loads.map(l => (l.date || '').split('T')[0]).filter(Boolean);
-        if (!dates.length) return null;
-        const allSame = dates.every(d => d === dates[0]);
-        return allSame ? dates[0] : null;
+        const first = loads[0];
+        if (!first?.date) return null;
+
+        const d = new Date(first.date);
+        if (isNaN(d.getTime())) return null;
+
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`; // o el formato que prefieras
     }
-    const unifiedDate = extractUnifiedDate(ruta.loads || []);
+    const unifiedDate = getFirstLoadDate(ruta.loads || []);
 
     function toggleVisible(e) {
         window.dispatchEvent(
