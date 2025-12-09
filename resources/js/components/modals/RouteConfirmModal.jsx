@@ -33,9 +33,31 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   const waypoints = parseWaypointsField(ruta.waypoints);
 
   const hasExplicitOrigin = waypoints.some(wp => wp && wp.type === 'origin');
-  const inferredOriginLabel = !hasExplicitOrigin && loadsDetails.length
-    ? `${loadsDetails[0].vendor_name || loadsDetails[0].name || `Carga #${loadsDetails[0].id}`}`
-    : null;
+
+  const prettyStops = (() => {
+    if (!Array.isArray(waypoints) || waypoints.length === 0) return [];
+
+    const stops = [];
+
+    if (!hasExplicitOrigin && loadsDetails.length) {
+      const firstLoad = loadsDetails[0];
+      const cargaName = firstLoad.name || firstLoad.code || `Carga #${firstLoad.id}`;
+      const vendor = firstLoad.vendor_name ? ` - ${firstLoad.vendor_name}` : "";
+      stops.push(`Origen: ${cargaName}${vendor}`);
+    }
+
+    waypoints.forEach((wp, idx) => {
+      if (!wp) return;
+      const baseLabel = wp.label || (wp.type === 'origin'
+        ? 'Origen'
+        : wp.type === 'destination'
+          ? 'Destino'
+          : `Punto ${idx + 1}`);
+      stops.push(baseLabel);
+    });
+
+    return stops;
+  })();
 
   const title = targetStatus === 'assigned' ? 'Comenzar ruta' : targetStatus === 'done' ? 'Finalizar ruta' : 'Confirmar';
   const totalDist = ruta.total_distance_km != null ? `${Number(ruta.total_distance_km).toFixed(2)} km` : '—';
@@ -50,20 +72,13 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         {title}: {ruta.name}
       </div>
       <div style={{ maxHeight: 380, overflowY: 'auto', padding: 12 }}>
-        {inferredOriginLabel && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Origen</div>
-            <div style={{ color: '#333' }}>{inferredOriginLabel}</div>
-          </div>
-        )}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>Secuencia de paradas</div>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
-            {waypoints.map((wp, idx) => {
-              const label = wp.label || (wp.type === 'origin' ? 'Origen' : wp.type === 'destination' ? 'Destino' : `Punto ${idx+1}`);
-              return <li key={idx} style={{ marginBottom: 4 }}>{label}</li>;
-            })}
-            {!waypoints.length && <li style={{ color: '#666' }}>Sin paradas</li>}
+            {prettyStops.map((label, idx) => (
+              <li key={idx} style={{ marginBottom: 4 }}>{label}</li>
+            ))}
+            {!prettyStops.length && <li style={{ color: '#666' }}>Sin paradas</li>}
           </ol>
         </div>
         <div style={{ marginBottom: 12 }}>
