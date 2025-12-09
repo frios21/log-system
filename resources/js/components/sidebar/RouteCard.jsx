@@ -178,8 +178,9 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
         >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <input type="checkbox"
-                        defaultChecked={true}
+                    <input
+                        type="checkbox"
+                        defaultChecked={localStatus !== 'done'}
                         onChange={toggleVisible}
                     />
                     {editing ? (
