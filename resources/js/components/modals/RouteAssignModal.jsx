@@ -34,7 +34,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
     const [originId, setOriginId] = useState(null);
     const [destinationId, setDestinationId] = useState(null);
-    const [sameAsOrigin, setSameAsOrigin] = useState(true);
+    const [sameAsOrigin, setSameAsOrigin] = useState(false);
 
     const COSTO_POR_KM = 1000;
     const [distanceKm, setDistanceKm] = useState(ruta.total_distance_km ?? 0);
