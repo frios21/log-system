@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useCargas } from "../../api/cargas";
-import { useUpdateRutaRealQnt } from "../../api/rutas";
 
 // Modal para confirmar inicio o finalización de una ruta
 // Muestra detalles de la ruta: paradas, distancia, cargas asociadas
@@ -68,38 +67,6 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   const title = targetStatus === 'assigned' ? 'Comenzar ruta' : targetStatus === 'done' ? 'Finalizar ruta' : 'Confirmar';
   const totalDist = ruta.total_distance_km != null ? `${Number(ruta.total_distance_km).toFixed(2)} km` : '—';
 
-  const [totalKg, setTotalKg] = useState(() => {
-    return loadsDetails.reduce((sum, load) => {
-      const lines = load.lines || load.load_lines || load.products || [];
-      const loadKg = Array.isArray(lines)
-        ? lines.reduce((lineSum, ln) => lineSum + (ln.quantity ?? ln.qty ?? ln.cantidad ?? 0), 0)
-        : 0;
-      return sum + loadKg;
-    }, 0);
-  });
-
-  const [editingTotal, setEditingTotal] = useState(false);
-  const [tempTotal, setTempTotal] = useState(totalKg);
-
-  const handleSaveTotal = () => {
-    setTotalKg(Number(tempTotal) || 0);
-    setEditingTotal(false);
-  };
-
-  const { mutateAsync: updateRealQnt } = useUpdateRutaRealQnt();
-
-  const handleConfirm = async () => {
-    if (targetStatus === 'done') {
-      try {
-        await updateRealQnt({ id: ruta.id, real_qnt: totalKg });
-      } catch (e) {
-        // opcional: podrías mostrar un mensaje de error
-        console.error('Error actualizando real_qnt', e);
-      }
-    }
-    onConfirm();
-  };
-
   const modalContent = (
     <div style={{
       position: 'fixed', left: 12, top: 72, width: 340,
@@ -152,25 +119,11 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
             <div style={{ color: '#666' }}>Sin cargas asociadas</div>
           )}
         </div>
-        <div style={{ fontWeight: 600, marginBottom: 6, cursor: 'pointer' }} onDoubleClick={() => { setEditingTotal(true); setTempTotal(totalKg); }}>
-          {targetStatus === 'assigned' ? 'Cantidad total estimada' : 'Cantidad total'}: {editingTotal ? (
-            <input
-              autoFocus
-              type="number"
-              value={tempTotal}
-              onChange={(e) => setTempTotal(e.target.value)}
-              onBlur={handleSaveTotal}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveTotal()}
-              style={{ width: 60, padding: 4 }}
-            />
-          ) : (
-            `${totalKg} kg`
-          )}
-        </div>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}> Cantidad total estimada: {totalKg} kg </div>
       </div>
       <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid #eee', justifyContent: 'flex-end' }}>
         <button className="btn" onClick={onClose} style={{ background: '#f5f5f5' }}>Cancelar</button>
-        <button className="btn btn-primary" onClick={handleConfirm}>
+        <button className="btn btn-primary" onClick={onConfirm}>
           {targetStatus === 'assigned' ? 'Confirmar inicio' : targetStatus === 'done' ? 'Confirmar fin' : 'Confirmar'}
         </button>
       </div>
