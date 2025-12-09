@@ -66,13 +66,7 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
   const title = targetStatus === 'assigned' ? 'Comenzar ruta' : targetStatus === 'done' ? 'Finalizar ruta' : 'Confirmar';
   const totalDist = ruta.total_distance_km != null ? `${Number(ruta.total_distance_km).toFixed(2)} km` : '—';
-  const totalKg = loadsDetails.reduce((sum, load) => {
-    const lines = load.lines || load.load_lines || load.products || [];
-    const loadKg = Array.isArray(lines)
-      ? lines.reduce((s, ln) => s + (ln.quantity ?? ln.qty ?? ln.cantidad ?? 0), 0)
-      : 0;
-    return sum + loadKg;
-  }, 0);
+  const totalKg = load.expected_qnt
 
   const modalContent = (
     <div style={{
