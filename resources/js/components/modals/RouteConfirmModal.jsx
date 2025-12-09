@@ -48,6 +48,11 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
     waypoints.forEach((wp, idx) => {
       if (!wp) return;
+
+      if (!hasExplicitOrigin && loadsDetails.length && wp.load_id === loadsDetails[0].id) {
+        return;
+      }
+
       const baseLabel = wp.label || (wp.type === 'origin'
         ? 'Origen'
         : wp.type === 'destination'
