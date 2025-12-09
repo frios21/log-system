@@ -15,6 +15,7 @@ export default function RoutesList() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
+    const [filterDate, setFilterDate] = useState(""); // YYYY-MM-DD
 
     // datos base desde React Query
     const rutas = Array.isArray(rutasData) ? rutasData : [];
@@ -50,6 +51,15 @@ export default function RoutesList() {
 
     const visibleRutas = rutas.filter((r) => {
         if (statusFilter && r.status !== statusFilter) return false;
+
+        // Filtro por fecha (frontend): comparamos YYYY-MM-DD
+        if (filterDate) {
+            const rawDate = r.estimated_date || r.date || "";
+            if (!rawDate) return false;
+            const ymd = rawDate.split("T")[0];
+            if (ymd !== filterDate) return false;
+        }
+
         if (!q) return true;
         const name = normalizeString(r.name || "");
         const idStr = String(r.id || "");
@@ -73,6 +83,13 @@ export default function RoutesList() {
                     <option value="assigned">Asignadas</option>
                     <option value="delivered">Entregadas</option>
                 </select>
+                <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="input"
+                    style={{ width: 150 }}
+                />
             </div>
 
             {visibleRutas.map((r, i) => (
