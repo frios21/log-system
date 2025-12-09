@@ -426,9 +426,11 @@ export default function MapView() {
       if (!active) return;
 
       for (const r of rutas) {
+        if (r.status === "done") continue;
+
         const waypoints = parseWaypointsField(r.waypoints);
-        if (!waypoints.length) continue; 
-        
+        if (!waypoints.length) continue;
+
         if (routesLayers.current[r.id] && routesLayers.current[r.id].polyline) continue;
 
         await drawRouteOnMap(r.id, waypoints, false, r.status);

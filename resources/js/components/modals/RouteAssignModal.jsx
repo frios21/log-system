@@ -536,9 +536,25 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                 }
                             }
 
+                            const hasLocation =
+                                c.partner &&
+                                c.partner.latitude !== 0 &&
+                                c.partner.longitude !== 0 &&
+                                c.partner.latitude != null &&
+                                c.partner.longitude != null;
+
                             return (
                                 <div key={c.id} className="order-item">
-                                    <div className="carga-item selected" style={{ cursor: "grab" }}>
+                                    <div
+                                        className="carga-item selected"
+                                        style={{
+                                            cursor: "grab",
+                                            borderColor: hasLocation ? undefined : "#e74c3c",
+                                            boxShadow: hasLocation
+                                                ? undefined
+                                                : "0 0 0 1px rgba(231,76,60,0.4)",
+                                        }}
+                                    >
                                         <div style={{display: "flex", gap: "8px", alignItems: "center", width: "100%"}}>
                                             <span className="drag-handle">☰</span>
                                             <div style={{flex: 1}}>
@@ -549,8 +565,15 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                                 )}
                                                 <div className="carga-title">{c.name}</div>
                                                 <div className="carga-sub">{c.vendor_name}</div>
-                                                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-                                                    Pallets: {c.total_pallets ?? "-"}
+                                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                                                    <div style={{ fontSize: 11, color: "#666" }}>
+                                                        Pallets: {c.total_pallets ?? "-"}
+                                                    </div>
+                                                    {!hasLocation && (
+                                                        <div style={{ fontSize: 11, color: "#e74c3c" }}>
+                                                            Sin ubicación
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <label style={{display:"flex", alignItems:"center", gap:6}}>
