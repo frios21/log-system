@@ -56,20 +56,17 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const costPerKg = isDone ? (realCostPerKg ?? estimatedCostPerKg) : estimatedCostPerKg;
     const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
 
-    // fecha: usar la date de la primera carga de la lista
+    // fecha: usar la date de la primera carga asociada
     function getFirstLoadDate(loads) {
         if (!Array.isArray(loads) || !loads.length) return null;
         const first = loads[0];
-        if (!first?.date) return null;
+        if (!first || !first.date) return null;
 
-        const d = new Date(first.date);
-        if (isNaN(d.getTime())) return null;
-
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`; // o el formato que prefieras
+        // first.date viene tipo "2025-12-09T00:00:00" o "2025-12-09"
+        const raw = first.date.split("T")[0]; // "YYYY-MM-DD"
+        return raw || null;
     }
+
     const unifiedDate = getFirstLoadDate(ruta.loads || []);
 
     function toggleVisible(e) {
