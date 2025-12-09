@@ -453,7 +453,6 @@ class RutasService
             $distKm = (float) request()->input('distance_km');
         }
 
-        // Para el preview también devolvemos cantidad esperada y coste por kg estimado
         $totalCost = null;
         if (request()->has('total_cost')) {
             $totalCost = (float) request()->input('total_cost');
@@ -645,5 +644,12 @@ class RutasService
         }
 
         return true;
+    }
+
+    public function actualizarRealQnt(int $routeId, float $realQnt): bool
+    {
+        return $this->odoo->write('logistics.route', $routeId, [
+            'real_qnt' => $realQnt,
+        ]);
     }
 }

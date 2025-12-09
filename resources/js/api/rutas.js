@@ -141,3 +141,21 @@ export function useActualizarEstadoRuta() {
         },
     });
 }
+
+// Actualizar cantidad real (real_qnt) de una ruta
+export function useUpdateRutaRealQnt() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, real_qnt }) => {
+            const { data } = await apiClient.patch(`/rutas/${id}/real-qnt`, { real_qnt });
+            return data;
+        },
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["rutas"] });
+            if (variables?.id) {
+                queryClient.invalidateQueries({ queryKey: ["ruta", variables.id] });
+            }
+        },
+    });
+}

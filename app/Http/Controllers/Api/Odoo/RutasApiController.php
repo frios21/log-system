@@ -67,6 +67,23 @@ class RutasApiController extends Controller
         ]);
     }
 
+    public function updateRealQnt(int $id, Request $request)
+    {
+        $data = $request->validate([
+            'real_qnt' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $ok = $this->rutas->actualizarRealQnt($id, (float) $data['real_qnt']);
+            return response()->json(['success' => (bool) $ok]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function evaluarDesviacion(Request $request)
     {
         $km_original = $request->km_original;
