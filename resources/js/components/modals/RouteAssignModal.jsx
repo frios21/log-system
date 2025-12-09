@@ -544,12 +544,19 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                 c.partner.longitude != null;
 
                             return (
-                                <div key={c.id} className="order-item">
+                                <div
+                                    key={c.id}
+                                    className="order-item"
+                                    style={{
+                                        backgroundColor: hasLocation ? undefined : "#fdecea",
+                                        borderRadius: 8,
+                                    }}
+                                >
                                     <div
                                         className="carga-item selected"
                                         style={{
                                             cursor: "grab",
-                                            backgroundColor: hasLocation ? undefined : "#fdecea",
+                                            backgroundColor: "transparent",
                                             color: hasLocation ? undefined : "#c0392b",
                                         }}
                                     >
