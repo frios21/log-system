@@ -18,7 +18,7 @@ class RutasService
         return $this->odoo->searchRead(
             'logistics.route',
             [],
-            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
     }
 
@@ -27,7 +27,7 @@ class RutasService
         $routes = $this->odoo->searchRead(
             'logistics.route',
             [['id','=', $id]],
-            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
 
         $route = $routes[0] ?? null;
