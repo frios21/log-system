@@ -208,7 +208,8 @@ export default function MapView() {
           const pos = item.position || {};
           const lat = pos.latitude;
           const lon = pos.longitude;
-          const deviceId = item.traccar_device_id;
+          const rawId = item.traccar_device_id ?? pos.deviceId ?? item.traccar_internal_id;
+          const deviceId = rawId != null ? String(rawId) : null;
           if (lat == null || lon == null || deviceId == null) return;
 
           seen.add(deviceId);
@@ -238,11 +239,10 @@ export default function MapView() {
 
         // remover marcadores que no llegaron en esta actualización
         Object.keys(traccarMarkersRef.current).forEach(idStr => {
-          const id = Number(idStr);
-          if (!seen.has(id)) {
-            const m = traccarMarkersRef.current[id];
+          if (!seen.has(idStr)) {
+            const m = traccarMarkersRef.current[idStr];
             if (m && map.hasLayer(m)) map.removeLayer(m);
-            delete traccarMarkersRef.current[id];
+            delete traccarMarkersRef.current[idStr];
           }
         });
 
