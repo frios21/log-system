@@ -29,8 +29,9 @@ export default function ContactsList() {
     const filtered = contactos.filter(c => {
         if (!search.trim()) return true;
         const s = search.toLowerCase();
+        const display = (c.display_name || c.name || "").toLowerCase();
         return (
-            (c.name && c.name.toLowerCase().includes(s)) ||
+            (display && display.includes(s)) ||
             (c.street && c.street.toLowerCase().includes(s)) ||
             (c.city && c.city.toLowerCase().includes(s)) ||
             (c.id && String(c.id).includes(s))
@@ -59,7 +60,7 @@ export default function ContactsList() {
             {filtered.map(c => (
                 <div key={c.id} className="card" style={{ padding: 10, marginBottom: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div className="card-title">{c.name}</div>
+                        <div className="card-title">{c.display_name || c.name}</div>
 
                         {(c.latitude && c.longitude) && (
                             <button

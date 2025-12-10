@@ -72,16 +72,23 @@ class ContactosService
                 'search_read',
                 [[['active', '=', true]]],
                 [
-                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street','is_company'],
+                    // display_name en Odoo ya viene como "Padre, Hijo" cuando aplica
+                    'fields' => ['id','name','display_name','phone','email','partner_latitude','partner_longitude','street','is_company','parent_id'],
                     'limit'  => 0,
                 ]
             ]
         );
 
-        // Normalizar claves para el frontend (latitude/longitude)
+        // Normalizar claves para el frontend (latitude/longitude) y exponer display_name
         return array_map(function ($r) {
             $r['latitude'] = $r['partner_latitude'] ?? ($r['latitude'] ?? null);
             $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+
+            // Aseguramos una clave display_name amigable; si no viene, usamos name
+            if (!isset($r['display_name']) || !$r['display_name']) {
+                $r['display_name'] = $r['name'] ?? null;
+            }
+
             return $r;
         }, $rows);
     }
@@ -100,7 +107,7 @@ class ContactosService
                 // ilike para que sea más tolerante a mayúsculas/espacios
                 [[['active', '=', true], ['name', 'ilike', $name]]],
                 [
-                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street','is_company'],
+                    'fields' => ['id','name','display_name','phone','email','partner_latitude','partner_longitude','street','is_company','parent_id'],
                     'limit'  => 1,
                 ]
             ]
@@ -111,6 +118,9 @@ class ContactosService
         $r = $rows[0];
         $r['latitude']  = $r['partner_latitude']  ?? ($r['latitude'] ?? null);
         $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+        if (!isset($r['display_name']) || !$r['display_name']) {
+            $r['display_name'] = $r['name'] ?? null;
+        }
 
         return $r;
     }
@@ -132,7 +142,7 @@ class ContactosService
                 'search_read',
                 [[['active', '=', true], ['is_company', '=', false]]],
                 [
-                    'fields' => ['id','name','phone','email','partner_latitude','partner_longitude','street','is_company'],
+                    'fields' => ['id','name','display_name','phone','email','partner_latitude','partner_longitude','street','is_company','parent_id'],
                     'limit'  => 0,
                 ]
             ]
@@ -141,6 +151,9 @@ class ContactosService
         return array_map(function ($r) {
             $r['latitude'] = $r['partner_latitude'] ?? ($r['latitude'] ?? null);
             $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+            if (!isset($r['display_name']) || !$r['display_name']) {
+                $r['display_name'] = $r['name'] ?? null;
+            }
             return $r;
         }, $rows);
     }

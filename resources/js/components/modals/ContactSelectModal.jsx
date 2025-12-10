@@ -13,8 +13,9 @@ export default function ContactSelectModal({
         const s = search.trim().toLowerCase();
         if (!s) return contacts;
         return contacts.filter((c) => {
+            const display = (c.display_name || c.name || "").toLowerCase();
             return (
-                (c.name && c.name.toLowerCase().includes(s)) ||
+                (display && display.includes(s)) ||
                 (c.street && c.street.toLowerCase().includes(s)) ||
                 (c.city && c.city.toLowerCase().includes(s)) ||
                 (c.id && String(c.id).includes(s))
@@ -63,7 +64,7 @@ export default function ContactSelectModal({
                                 }}
                                 onClick={() => onSelect && onSelect(c)}
                             >
-                                <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{c.display_name || c.name}</div>
                                 {(c.street || c.city) && (
                                     <div style={{ fontSize: 11, color: "#6b7280" }}>
                                         {c.street} {c.city}
