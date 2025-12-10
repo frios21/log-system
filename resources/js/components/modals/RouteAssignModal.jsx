@@ -19,8 +19,13 @@ function intVal(v) {
 export default function RouteAssignModal({ ruta, onClose }) {
     const routeId = ruta?.id;
     const [routeDetails, setRouteDetails] = useState(ruta);
-    const { data: cargasData = [] } = useCargas();
+    const {
+        data: cargasData = [],
+        isLoading: isLoadingCargas,
+        isFetching: isFetchingCargas,
+    } = useCargas();
     const [partners, setPartners] = useState([]);
+    const [contactsLoading, setContactsLoading] = useState(false);
 
     const [selected, setSelected] = useState(new Set());
     const [ordered, setOrdered] = useState([]);
@@ -49,6 +54,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
     const [isDestOpen, setIsDestOpen] = useState(false);
 
     const [saving, setSaving] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     // para no volver a pisar origen/destino después de inicializarlos
     const initializedFromRouteRef = useRef(false);
@@ -84,7 +90,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // -------------------------------------------------------------
     useEffect(() => {
         // contactos siguen viniendo directo del backend (no cacheados aún)
-        fetch(`/api/contactos`).then(r => r.json()).then(setPartners).catch(() => setPartners([]));
+        setContactsLoading(true);
+        fetch(`/api/contactos`)
+            .then(r => r.json())
+            .then(setPartners)
+            .catch(() => setPartners([]))
+            .finally(() => setContactsLoading(false));
 
         if (!routeId) return;
 
@@ -222,13 +233,17 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
     function triggerPreviewDebounced() {
         if (recalcTimeoutRef.current) clearTimeout(recalcTimeoutRef.current);
+        setPreviewLoading(true);
         recalcTimeoutRef.current = setTimeout(() => {
             performPreview();
         }, 300);
     }
 
     async function performPreview() {
-        if (!routeId) return;
+        if (!routeId) {
+            setPreviewLoading(false);
+            return;
+        }
 
         // 1. Origen
         let origin = partners.find(p => p.id === originId);
@@ -245,12 +260,18 @@ export default function RouteAssignModal({ ruta, onClose }) {
           }
         }
 
-        if (!origin) return;
+        if (!origin) {
+            setPreviewLoading(false);
+            return;
+        }
 
         // 2. Destino
         let destId = sameAsOrigin ? originId : destinationId;
         const destination = partners.find(p => p.id === destId);
-        if (!destination) return;
+        if (!destination) {
+            setPreviewLoading(false);
+            return;
+        }
 
         // 3. IDs de cargas en el orden seleccionado
         const loadIds = ordered.map(c => c.id);
@@ -289,6 +310,8 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
         } catch (err) {
             console.error("Error en preview:", err);
+        } finally {
+            setPreviewLoading(false);
         }
     }
 
@@ -381,10 +404,14 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // -------------------------------------------------------------
     // Render
     // -------------------------------------------------------------
+    const cargasLoading = isLoadingCargas || isFetchingCargas;
+    const isBusy = saving || previewLoading || contactsLoading || cargasLoading;
+    const busyLabel = saving ? "Guardando..." : "Cargando...";
+
     return (
        <div className="modal-backdrop">
            <div className="route-modal" style={{ position: "relative" }}>
-                {saving && (
+                {isBusy && (
                     <div
                         style={{
                             position: "absolute",
@@ -401,7 +428,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
                         }}
                     >
                         <CircleLoader size={18} />
-                        <span style={{ fontSize: 12, color: "#374151" }}>Cargando...</span>
+                        <span style={{ fontSize: 12, color: "#374151" }}>{busyLabel}</span>
                     </div>
                 )}
                 {/* IZQUIERDA */}

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { useCargas } from "../../api/cargas";
 import { useUpdateRutaTotalQnt } from "../../api/rutas";
+import CircleLoader from "../common/CircleLoader";
 
 function parseWaypointsField(w) {
   if (!w) return [];
@@ -28,6 +29,7 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   );
   const [editingTotalQnt, setEditingTotalQnt] = useState(false);
   const [tempTotalQnt, setTempTotalQnt] = useState(totalQnt);
+  const [saving, setSaving] = useState(false);
 
   if (!open || !ruta) return null;
 
@@ -90,14 +92,25 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   };
 
   const handleConfirm = async () => {
-    if (targetStatus === "done") {
-      try {
-        await updateTotalQnt({ id: ruta.id, total_qnt: totalQnt });
-      } catch (e) {
-        console.error("Error actualizando total_qnt", e);
+    if (saving) return;
+
+    try {
+      setSaving(true);
+
+      if (targetStatus === "done") {
+        try {
+          await updateTotalQnt({ id: ruta.id, total_qnt: totalQnt });
+        } catch (e) {
+          console.error("Error actualizando total_qnt", e);
+        }
       }
+
+      if (onConfirm) {
+        await onConfirm();
+      }
+    } finally {
+      setSaving(false);
     }
-    onConfirm();
   };
 
   const modalContent = (
@@ -116,6 +129,26 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         fontSize: 13,
       }}
     >
+      {saving && (
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 8px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.9)",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+            zIndex: 1,
+          }}
+        >
+          <CircleLoader size={18} />
+          <span style={{ fontSize: 12, color: "#374151" }}>Guardando...</span>
+        </div>
+      )}
       <div
         style={{
           padding: "10px 12px",
@@ -219,11 +252,16 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         <button
           className="btn"
           onClick={onClose}
+          disabled={saving}
           style={{ background: "#f5f5f5" }}
         >
           Cancelar
         </button>
-        <button className="btn btn-primary" onClick={handleConfirm}>
+        <button
+          className="btn btn-primary"
+          onClick={handleConfirm}
+          disabled={saving}
+        >
           {targetStatus === "assigned"
             ? "Confirmar inicio"
             : targetStatus === "done"
