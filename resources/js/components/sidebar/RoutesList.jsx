@@ -4,6 +4,7 @@ import RouteAssignModal from "../modals/RouteAssignModal";
 import VehicleAssignModal from "../modals/VehicleAssignModal";
 import CircleLoader from "../common/CircleLoader";
 import { useRutas } from "../../api/rutas";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Componente que lista las rutas
 // permite crear, eliminar, asignar rutas junto a
@@ -11,6 +12,7 @@ import { useRutas } from "../../api/rutas";
 
 export default function RoutesList() {
     const { data: rutasData = [], refetch, isLoading } = useRutas();
+    const queryClient = useQueryClient();
     const [openAssignFor, setOpenAssignFor] = useState(null);
     const [openVehicleAssignFor, setOpenVehicleAssignFor] = useState(null);
     const [search, setSearch] = useState("");
@@ -40,6 +42,9 @@ export default function RoutesList() {
         try {
             await fetch(`/api/rutas/${id}`, { method: "DELETE" });
             refetch();
+            // al borrar una ruta, las cargas asociadas pueden cambiar de estado
+            // -> invalidamos "cargas" para que sus colores se actualicen
+            queryClient.invalidateQueries({ queryKey: ["cargas"] });
         } catch (e) {
             console.error(e);
         }

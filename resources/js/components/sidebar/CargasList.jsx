@@ -30,7 +30,7 @@ function formatCargaDate(raw) {
 // incluye filtros de búsqueda, estado y rango de fechas dentro de un desplegable
 
 export default function CargasList() {
-    const { data: cargasData = [], isLoading, isFetching } = useCargas();
+    const { data: cargasData = [], isLoading, isFetching, refetch } = useCargas();
     const [selectedCarga, setSelectedCarga] = useState(null);
     const [editingPalletsFor, setEditingPalletsFor] = useState(null); // id carga (no usado ahora, pero dejamos por si se reusa)
     const [tempPallets, setTempPallets] = useState("");
@@ -48,6 +48,19 @@ export default function CargasList() {
 
     // datos base desde React Query
     const cargas = Array.isArray(cargasData) ? cargasData : [];
+
+    async function createCarga() {
+        try {
+            const res = await fetch("/api/cargas", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+            await res.json();
+            refetch();
+        } catch (e) {
+            console.error(e);
+        }
+    }
 
     useEffect(() => {
         function handleRefresh() { loadData(); }
@@ -130,25 +143,29 @@ export default function CargasList() {
         <>
             {/* ---- FILTROS (DESPLEGABLE) ---- */}
             <div style={{ marginBottom: 10 }}>
-                {/* Botón/Chip "Filtros" que abre/cierra */}
-                <button
-                    type="button"
-                    className="btn btn-outlined"
-                    onClick={() => setShowFilters(v => !v)}
-                    style={{
-                        padding: "2px 8px",
-                        fontSize: 12,
-                        borderRadius: 999,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                    }}
-                >
-                    Filtros
-                    <span style={{ fontSize: 10 }}>
-                        {showFilters ? "▲" : "▼"}
-                    </span>
-                </button>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    {/* Botón/Chip "Filtros" que abre/cierra */}
+                    <button
+                        type="button"
+                        className="btn btn-outlined"
+                        onClick={() => setShowFilters(v => !v)}
+                        style={{
+                            padding: "2px 8px",
+                            fontSize: 12,
+                            borderRadius: 999,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                        }}
+                    >
+                        Filtros
+                        <span style={{ fontSize: 10 }}>
+                            {showFilters ? "▲" : "▼"}
+                        </span>
+                    </button>
+
+                    <button className="btn btn-primary" onClick={createCarga}>+</button>
+                </div>
 
                 {showFilters && (
                     <div

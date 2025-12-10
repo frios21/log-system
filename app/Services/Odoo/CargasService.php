@@ -225,4 +225,28 @@ class CargasService
             'n_pallets' => $nPallets,
         ]);
     }
+
+    /**
+     * Crea una "carga manual" vacía en Odoo (logistics.load),
+     * similar a como se crea una ruta nueva.
+     */
+    public function crearManual(): array
+    {
+        $name = 'Carga manual ' . date('Y-m-d H:i');
+
+        $vals = [
+            'name'           => $name,
+            'state'          => 'draft',
+            'total_quantity' => 0,
+            'total_pallets'  => 0,
+            'date'           => date('Y-m-d H:i:s'),
+        ];
+
+        $id = $this->odoo->create('logistics.load', $vals);
+
+        return [
+            'id'   => $id,
+            'name' => $name,
+        ];
+    }
 }

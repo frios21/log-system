@@ -43,7 +43,11 @@ class LoadController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        // Por ahora creamos una "carga manual" vacía en Odoo,
+        // similar a como se crea una ruta nueva.
+        $created = $this->service->crearManual();
+
+        return response()->json($created, 201);
     }
 
     /**

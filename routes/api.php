@@ -31,6 +31,7 @@ Route::middleware('api')->group(function () {
     // =====================
     Route::get('/cargas', [LoadController::class, 'index']);
     Route::get('/cargas/{id}', [LoadController::class, 'show']);
+    Route::post('/cargas', [LoadController::class, 'store']);
     Route::patch('/cargas/{id}/pallets', [LoadController::class, 'updatePallets'])->whereNumber('id');
     Route::patch('/cargas/lineas/{lineId}/pallets', [LoadController::class, 'updateLinePallets'])->whereNumber('lineId');
     Route::post('/cargas/reset', [LoadController::class, 'resetAll']);
