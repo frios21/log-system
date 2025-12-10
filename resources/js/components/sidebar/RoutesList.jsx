@@ -57,7 +57,8 @@ export default function RoutesList() {
         if (filterDate) {
             const rawDate = r.estimated_date || r.date || "";
             if (!rawDate) return false;
-            const ymd = rawDate.split("T")[0];
+            // normalizamos a YYYY-MM-DD, ignorando hora
+            const ymd = (rawDate.split(" ")[0] || rawDate.split("T")[0]);
             if (ymd !== filterDate) return false;
         }
 
