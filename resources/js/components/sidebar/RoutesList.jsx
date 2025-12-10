@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import RouteCard from "./RouteCard";
 import RouteAssignModal from "../modals/RouteAssignModal";
 import VehicleAssignModal from "../modals/VehicleAssignModal";
+import CircleLoader from "../common/CircleLoader";
 import { useRutas } from "../../api/rutas";
 
 // Componente que lista las rutas
@@ -9,7 +10,7 @@ import { useRutas } from "../../api/rutas";
 // filtros de búsqueda y estado -> falta filtro de fecha
 
 export default function RoutesList() {
-    const { data: rutasData = [], refetch } = useRutas();
+    const { data: rutasData = [], refetch, isLoading } = useRutas();
     const [openAssignFor, setOpenAssignFor] = useState(null);
     const [openVehicleAssignFor, setOpenVehicleAssignFor] = useState(null);
     const [search, setSearch] = useState("");
@@ -159,7 +160,9 @@ export default function RoutesList() {
                 )}
             </div>
 
-            {visibleRutas.map((r, i) => (
+            {isLoading ? (
+                <CircleLoader size={32} />
+            ) : visibleRutas.map((r, i) => (
                 <RouteCard
                     key={r.id}
                     ruta={r}

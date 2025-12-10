@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import CargaDetailsModal from "../modals/CargaDetailsModal";
 import { useCargas } from "../../api/cargas";
+import CircleLoader from "../common/CircleLoader";
 
 function formatCargaDate(raw) {
     if (!raw) return { date: "", time: "" };
@@ -226,7 +227,9 @@ export default function CargasList() {
             </div>
 
             {/* LISTA */}
-            {visibleCargas.map(carga => {
+            {isLoading ? (
+                <CircleLoader size={32} />
+            ) : visibleCargas.map(carga => {
                 const { date, time } = formatCargaDate(carga.date);
 
                 return (
