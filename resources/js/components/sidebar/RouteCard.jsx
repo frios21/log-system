@@ -53,7 +53,8 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const costPerKg = isDone ? (realCostPerKg ?? estimatedCostPerKg) : estimatedCostPerKg;
     const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
 
-    const [routeDate, setRouteDate] = useState(ruta.date || "");
+    // fecha viene de backend como estimated_date (o date según versión)
+    const [routeDate, setRouteDate] = useState(ruta.estimated_date || ruta.date || "");
     const [editingDate, setEditingDate] = useState(false);
 
     function toggleVisible(e) {
@@ -179,7 +180,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                                 }
                                 if (e.key === "Escape") {
                                     setEditingDate(false);
-                                    setRouteDate(ruta.date || "");
+                                    setRouteDate(ruta.estimated_date || ruta.date || "");
                                 }
                             }}
                             style={{

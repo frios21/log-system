@@ -16,7 +16,7 @@ export default function RoutesList() {
     const [statusFilter, setStatusFilter] = useState("");
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
     const [filterDate, setFilterDate] = useState(""); // YYYY-MM-DD
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
 
     // datos base desde React Query
     const rutas = Array.isArray(rutasData) ? rutasData : [];
@@ -75,47 +75,89 @@ export default function RoutesList() {
                     <button className="btn btn-primary" onClick={createRoute}>+</button>
                 </div>
             </div>
+            {/* Filtros similares a CargasList */}
+            <div style={{ marginBottom: 10 }}>
+                <button
+                    type="button"
+                    className="btn btn-outlined"
+                    onClick={() => setShowFilters(v => !v)}
+                    style={{
+                        padding: "2px 8px",
+                        fontSize: 12,
+                        borderRadius: 999,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                    }}
+                >
+                    Filtros
+                    <span style={{ fontSize: 10 }}>
+                        {showFilters ? "▲" : "▼"}
+                    </span>
+                </button>
 
-            <div style={{ marginBottom: 10, display: "flex", gap: 8, alignItems: "center" }}>
-                <input placeholder="Buscar rutas..." value={search} onChange={e => setSearch(e.target.value)} className="input" />
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input" style={{ width: 160 }}>
-                    <option value="">Todas</option>
-                    <option value="draft">Pendientes</option>
-                    <option value="assigned">Asignadas</option>
-                    <option value="delivered">Entregadas</option>
-                </select>
-                <div style={{ position: "relative" }}>
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        title={filterDate ? `Filtrando: ${filterDate}` : "Filtrar por fecha"}
-                        onClick={() => setShowDatePicker((v) => !v)}
-                        style={{ padding: "4px 8px" }}
+                {showFilters && (
+                    <div
+                        style={{
+                            marginTop: 6,
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 8,
+                            padding: 8,
+                            background: "#f9fafb",
+                            boxSizing: "border-box",
+                            overflowX: "hidden",
+                        }}
                     >
-                        📅
-                    </button>
-                    {showDatePicker && (
-                        <input
-                            autoFocus
-                            type="date"
-                            value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
-                            onBlur={() => setShowDatePicker(false)}
+                        <div
                             style={{
-                                position: "absolute",
-                                top: "100%",
-                                left: 0,
-                                marginTop: 4,
-                                fontSize: 12,
-                                padding: "2px 4px",
-                                borderRadius: 4,
-                                border: "1px solid #ccc",
-                                background: "white",
-                                zIndex: 10,
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                columnGap: 8,
+                                rowGap: 6,
+                                alignItems: "center",
                             }}
-                        />
-                    )}
-                </div>
+                        >
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Buscar</span>
+                                <input
+                                    className="input"
+                                    placeholder="Buscar rutas..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    style={{ width: "100%", boxSizing: "border-box" }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Estado</span>
+                                <select
+                                    className="input"
+                                    value={statusFilter}
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    style={{ width: "75%", boxSizing: "border-box" }}
+                                >
+                                    <option value="">Todas</option>
+                                    <option value="draft">Pendientes</option>
+                                    <option value="assigned">Asignadas</option>
+                                    <option value="delivered">Entregadas</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>Fecha</span>
+                                <input
+                                    type="date"
+                                    className="input"
+                                    value={filterDate}
+                                    onChange={e => setFilterDate(e.target.value)}
+                                    style={{ width: "75%", boxSizing: "border-box" }}
+                                />
+                            </div>
+
+                            <div />
+                        </div>
+                    </div>
+                )}
             </div>
 
             {visibleRutas.map((r, i) => (
