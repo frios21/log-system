@@ -90,6 +90,7 @@ class LoadController extends Controller
     public function updateSimple(int $id, Request $request)
     {
         $data = $request->validate([
+            'name'           => ['nullable', 'string', 'max:255'],
             'total_quantity' => ['nullable', 'numeric', 'min:0'],
             'total_pallets'  => ['nullable', 'numeric', 'min:0'],
             // permitimos YYYY-MM-DD o datetime; validación la delegamos a Odoo en la práctica
@@ -110,7 +111,7 @@ class LoadController extends Controller
     public function updatePallets(int $id, Request $request)
     {
         $validated = $request->validate([
-            'total_pallets' => ['nullable', 'numeric', 'min:0'],
+            'total_pallets'  => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $value = $validated['total_pallets'] ?? null;

@@ -291,7 +291,64 @@ export default function CargasList() {
                     <div className="card" style={stateColor(carga.state)} key={carga.id}>
                         {/* HEADER */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div className="card-title">{carga.name}</div>
+                            <div className="card-title" style={{ flex: 1, minWidth: 0 }}>
+                                {manual && editing.name ? (
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        defaultValue={carga.name || ""}
+                                        onBlur={async (e) => {
+                                            const newName = e.target.value.trim();
+                                            setEditingManualFields(prev => ({
+                                                ...prev,
+                                                [carga.id]: { ...(prev[carga.id] || {}), name: false },
+                                            }));
+                                            if (!newName || newName === (carga.name || "")) return;
+                                            await updateManualCarga(carga.id, { name: newName });
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.currentTarget.blur();
+                                            }
+                                            if (e.key === "Escape") {
+                                                e.preventDefault();
+                                                setEditingManualFields(prev => ({
+                                                    ...prev,
+                                                    [carga.id]: { ...(prev[carga.id] || {}), name: false },
+                                                }));
+                                            }
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            fontSize: 14,
+                                            padding: "2px 4px",
+                                            borderRadius: 4,
+                                            border: "1px solid #ccc",
+                                        }}
+                                    />
+                                ) : (
+                                    <span
+                                        title={manual ? "Doble click para renombrar" : undefined}
+                                        onDoubleClick={() => {
+                                            if (!manual) return;
+                                            setEditingManualFields(prev => ({
+                                                ...prev,
+                                                [carga.id]: { ...(prev[carga.id] || {}), name: true },
+                                            }));
+                                        }}
+                                        style={{
+                                            cursor: manual ? "pointer" : "default",
+                                            display: "inline-block",
+                                            maxWidth: "100%",
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                        }}
+                                    >
+                                        {carga.name}
+                                    </span>
+                                )}
+                            </div>
 
                             {manual ? (
                                 editing.date ? (
