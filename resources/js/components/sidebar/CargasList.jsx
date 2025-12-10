@@ -74,8 +74,11 @@ export default function CargasList() {
     }
 
     function isManualCarga(carga) {
-        const name = (carga?.name || "").toString().toLowerCase();
-        return name.startsWith("carga manual");
+        const raw = (carga?.name || "").toString().trim();
+        if (!raw) return true;
+
+        const upper = raw.toUpperCase().replace(/\s+/g, "");
+        return !/^OC\d+/.test(upper);
     }
 
     async function updateManualCarga(id, patch) {
