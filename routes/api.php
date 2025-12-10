@@ -8,6 +8,7 @@ use App\Http\Controllers\RouteController;
 use App\Http\Controllers\Api\Odoo\RutasApiController;
 use App\Http\Controllers\Api\Odoo\ContactosApiController;
 use App\Http\Controllers\VehiclesController;
+use App\Http\Controllers\DriversController;
 use App\Http\Controllers\TraccarController;
 
 /*
@@ -72,6 +73,9 @@ Route::middleware('api')->group(function () {
     // =====================
     Route::get('/vehiculos', [VehiclesController::class, 'index']);
     Route::get('/vehiculos/{id}', [VehiclesController::class, 'show']);
+
+    // Conductores (res.partner en Odoo 19, personas no empresas)
+    Route::get('/conductores', [DriversController::class, 'index']);
 
 
     // =====================
