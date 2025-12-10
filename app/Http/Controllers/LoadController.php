@@ -91,6 +91,7 @@ class LoadController extends Controller
     {
         $data = $request->validate([
             'name'           => ['nullable', 'string', 'max:255'],
+            'vendor_name'    => ['nullable', 'string', 'max:255'],
             'total_quantity' => ['nullable', 'numeric', 'min:0'],
             'total_pallets'  => ['nullable', 'numeric', 'min:0'],
             // permitimos YYYY-MM-DD o datetime; validación la delegamos a Odoo en la práctica
