@@ -20,7 +20,7 @@ class DriversService
         $rows = $this->odoo->searchRead(
             'res.partner',
             $domain,
-            ['id', 'name', 'email', 'phone', 'mobile'],
+            ['id', 'name', 'traccar_device_id'],
             200
         );
 
