@@ -132,11 +132,20 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     async function assign() {
         try {
             const body = { vehicle_id: selectedId };
-            await fetch(`/api/rutas/${ruta.id}/update`, {
+            const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error("Error assigning vehicle", data);
+                // Opcional: mostrar alerta básica al usuario
+                if (data?.message) {
+                    alert(data.message);
+                }
+                return;
+            }
             // notify other components
             window.dispatchEvent(new CustomEvent("rutas:changed"));
             onClose && onClose();
