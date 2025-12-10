@@ -70,11 +70,9 @@ export default function RoutesList() {
 
     return (
         <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h3>Rutas</h3>
-                <div>
-                    <button className="btn btn-primary" onClick={createRoute}>+</button>
-                </div>
+            {/* Botón nueva ruta + filtros */}
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 8 }}>
+                <button className="btn btn-primary" onClick={createRoute}>+</button>
             </div>
             {/* Filtros similares a CargasList */}
             <div style={{ marginBottom: 10 }}>
