@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import Sortable from "sortablejs";
 import "../../../css/RouteAssignModal.css";
 import { useCargas } from "../../api/cargas";
+import CircleLoader from "../common/CircleLoader";
 
 function normalize(s = "") {
     return s.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -46,6 +47,8 @@ export default function RouteAssignModal({ ruta, onClose }) {
     const [destQuery, setDestQuery] = useState("");
     const [isOriginOpen, setIsOriginOpen] = useState(false);
     const [isDestOpen, setIsDestOpen] = useState(false);
+
+    const [saving, setSaving] = useState(false);
 
     // para no volver a pisar origen/destino después de inicializarlos
     const initializedFromRouteRef = useRef(false);
@@ -313,10 +316,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // GUARDAR
     // -------------------------------------------------------------
     async function save() {
+        if (saving) return;
         const loadIds = ordered.map(c => c.id);
         let dest = destinationId;
         if (sameAsOrigin) dest = originId;
         try {
+            setSaving(true);
             await fetch(`/api/rutas/${routeId}/assign`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -333,6 +338,8 @@ export default function RouteAssignModal({ ruta, onClose }) {
             onClose();
         } catch (e) {
             alert("Error al guardar");
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -376,7 +383,27 @@ export default function RouteAssignModal({ ruta, onClose }) {
     // -------------------------------------------------------------
     return (
        <div className="modal-backdrop">
-           <div className="route-modal">
+           <div className="route-modal" style={{ position: "relative" }}>
+                {saving && (
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "4px 8px",
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.9)",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+                            zIndex: 30,
+                        }}
+                    >
+                        <CircleLoader size={18} />
+                        <span style={{ fontSize: 12, color: "#374151" }}>Cargando...</span>
+                    </div>
+                )}
                 {/* IZQUIERDA */}
                 <div className="left-panel">
                      <h3 className="modal-title">Asignar cargas a <strong>{routeDetails?.name}</strong></h3>
@@ -515,8 +542,8 @@ export default function RouteAssignModal({ ruta, onClose }) {
                     </div>
 
                     <div className="buttons">
-                        <button className="btn btn-outlined" onClick={onClose}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={save}>Guardar</button>
+                        <button className="btn btn-outlined" onClick={onClose} disabled={saving}>Cancelar</button>
+                        <button className="btn btn-primary" onClick={save} disabled={saving}>Guardar</button>
                     </div>
                 </div>
 
