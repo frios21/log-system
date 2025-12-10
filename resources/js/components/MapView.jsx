@@ -260,7 +260,7 @@ export default function MapView() {
       active = false;
       clearInterval(interval);
     };
-  }, [mapRef.current]);
+  }, []);
 
   // -------------------------------------------------------------
   // Lógica de dibujo GH -> falta corregir linea en carriles con
