@@ -82,8 +82,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     async function fetchDrivers(q = "") {
         try {
             setLoadingDrivers(true);
-            // endpoint que devuelve contactos de Odoo 19 que son personas (no empresas)
-            const res = await fetch(`/api/conductores/personas?q=${encodeURIComponent(q)}`);
+            // endpoint como antes: /api/contactos/personas, ahora respaldado por Odoo 19
+            const res = await fetch(`/api/contactos/personas?q=${encodeURIComponent(q)}`);
             const data = await res.json();
             const list = Array.isArray(data) ? data : [];
             setDrivers(list);

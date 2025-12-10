@@ -8,18 +8,14 @@ class DriversService
 
     /**
      * Devuelve contactos de Odoo 19 que son personas (no empresas).
-     * Opcionalmente filtra por nombre usando ilike.
+     * Sin filtros: la búsqueda en frontend se hace sobre este listado.
      */
-    public function personas(?string $q = null): array
+    public function todos(): array
     {
         $domain = [
             ['active', '=', true],
             ['is_company', '=', false],
         ];
-
-        if ($q) {
-            $domain[] = ['name', 'ilike', $q];
-        }
 
         $rows = $this->odoo->searchRead(
             'res.partner',

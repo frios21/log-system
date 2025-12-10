@@ -10,12 +10,11 @@ class DriversController extends Controller
     public function __construct(private readonly DriversService $drivers) {}
 
     /**
-     * GET /api/conductores?q=...
+     * GET /api/conductores
      * Devuelve contactos de Odoo 19 que son personas (no empresas).
      */
     public function index(Request $request)
     {
-        $q = $request->query('q');
-        return response()->json($this->drivers->personas($q));
+        return response()->json($this->drivers->todos());
     }
 }
