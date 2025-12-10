@@ -70,30 +70,30 @@ export default function RoutesList() {
 
     return (
         <div>
-            {/* Botón nueva ruta + filtros */}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 8 }}>
-                <button className="btn btn-primary" onClick={createRoute}>+</button>
-            </div>
-            {/* Filtros similares a CargasList */}
+            {/* Filtros similares a CargasList + botón nueva ruta en la misma fila */}
             <div style={{ marginBottom: 10 }}>
-                <button
-                    type="button"
-                    className="btn btn-outlined"
-                    onClick={() => setShowFilters(v => !v)}
-                    style={{
-                        padding: "2px 8px",
-                        fontSize: 12,
-                        borderRadius: 999,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                    }}
-                >
-                    Filtros
-                    <span style={{ fontSize: 10 }}>
-                        {showFilters ? "▲" : "▼"}
-                    </span>
-                </button>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <button
+                        type="button"
+                        className="btn btn-outlined"
+                        onClick={() => setShowFilters(v => !v)}
+                        style={{
+                            padding: "2px 8px",
+                            fontSize: 12,
+                            borderRadius: 999,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                        }}
+                    >
+                        Filtros
+                        <span style={{ fontSize: 10 }}>
+                            {showFilters ? "▲" : "▼"}
+                        </span>
+                    </button>
+
+                    <button className="btn btn-primary" onClick={createRoute}>+</button>
+                </div>
 
                 {showFilters && (
                     <div
