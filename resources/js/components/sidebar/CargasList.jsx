@@ -50,6 +50,7 @@ export default function CargasList() {
     const cargas = Array.isArray(cargasData) ? cargasData : [];
 
     const [lastCreatedId, setLastCreatedId] = useState(null);
+    const [editingManualFields, setEditingManualFields] = useState({}); // { [id]: { qty, pallets, date } }
 
     async function createCarga() {
         try {
@@ -284,17 +285,63 @@ export default function CargasList() {
             ) : visibleCargas.map(carga => {
                 const manual = isManualCarga(carga);
                 const { date, time } = formatCargaDate(carga.date);
+                const editing = editingManualFields[carga.id] || {};
 
                 return (
                     <div className="card" style={stateColor(carga.state)} key={carga.id}>
                         {/* HEADER */}
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div className="card-title">{carga.name}</div>
 
-                            <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
-                                {date}<br />
-                                {time}
-                            </div>
+                            {manual ? (
+                                editing.date ? (
+                                    <input
+                                        autoFocus
+                                        type="date"
+                                        defaultValue={(carga.date || "").split(" ")[0] || ""}
+                                        onBlur={async (e) => {
+                                            const value = e.target.value;
+                                            setEditingManualFields(prev => ({
+                                                ...prev,
+                                                [carga.id]: { ...(prev[carga.id] || {}), date: false },
+                                            }));
+                                            if (!value) return;
+                                            await updateManualCarga(carga.id, { date: `${value} 00:00:00` });
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.currentTarget.blur();
+                                            }
+                                            if (e.key === "Escape") {
+                                                e.preventDefault();
+                                                setEditingManualFields(prev => ({
+                                                    ...prev,
+                                                    [carga.id]: { ...(prev[carga.id] || {}), date: false },
+                                                }));
+                                            }
+                                        }}
+                                        style={{ fontSize: 12, width: 130 }}
+                                    />
+                                ) : (
+                                    <div
+                                        style={{ textAlign: "right", fontSize: "13px", color: "#6b7280", cursor: "pointer" }}
+                                        onDoubleClick={() => {
+                                            setEditingManualFields(prev => ({
+                                                ...prev,
+                                                [carga.id]: { ...(prev[carga.id] || {}), date: true },
+                                            }));
+                                        }}
+                                    >
+                                        {date}<br />
+                                        {time}
+                                    </div>
+                                )
+                            ) : (
+                                <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                                    {date}<br />
+                                    {time}
+                                </div>
+                            )}
                         </div>
 
                         {/* Cliente */}
@@ -345,35 +392,97 @@ export default function CargasList() {
                         {/* Info */}
                         <div className="text-small" style={{ marginTop: "10px" }}>
                             Cantidad: {" "}
-                            <span
-                                style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
-                                onDoubleClick={async () => {
-                                    if (!manual) return;
-                                    const current = carga.total_quantity ?? 0;
-                                    const next = window.prompt("Nueva cantidad (kg)", String(current));
-                                    if (next === null) return;
-                                    const num = Number(next);
-                                    if (Number.isNaN(num) || num < 0) return;
-                                    await updateManualCarga(carga.id, { total_quantity: num });
-                                }}
-                            >
-                                {carga.total_quantity} kg
-                            </span>
+                            {manual && editing.qty ? (
+                                <input
+                                    autoFocus
+                                    type="number"
+                                    min={0}
+                                    defaultValue={carga.total_quantity ?? 0}
+                                    onBlur={async (e) => {
+                                        const value = e.target.value;
+                                        setEditingManualFields(prev => ({
+                                            ...prev,
+                                            [carga.id]: { ...(prev[carga.id] || {}), qty: false },
+                                        }));
+                                        if (value === "") return;
+                                        const num = Number(value);
+                                        if (Number.isNaN(num) || num < 0) return;
+                                        await updateManualCarga(carga.id, { total_quantity: num });
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.currentTarget.blur();
+                                        }
+                                        if (e.key === "Escape") {
+                                            e.preventDefault();
+                                            setEditingManualFields(prev => ({
+                                                ...prev,
+                                                [carga.id]: { ...(prev[carga.id] || {}), qty: false },
+                                            }));
+                                        }
+                                    }}
+                                    style={{ width: 80, padding: 2 }}
+                                />
+                            ) : (
+                                <span
+                                    style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                    onDoubleClick={() => {
+                                        if (!manual) return;
+                                        setEditingManualFields(prev => ({
+                                            ...prev,
+                                            [carga.id]: { ...(prev[carga.id] || {}), qty: true },
+                                        }));
+                                    }}
+                                >
+                                    {carga.total_quantity} kg
+                                </span>
+                            )}
                             {" "}— Pallets:{" "}
-                            <span
-                                style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
-                                onDoubleClick={async () => {
-                                    if (!manual) return;
-                                    const current = carga.total_pallets ?? 0;
-                                    const next = window.prompt("Nuevo número de pallets", String(current));
-                                    if (next === null) return;
-                                    const num = Number(next);
-                                    if (Number.isNaN(num) || num < 0) return;
-                                    await updateManualCarga(carga.id, { total_pallets: num });
-                                }}
-                            >
-                                {carga.total_pallets}
-                            </span>
+                            {manual && editing.pallets ? (
+                                <input
+                                    autoFocus
+                                    type="number"
+                                    min={0}
+                                    defaultValue={carga.total_pallets ?? 0}
+                                    onBlur={async (e) => {
+                                        const value = e.target.value;
+                                        setEditingManualFields(prev => ({
+                                            ...prev,
+                                            [carga.id]: { ...(prev[carga.id] || {}), pallets: false },
+                                        }));
+                                        if (value === "") return;
+                                        const num = Number(value);
+                                        if (Number.isNaN(num) || num < 0) return;
+                                        await updateManualCarga(carga.id, { total_pallets: num });
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.currentTarget.blur();
+                                        }
+                                        if (e.key === "Escape") {
+                                            e.preventDefault();
+                                            setEditingManualFields(prev => ({
+                                                ...prev,
+                                                [carga.id]: { ...(prev[carga.id] || {}), pallets: false },
+                                            }));
+                                        }
+                                    }}
+                                    style={{ width: 70, padding: 2, marginLeft: 4 }}
+                                />
+                            ) : (
+                                <span
+                                    style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                    onDoubleClick={() => {
+                                        if (!manual) return;
+                                        setEditingManualFields(prev => ({
+                                            ...prev,
+                                            [carga.id]: { ...(prev[carga.id] || {}), pallets: true },
+                                        }));
+                                    }}
+                                >
+                                    {carga.total_pallets}
+                                </span>
+                            )}
                             {palletsStatus[carga.id] === "success" && (
                                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", marginLeft: 6, display: "inline-block" }} />
                             )}
