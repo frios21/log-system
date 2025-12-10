@@ -415,8 +415,9 @@ export default function CargasList() {
                                 className="chip"
                                 style={{ marginTop: "8px", cursor: "pointer" }}
                                 onClick={() => {
-                                    if (manual) {
-                                        // Para cargas manuales abrimos el modal de selección de contacto
+                                    const hasLocation = !!(carga.partner || carga.vendor_id || carga.vendor_name);
+
+                                    if (manual && !hasLocation) {
                                         setContactModalTarget({ id: carga.id, title: carga.name });
                                         return;
                                     }
