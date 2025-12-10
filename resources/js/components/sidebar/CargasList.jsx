@@ -49,13 +49,36 @@ export default function CargasList() {
     // datos base desde React Query
     const cargas = Array.isArray(cargasData) ? cargasData : [];
 
+    const [lastCreatedId, setLastCreatedId] = useState(null);
+
     async function createCarga() {
         try {
             const res = await fetch("/api/cargas", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             });
-            await res.json();
+            const created = await res.json();
+            if (created && created.id != null) {
+                setLastCreatedId(created.id);
+            }
+            refetch();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function isManualCarga(carga) {
+        const name = (carga?.name || "").toString().toLowerCase();
+        return name.startsWith("carga manual");
+    }
+
+    async function updateManualCarga(id, patch) {
+        try {
+            await fetch(`/api/cargas/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(patch),
+            });
             refetch();
         } catch (e) {
             console.error(e);
@@ -95,7 +118,7 @@ export default function CargasList() {
     // --- APLICAR FILTROS ---
     const q = normalizeString(search.trim());
 
-    const visibleCargas = cargas.filter(c => {
+    let visibleCargas = cargas.filter(c => {
         // 1) filtro por estado
         if (statusFilter && c.state !== statusFilter) return false;
 
@@ -138,6 +161,18 @@ export default function CargasList() {
             combined.includes(q)
         );
     });
+
+    // Si acabamos de crear una carga manual en esta sesión,
+    // la forzamos a aparecer arriba de la lista, sin alterar
+    // el orden original del resto. Tras recargar el componente,
+    // lastCreatedId vuelve a null y se usa el orden normal.
+    if (lastCreatedId != null) {
+        visibleCargas = [...visibleCargas].sort((a, b) => {
+            if (a.id === lastCreatedId) return -1;
+            if (b.id === lastCreatedId) return 1;
+            return 0;
+        });
+    }
 
     return (
         <>
@@ -247,6 +282,7 @@ export default function CargasList() {
             {isLoading ? (
                 <CircleLoader size={32} />
             ) : visibleCargas.map(carga => {
+                const manual = isManualCarga(carga);
                 const { date, time } = formatCargaDate(carga.date);
 
                 return (
@@ -308,17 +344,42 @@ export default function CargasList() {
 
                         {/* Info */}
                         <div className="text-small" style={{ marginTop: "10px" }}>
-                            Cantidad: <strong>{carga.total_quantity} kg</strong> — Pallets:{" "}
-                            {/* Mostrar siempre total_pallets calculado desde backend (suma de n_pallets) */}
-                            <span style={{ marginLeft: 4 }}>
-                                <strong>{carga.total_pallets}</strong>
-                                {palletsStatus[carga.id] === "success" && (
-                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", marginLeft: 6, display: "inline-block" }} />
-                                )}
-                                {palletsStatus[carga.id] === "error" && (
-                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", marginLeft: 6, display: "inline-block" }} />
-                                )}
+                            Cantidad: {" "}
+                            <span
+                                style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                onDoubleClick={async () => {
+                                    if (!manual) return;
+                                    const current = carga.total_quantity ?? 0;
+                                    const next = window.prompt("Nueva cantidad (kg)", String(current));
+                                    if (next === null) return;
+                                    const num = Number(next);
+                                    if (Number.isNaN(num) || num < 0) return;
+                                    await updateManualCarga(carga.id, { total_quantity: num });
+                                }}
+                            >
+                                {carga.total_quantity} kg
                             </span>
+                            {" "}— Pallets:{" "}
+                            <span
+                                style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                onDoubleClick={async () => {
+                                    if (!manual) return;
+                                    const current = carga.total_pallets ?? 0;
+                                    const next = window.prompt("Nuevo número de pallets", String(current));
+                                    if (next === null) return;
+                                    const num = Number(next);
+                                    if (Number.isNaN(num) || num < 0) return;
+                                    await updateManualCarga(carga.id, { total_pallets: num });
+                                }}
+                            >
+                                {carga.total_pallets}
+                            </span>
+                            {palletsStatus[carga.id] === "success" && (
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", marginLeft: 6, display: "inline-block" }} />
+                            )}
+                            {palletsStatus[carga.id] === "error" && (
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", marginLeft: 6, display: "inline-block" }} />
+                            )}
                         </div>
 
                         {/* BOTÓN DETALLES */}

@@ -227,12 +227,32 @@ class CargasService
     }
 
     /**
+     * Actualiza campos simples de una carga (pensado para cargas manuales):
+     * total_quantity, total_pallets y/o date.
+     */
+    public function updateSimpleFields(int $id, array $fields): void
+    {
+        $allowed = ['total_quantity', 'total_pallets', 'date'];
+        $vals = [];
+
+        foreach ($allowed as $key) {
+            if (array_key_exists($key, $fields)) {
+                $vals[$key] = $fields[$key];
+            }
+        }
+
+        if (!empty($vals)) {
+            $this->odoo->write('logistics.load', $id, $vals);
+        }
+    }
+
+    /**
      * Crea una "carga manual" vacía en Odoo (logistics.load),
      * similar a como se crea una ruta nueva.
      */
     public function crearManual(): array
     {
-        $name = 'Carga manual ' . date('Y-m-d H:i');
+        $name = 'Carga manual ' . date('Y-m-d');
 
         $vals = [
             'name'           => $name,

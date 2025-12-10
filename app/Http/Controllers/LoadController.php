@@ -73,7 +73,6 @@ class LoadController extends Controller
      */
     public function update(Request $request, Load $load)
     {
-        //
     }
 
     /**
@@ -82,6 +81,30 @@ class LoadController extends Controller
     public function destroy(Load $load)
     {
         //
+    }
+
+    /**
+     * Actualiza campos simples de una carga (cantidad, pallets, fecha).
+     * Endpoint: PATCH /api/cargas/{id}
+     */
+    public function updateSimple(int $id, Request $request)
+    {
+        $data = $request->validate([
+            'total_quantity' => ['nullable', 'numeric', 'min:0'],
+            'total_pallets'  => ['nullable', 'numeric', 'min:0'],
+            // permitimos YYYY-MM-DD o datetime; validación la delegamos a Odoo en la práctica
+            'date'           => ['nullable', 'string'],
+        ]);
+
+        try {
+            $this->service->updateSimpleFields($id, $data);
+            return response()->json(['ok' => true]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok'      => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function updatePallets(int $id, Request $request)
