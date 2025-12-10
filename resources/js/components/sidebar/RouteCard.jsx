@@ -53,8 +53,12 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
     const costPerKg = isDone ? (realCostPerKg ?? estimatedCostPerKg) : estimatedCostPerKg;
     const costPerKgLabel = costPerKg != null ? `$ ${costPerKg.toFixed(2)}/kg` : '—';
 
-    // fecha viene de backend como estimated_date (o date según versión)
-    const [routeDate, setRouteDate] = useState(ruta.estimated_date || ruta.date || "");
+    // fecha viene de backend posiblemente con hora; normalizamos a YYYY-MM-DD
+    const rawInitialDate = ruta.estimated_date || ruta.date || "";
+    const initialYmd = rawInitialDate
+        ? (rawInitialDate.split(" ")[0] || rawInitialDate.split("T")[0])
+        : "";
+    const [routeDate, setRouteDate] = useState(initialYmd);
     const [editingDate, setEditingDate] = useState(false);
 
     function toggleVisible(e) {
@@ -159,7 +163,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                         <input
                             autoFocus
                             type="date"
-                            value={routeDate ? routeDate.split("T")[0] : ""}
+                            value={routeDate || ""}
                             onChange={(e) => setRouteDate(e.target.value)}
                             onBlur={async () => {
                                 setEditingDate(false);
@@ -180,7 +184,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                                 }
                                 if (e.key === "Escape") {
                                     setEditingDate(false);
-                                    setRouteDate(ruta.estimated_date || ruta.date || "");
+                                    setRouteDate(initialYmd);
                                 }
                             }}
                             style={{
@@ -198,7 +202,7 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                         >
                             {routeDate
                                 ? (() => {
-                                      const [y, m, d] = routeDate.split("T")[0].split("-");
+                                      const [y, m, d] = routeDate.split("-");
                                       if (!y || !m || !d) return routeDate;
                                       return `${d}-${m}-${y}`;
                                   })()
