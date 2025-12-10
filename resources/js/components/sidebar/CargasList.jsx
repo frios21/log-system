@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import CargaDetailsModal from "../modals/CargaDetailsModal";
+import ContactSelectModal from "../modals/ContactSelectModal";
 import { useCargas } from "../../api/cargas";
 import { useContactos } from "../../api/contactos";
 import CircleLoader from "../common/CircleLoader";
@@ -48,14 +49,13 @@ export default function CargasList() {
     // desplegable filtros
     const [showFilters, setShowFilters] = useState(false);
 
-    // datos base desde React Query
+    // datos base
     const cargas = Array.isArray(cargasData) ? cargasData : [];
     const contactos = Array.isArray(contactosData) ? contactosData : [];
 
     const [lastCreatedId, setLastCreatedId] = useState(null);
     const [editingManualFields, setEditingManualFields] = useState({}); // { [id]: { name, qty, pallets, date } }
-    const [contactPickerFor, setContactPickerFor] = useState(null); // carga.id o null
-    const [contactSearch, setContactSearch] = useState("");
+    const [contactModalTarget, setContactModalTarget] = useState(null); // { id, title } | null
 
     async function createCarga() {
         try {
@@ -407,11 +407,17 @@ export default function CargasList() {
                         </div>
 
                         {/* Cliente / contacto */}
-                        {(carga.partner || carga.vendor_id || carga.vendor_name) && (
+                        {(manual || carga.partner || carga.vendor_id || carga.vendor_name) && (
                             <div
                                 className="chip"
                                 style={{ marginTop: "8px", cursor: "pointer" }}
                                 onClick={() => {
+                                    if (manual) {
+                                        // Para cargas manuales abrimos el modal de selección de contacto
+                                        setContactModalTarget({ id: carga.id, title: carga.name });
+                                        return;
+                                    }
+
                                     const partnerId =
                                         carga.partner?.id ??
                                         (Array.isArray(carga.vendor_id)
@@ -447,105 +453,10 @@ export default function CargasList() {
                                     }
                                 }}
                             >
-                                {carga.vendor_name || carga.partner?.name}
-                            </div>
-                        )}
-
-                        {/* Selector de contacto para cargas manuales */}
-                        {manual && (
-                            <div style={{ marginTop: "8px" }}>
-                                <button
-                                    type="button"
-                                    className="btn btn-outlined"
-                                    style={{ fontSize: 11, padding: "2px 6px" }}
-                                    onClick={() => {
-                                        if (contactPickerFor === carga.id) {
-                                            setContactPickerFor(null);
-                                            setContactSearch("");
-                                        } else {
-                                            setContactPickerFor(carga.id);
-                                            setContactSearch("");
-                                        }
-                                    }}
-                                >
-                                    {carga.vendor_name || carga.partner
-                                        ? "Cambiar contacto"
-                                        : "Asignar contacto"}
-                                </button>
-
-                                {contactPickerFor === carga.id && (
-                                    <div
-                                        style={{
-                                            marginTop: 6,
-                                            border: "1px solid #e5e7eb",
-                                            borderRadius: 8,
-                                            padding: 6,
-                                            background: "#f9fafb",
-                                            maxHeight: 220,
-                                            overflowY: "auto",
-                                        }}
-                                    >
-                                        <input
-                                            type="text"
-                                            className="input"
-                                            placeholder="Buscar contacto..."
-                                            value={contactSearch}
-                                            onChange={(e) => setContactSearch(e.target.value)}
-                                            style={{
-                                                width: "100%",
-                                                boxSizing: "border-box",
-                                                marginBottom: 6,
-                                            }}
-                                        />
-
-                                        {loadingContactos ? (
-                                            <div style={{ fontSize: 12 }}>Cargando contactos...</div>
-                                        ) : (
-                                            contactos
-                                                .filter((c) => {
-                                                    const s = contactSearch.trim().toLowerCase();
-                                                    if (!s) return true;
-                                                    return (
-                                                        (c.name && c.name.toLowerCase().includes(s)) ||
-                                                        (c.street && c.street.toLowerCase().includes(s)) ||
-                                                        (c.city && c.city.toLowerCase().includes(s)) ||
-                                                        (c.id && String(c.id).includes(s))
-                                                    );
-                                                })
-                                                .slice(0, 50)
-                                                .map((c) => (
-                                                    <div
-                                                        key={c.id}
-                                                        style={{
-                                                            padding: "4px 6px",
-                                                            borderRadius: 4,
-                                                            cursor: "pointer",
-                                                            marginBottom: 2,
-                                                            background: "white",
-                                                        }}
-                                                        onClick={async () => {
-                                                            await updateManualCarga(carga.id, {
-                                                                vendor_name: c.name,
-                                                            });
-                                                            setContactPickerFor(null);
-                                                            setContactSearch("");
-                                                        }}
-                                                    >
-                                                        <div style={{ fontSize: 13, fontWeight: 600 }}>
-                                                            {c.name}
-                                                        </div>
-                                                        {(c.street || c.city) && (
-                                                            <div
-                                                                style={{ fontSize: 11, color: "#6b7280" }}
-                                                            >
-                                                                {c.street} {c.city}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))
-                                        )}
-                                    </div>
-                                )}
+                                {manual
+                                    ? (carga.vendor_name || carga.partner?.name || "Seleccione ubicación")
+                                    : (carga.vendor_name || carga.partner?.name)
+                                }
                             </div>
                         )}
 
@@ -669,6 +580,21 @@ export default function CargasList() {
                 <CargaDetailsModal
                     carga={selectedCarga}
                     onClose={() => setSelectedCarga(null)}
+                />
+            )}
+
+            {contactModalTarget && (
+                <ContactSelectModal
+                    title={"Seleccionar ubicación"}
+                    contacts={contactos}
+                    loading={loadingContactos}
+                    onClose={() => setContactModalTarget(null)}
+                    onSelect={async (contact) => {
+                        await updateManualCarga(contactModalTarget.id, {
+                            vendor_name: contact.name,
+                        });
+                        setContactModalTarget(null);
+                    }}
                 />
             )}
         </>
