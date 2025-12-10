@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useContactos } from "../../api/contactos";
+import CircleLoader from "../common/CircleLoader";
 
 // Componente que lista los contactos 
 // y permite verlos en el mapa
 
 export default function ContactsList() {
-    const { data: contactosData = [] } = useContactos();
+    const { data: contactosData = [], isLoading, isFetching } = useContactos();
     const [search, setSearch] = useState("");
 
     const contactos = Array.isArray(contactosData) ? contactosData : [];
@@ -49,7 +50,11 @@ export default function ContactsList() {
                 onChange={e => setSearch(e.target.value)}
             />
 
-            {filtered.length === 0 && <div className="empty">Sin resultados</div>}
+            {isLoading || isFetching ? (
+                <CircleLoader size={32} />
+            ) : filtered.length === 0 ? (
+                <div className="empty">Sin resultados</div>
+            ) : null}
 
             {filtered.map(c => (
                 <div key={c.id} className="card" style={{ padding: 10, marginBottom: 10 }}>
