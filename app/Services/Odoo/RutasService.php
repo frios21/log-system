@@ -33,24 +33,14 @@ class RutasService
     }
 
     /**
-     * Resuelve un partner por ID intentando primero Odoo 19 y luego Odoo 16.
-     * Devuelve siempre ['id','name','latitude','longitude','street'] si encuentra algo.
+     * Resuelve un partner por ID usando principalmente Odoo 16
+     * (ContactosService, que es lo que usa el frontend /api/contactos).
+     * Devuelve ['id','name','latitude','longitude','street'] si encuentra algo.
      */
     private function getPartnerByAnyId(int $id): ?array
     {
-        // Primero Odoo 19
-        $rows19 = $this->odoo->searchRead(
-            'res.partner',
-            [['id', '=', $id]],
-            ['id','name','latitude','longitude','street'],
-            1
-        );
-        $p19 = $rows19[0] ?? null;
-        if ($p19 && $p19['latitude'] !== null && $p19['longitude'] !== null && ($p19['latitude'] != 0 || $p19['longitude'] != 0)) {
-            return $p19;
-        }
-
-        // Fallback: Odoo 16
+        // 1) Preferimos siempre Odoo 16, que es de donde vienen
+        //    los contactos que seleccionas en el modal (/api/contactos).
         $p16 = $this->contactos16->porId($id);
         if ($p16 && $p16['latitude'] !== null && $p16['longitude'] !== null && ($p16['latitude'] != 0 || $p16['longitude'] != 0)) {
             return [
@@ -62,8 +52,21 @@ class RutasService
             ];
         }
 
+        // 2) Si por alguna razón no hay contacto 16 usable, podemos
+        //    intentar Odoo 19 como respaldo (por si hay datos históricos).
+        $rows19 = $this->odoo->searchRead(
+            'res.partner',
+            [['id', '=', $id]],
+            ['id','name','latitude','longitude','street'],
+            1
+        );
+        $p19 = $rows19[0] ?? null;
+        if ($p19 && $p19['latitude'] !== null && $p19['longitude'] !== null && ($p19['latitude'] != 0 || $p19['longitude'] != 0)) {
+            return $p19;
+        }
+
         // Si no encontramos coords válidas devolvemos lo que haya o null
-        return $p19 ?: $p16 ?: null;
+        return $p16 ?: $p19 ?: null;
     }
 
     public function todas(): array

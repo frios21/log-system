@@ -232,11 +232,11 @@ class CargasService
 
     /**
      * Actualiza campos simples de una carga (pensado para cargas manuales):
-     * name, vendor_name, total_quantity, total_pallets y/o date.
+     * name, vendor_name, vendor_id, total_quantity, total_pallets y/o date.
      */
     public function updateSimpleFields(int $id, array $fields): void
     {
-        $allowed = ['name', 'vendor_name', 'total_quantity', 'total_pallets', 'date'];
+        $allowed = ['name', 'vendor_name', 'vendor_id', 'total_quantity', 'total_pallets', 'date'];
         $vals = [];
 
         foreach ($allowed as $key) {
