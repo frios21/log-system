@@ -146,9 +146,9 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                 }
                 return;
             }
-            // notify other components
+            // notificar a otros componentes y refrescar ocupados
             window.dispatchEvent(new CustomEvent("rutas:changed"));
-            onClose && onClose();
+            fetchOcupados();
         } catch (e) {
             console.error("Error assigning vehicle", e);
         }
@@ -163,9 +163,51 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                 body: JSON.stringify(body),
             });
             window.dispatchEvent(new CustomEvent("rutas:changed"));
-            onClose && onClose();
         } catch (e) {
             console.error("Error assigning driver", e);
+        }
+    }
+
+    async function unassignVehicle() {
+        try {
+            const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vehicle_id: null }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error("Error unassigning vehicle", data);
+                if (data?.message) alert(data.message);
+                return;
+            }
+            setSelectedId(null);
+            setDetail(null);
+            fetchOcupados();
+            window.dispatchEvent(new CustomEvent("rutas:changed"));
+        } catch (e) {
+            console.error("Error unassigning vehicle", e);
+        }
+    }
+
+    async function unassignDriver() {
+        try {
+            const res = await fetch(`/api/rutas/${ruta.id}/update-driver`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ driver_id: null }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error("Error unassigning driver", data);
+                if (data?.message) alert(data.message);
+                return;
+            }
+            setSelectedDriverId(null);
+            setDriverDetail(null);
+            window.dispatchEvent(new CustomEvent("rutas:changed"));
+        } catch (e) {
+            console.error("Error unassigning driver", e);
         }
     }
 
@@ -355,10 +397,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                         <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                             <button
                                 className="btn btn-outlined"
-                                onClick={() => {
-                                    setSelectedId(null);
-                                    setDetail(null);
-                                }}
+                                onClick={unassignVehicle}
                             >
                                 Quitar vehículo
                             </button>
@@ -462,10 +501,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                         <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                             <button
                                 className="btn btn-outlined"
-                                onClick={() => {
-                                    setSelectedDriverId(null);
-                                    setDriverDetail(null);
-                                }}
+                                onClick={unassignDriver}
                             >
                                 Quitar conductor
                             </button>
@@ -541,67 +577,120 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                                 )}
                             </div>
                         </div>
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                flex: 1,
+                                minHeight: 0,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    flex: 1,
+                                    border: "1px solid #eee",
+                                    borderRadius: 6,
+                                    padding: 10,
+                                    overflow: "auto",
+                                }}
+                            >
+                                <h4 style={{ marginTop: 0 }}>
+                                    Detalle del vehículo
+                                </h4>
+                                {detail ? (
+                                    <div>
+                                        <div style={{ marginBottom: 8 }}>
+                                            <strong>{detail.name}</strong>
+                                            <div
+                                                style={{
+                                                    fontSize: 13,
+                                                    color: "#666",
+                                                }}
+                                            >
+                                                {detail.model || ""}
+                                            </div>
 
-                        <div>
-                            <h4 style={{ marginTop: 0 }}>
-                                Detalle del vehículo
-                            </h4>
-
-                            {detail ? (
-                                <div>
-                                    <div style={{ marginBottom: 8 }}>
-                                        <strong>{detail.name}</strong>
-                                        <div
-                                            style={{
-                                                fontSize: 13,
-                                                color: "#666",
-                                            }}
-                                        >
-                                            {detail.model || ""}
+                                            <div style={{ marginTop: 8 }}>
+                                                <div>
+                                                    Patente:{" "}
+                                                    {detail.license_plate ||
+                                                        "—"}
+                                                </div>
+                                                <div>
+                                                    Capacidad:{" "}
+                                                    {detail.x_capacidad ??
+                                                        "—"}{" "}
+                                                    {detail.x_unidad_capacidad ||
+                                                        ""}
+                                                </div>
+                                                <div>
+                                                    Pallets:{" "}
+                                                    {detail.x_capacidad_pallets ??
+                                                        "—"}
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div style={{ marginTop: 8 }}>
-                                            <div>
-                                                Patente:{" "}
-                                                {detail.license_plate || "—"}
-                                            </div>
-                                            <div>
-                                                Capacidad:{" "}
-                                                {detail.x_capacidad ?? "—"}{" "}
-                                                {detail.x_unidad_capacidad ||
+                                        {detail.image && (
+                                            <img
+                                                src={detail.image}
+                                                alt="avatar"
+                                                style={{
+                                                    width: "100%",
+                                                    borderRadius: 6,
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ color: "#666" }}>
+                                        Selecciona un vehículo para ver
+                                        detalles
+                                    </div>
+                                )}
+                            </div>
+
+                            <div
+                                style={{
+                                    flex: 1,
+                                    border: "1px solid #eee",
+                                    borderRadius: 6,
+                                    padding: 10,
+                                    overflow: "auto",
+                                }}
+                            >
+                                <h4 style={{ marginTop: 0 }}>
+                                    Detalle del conductor
+                                </h4>
+                                {driverDetail ? (
+                                    <div>
+                                        <div style={{ marginBottom: 8 }}>
+                                            <strong>{driverDetail.name}</strong>
+                                            <div
+                                                style={{
+                                                    fontSize: 13,
+                                                    color: "#666",
+                                                }}
+                                            >
+                                                {driverDetail.phone ||
+                                                    driverDetail.email ||
                                                     ""}
-                                            </div>
-                                            <div>
-                                                Pallets:{" "}
-                                                {detail.x_capacidad_pallets ??
-                                                    "—"}
                                             </div>
                                         </div>
                                     </div>
-
-                                    {detail.image && (
-                                        <img
-                                            src={detail.image}
-                                            alt="avatar"
-                                            style={{
-                                                width: "100%",
-                                                borderRadius: 6,
-                                            }}
-                                        />
-                                    )}
-                                </div>
-                            ) : (
-                                <div style={{ color: "#666" }}>
-                                    Selecciona un vehículo para ver detalles
-                                </div>
-                            )}
+                                ) : (
+                                    <div style={{ color: "#666" }}>
+                                        Selecciona un conductor para ver
+                                        detalles
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div
                             style={{
-                                marginTop: "auto",
+                                marginTop: 8,
                                 display: "flex",
-                                gap: 8,
                                 justifyContent: "flex-end",
                             }}
                         >
@@ -609,13 +698,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                                 className="btn btn-outlined"
                                 onClick={onClose}
                             >
-                                Cancelar
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={assign}
-                            >
-                                Asignar vehículo
+                                Cerrar
                             </button>
                         </div>
                     </div>

@@ -754,21 +754,21 @@ class RutasService
         return $res[0] ?? null;
     }
 
-    public function asignarVehiculo($idRuta, $vehicleId)
+    public function asignarVehiculo(int $idRuta, ?int $vehicleId)
     {
         return $this->odoo->write('logistics.route', $idRuta, [
-            'vehicle_id' => $vehicleId
+            'vehicle_id' => $vehicleId !== null ? $vehicleId : false,
         ]);
     }
 
     /**
-     * Asigna un conductor (partner) a la ruta. Guarda el partner id en el campo
-     * `driver_id` de la ruta (si existe en el modelo de Odoo).
+     * Asigna o desasigna un conductor a la ruta. Guarda el partner id
+     * en el campo `driver_id` de la ruta
      */
-    public function asignarConductor(int $idRuta, int $driverId)
+    public function asignarConductor(int $idRuta, ?int $driverId)
     {
         return $this->odoo->write('logistics.route', $idRuta, [
-            'driver_id' => $driverId
+            'driver_id' => $driverId !== null ? $driverId : false,
         ]);
     }
 
