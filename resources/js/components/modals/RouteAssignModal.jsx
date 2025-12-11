@@ -502,6 +502,11 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                                     </div>
                                                 )}
                                                 <div className="carga-title">{c.name}</div>
+                                                {c.destino && c.destino !== false && (
+                                                    <div style={{ fontSize: 11, color: "#555" }}>
+                                                        {c.destino}
+                                                    </div>
+                                                )}
                                                 <div className="carga-sub">{c.vendor_name}</div>
                                                 <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
                                                     Pallets: {c.total_pallets ?? "-"}
@@ -623,6 +628,11 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                                     </div>
                                                 )}
                                                 <div className="carga-title">{c.name}</div>
+                                                {c.destino && c.destino !== false && (
+                                                    <div style={{ fontSize: 11, color: "#555" }}>
+                                                        {c.destino}
+                                                    </div>
+                                                )}
                                                 <div className="carga-sub">{c.vendor_name}</div>
                                                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
                                                     <div style={{ fontSize: 11, color: "#666" }}>

@@ -8,10 +8,27 @@ use Illuminate\Support\Facades\Http;
 
 class RutasService
 {
+    private const DESTINO_COORDS = [
+        'RIO FUTURO' => ['lat' => -40.346769151031054, 'lon' => -72.98031639966771],
+        'FREIRE'      => ['lat' => -38.9514242,          'lon' => -72.6254333],
+        'ROFUCO'      => ['lat' => -40.2301500,          'lon' => -72.9397300],
+        'CHOROICO'    => ['lat' => -40.2067083,          'lon' => -72.9160047],
+        'TRAIGUEN'    => ['lat' => -38.1187544,          'lon' => -72.6860926],
+        'LONCOCHE'    => ['lat' => -39.2753500,          'lon' => -72.5590900],
+        'PITRUFQUEN'  => ['lat' => -39.0087500,          'lon' => -72.6147600],
+    ];
+
     public function __construct(
         private readonly OdooJsonRpc $odoo,
         private readonly CargasService $cargas
     ) {}
+
+    private function getDestinoCoords(?string $destino): ?array
+    {
+        if (!$destino) return null;
+        $key = strtoupper(trim($destino));
+        return self::DESTINO_COORDS[$key] ?? null;
+    }
 
     public function todas(): array
     {
@@ -209,10 +226,24 @@ class RutasService
             $expectedQnt = $sumExpected;
 
             foreach ($orderedLoads as $carga) {
-                $partner = $carga['partner'] ?? null;
-                if (!$partner) {
+                $destinoName = $carga['destino'] ?? null;
+                $destCoords  = is_string($destinoName)
+                    ? $this->getDestinoCoords($destinoName)
+                    : null;
+
+                if ($destCoords) {
+                    $waypoints[] = [
+                        'lat'     => (float)$destCoords['lat'],
+                        'lon'     => (float)$destCoords['lon'],
+                        'load_id' => $carga['id'],
+                        'label'   => 'Destino carga: '.$destinoName,
+                        'type'    => 'intermediate_dest',
+                    ];
                     continue;
                 }
+
+                $partner = $carga['partner'] ?? null;
+                if (!$partner) continue;
 
                 $lat = $partner['latitude']  ?? null;
                 $lon = $partner['longitude'] ?? null;
@@ -412,6 +443,22 @@ class RutasService
             $expectedQnt = $sumExpected;
 
             foreach ($orderedLoads as $load) {
+                $destinoName = $load['destino'] ?? null;
+                $destCoords  = is_string($destinoName)
+                    ? $this->getDestinoCoords($destinoName)
+                    : null;
+
+                if ($destCoords) {
+                    $waypoints[] = [
+                        'lat'     => (float)$destCoords['lat'],
+                        'lon'     => (float)$destCoords['lon'],
+                        'load_id' => $load['id'],
+                        'label'   => 'Destino carga: '.$destinoName,
+                        'type'    => 'intermediate_dest',
+                    ];
+                    continue;
+                }
+
                 $partner = $load['partner'] ?? null;
                 if (!$partner) continue;
 

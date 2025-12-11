@@ -306,6 +306,45 @@ export default function MapView() {
       routesLayers.current[routeId] = { polyline, markers: [], visible: true };
     }
 
+    // Marcadores naranjas para destinos intermedios (carga.destino)
+    const layerEntry = routesLayers.current[routeId];
+    if (layerEntry) {
+      // limpiar marcadores anteriores de esta ruta
+      (layerEntry.markers || []).forEach(m => {
+        if (map.hasLayer(m)) map.removeLayer(m);
+      });
+      layerEntry.markers = [];
+
+      const orangeIcon = L.divIcon({
+        className: "destino-intermedio-icon",
+        html: `
+          <div style="
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #e67e22;
+            border: 3px solid #fff;
+            box-shadow: 0 0 6px rgba(0,0,0,0.35);
+          "></div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      (waypoints || []).forEach((wp) => {
+        if (!wp) return;
+        if (wp.type !== "intermediate_dest") return;
+        const lat = wp.lat ?? wp.latitude;
+        const lon = wp.lon ?? wp.longitude;
+        if (lat == null || lon == null) return;
+
+        const marker = L.marker([lat, lon], { icon: orangeIcon }).addTo(map);
+        const label = wp.label || "Destino intermedio";
+        marker.bindPopup(label);
+        layerEntry.markers.push(marker);
+      });
+    }
+
     try {
       map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), {
         padding: [40, 40],
