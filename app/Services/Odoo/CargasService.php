@@ -154,6 +154,7 @@ class CargasService
                 'name',
                 'vendor_id',
                 'vendor_name',
+                'destino',
                 'date',
                 'total_quantity',
                 'total_pallets',
