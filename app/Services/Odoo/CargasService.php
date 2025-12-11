@@ -55,7 +55,9 @@ class CargasService
         $vendor     = $load['vendor_id'] ?? null;
         $vendorName = $load['vendor_name'] ?? null;
 
-        $partner = $this->getPartnerCoordinates($vendor ?? $vendorName);
+        // Usamos la misma lógica que en getLoadsWithLines para resolver coordenadas,
+        // pasando también el vendorName para que funcione el fallback Odoo 16
+        $partner = $this->getPartnerCoordinates($vendor ?? $vendorName, $vendorName);
 
         if ($partner) {
             $load['partner'] = [
