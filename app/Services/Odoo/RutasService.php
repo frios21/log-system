@@ -4,6 +4,7 @@ namespace App\Services\Odoo;
 
 use App\Services\Odoo\OdooJsonRpc;
 use App\Services\Odoo\CService;
+use App\Services\Odoo\ContactosService;
 use Illuminate\Support\Facades\Http;
 
 class RutasService
@@ -20,7 +21,8 @@ class RutasService
 
     public function __construct(
         private readonly OdooJsonRpc $odoo,
-        private readonly CargasService $cargas
+        private readonly CargasService $cargas,
+        private readonly ContactosService $contactos16,
     ) {}
 
     private function getDestinoCoords(?string $destino): ?array
@@ -28,6 +30,40 @@ class RutasService
         if (!$destino) return null;
         $key = strtoupper(trim($destino));
         return self::DESTINO_COORDS[$key] ?? null;
+    }
+
+    /**
+     * Resuelve un partner por ID intentando primero Odoo 19 y luego Odoo 16.
+     * Devuelve siempre ['id','name','latitude','longitude','street'] si encuentra algo.
+     */
+    private function getPartnerByAnyId(int $id): ?array
+    {
+        // Primero Odoo 19
+        $rows19 = $this->odoo->searchRead(
+            'res.partner',
+            [['id', '=', $id]],
+            ['id','name','latitude','longitude','street'],
+            1
+        );
+        $p19 = $rows19[0] ?? null;
+        if ($p19 && $p19['latitude'] !== null && $p19['longitude'] !== null && ($p19['latitude'] != 0 || $p19['longitude'] != 0)) {
+            return $p19;
+        }
+
+        // Fallback: Odoo 16
+        $p16 = $this->contactos16->porId($id);
+        if ($p16 && $p16['latitude'] !== null && $p16['longitude'] !== null && ($p16['latitude'] != 0 || $p16['longitude'] != 0)) {
+            return [
+                'id'        => $p16['id'],
+                'name'      => $p16['display_name'] ?? $p16['name'],
+                'latitude'  => $p16['latitude'],
+                'longitude' => $p16['longitude'],
+                'street'    => $p16['street'] ?? null,
+            ];
+        }
+
+        // Si no encontramos coords válidas devolvemos lo que haya o null
+        return $p19 ?: $p16 ?: null;
     }
 
     public function todas(): array
@@ -147,19 +183,13 @@ class RutasService
 
         // ---------------- ORIGEN ----------------
         if ($originId) {
-            $p = $this->odoo->searchRead(
-                'res.partner',
-                [['id', '=', $originId]],
-                ['id','name','latitude','longitude'],
-                1
-            );
-            $origin = $p[0] ?? null;
-            if ($origin && $origin['latitude'] && $origin['longitude']) {
+            $partner = $this->getPartnerByAnyId($originId);
+            if ($partner && $partner['latitude'] && $partner['longitude']) {
                 $waypoints[] = [
-                    'lat'        => (float)$origin['latitude'],
-                    'lon'        => (float)$origin['longitude'],
-                    'partner_id' => $origin['id'],
-                    'label'      => 'Origen: '.$origin['name'],
+                    'lat'        => (float)$partner['latitude'],
+                    'lon'        => (float)$partner['longitude'],
+                    'partner_id' => $partner['id'],
+                    'label'      => 'Origen: '.$partner['name'],
                     'type'       => 'origin',
                 ];
             }
@@ -275,19 +305,13 @@ class RutasService
 
         // ---------------- DESTINO ----------------
         if ($destId) {
-            $p = $this->odoo->searchRead(
-                'res.partner',
-                [['id', '=', $destId]],
-                ['id','name','latitude','longitude'],
-                1
-            );
-            $dest = $p[0] ?? null;
-            if ($dest && $dest['latitude'] && $dest['longitude']) {
+            $partner = $this->getPartnerByAnyId($destId);
+            if ($partner && $partner['latitude'] && $partner['longitude']) {
                 $waypoints[] = [
-                    'lat'        => (float)$dest['latitude'],
-                    'lon'        => (float)$dest['longitude'],
-                    'partner_id' => $dest['id'],
-                    'label'      => 'Destino: '.$dest['name'],
+                    'lat'        => (float)$partner['latitude'],
+                    'lon'        => (float)$partner['longitude'],
+                    'partner_id' => $partner['id'],
+                    'label'      => 'Destino: '.$partner['name'],
                     'type'       => 'destination',
                 ];
             }
@@ -370,15 +394,14 @@ class RutasService
 
         // 2. Construir ORIGEN
         if ($originId) {
-            $p = $this->odoo->searchRead('res.partner', [['id', '=', $originId]], ['id','name','latitude','longitude']);
-            $origin = $p[0] ?? null;
-            if ($origin) {
+            $origin = $this->getPartnerByAnyId($originId);
+            if ($origin && $origin['latitude'] && $origin['longitude']) {
                 $waypoints[] = [
-                    'lat' => (float)$origin['latitude'],
-                    'lon' => (float)$origin['longitude'],
+                    'lat'        => (float)$origin['latitude'],
+                    'lon'        => (float)$origin['longitude'],
                     'partner_id' => $origin['id'],
-                    'label' => 'Origen: ' . $origin['name'],
-                    'type' => 'origin'
+                    'label'      => 'Origen: '.$origin['name'],
+                    'type'       => 'origin',
                 ];
             }
         } elseif ($existingOrigin) {
@@ -486,15 +509,14 @@ class RutasService
 
         // 4. Construir DESTINO
         if ($destId) {
-            $p = $this->odoo->searchRead('res.partner', [['id', '=', $destId]], ['id','name','latitude','longitude']);
-            $dest = $p[0] ?? null;
-            if ($dest) {
+            $dest = $this->getPartnerByAnyId($destId);
+            if ($dest && $dest['latitude'] && $dest['longitude']) {
                 $waypoints[] = [
-                    'lat' => (float)$dest['latitude'],
-                    'lon' => (float)$dest['longitude'],
+                    'lat'        => (float)$dest['latitude'],
+                    'lon'        => (float)$dest['longitude'],
                     'partner_id' => $dest['id'],
-                    'label' => 'Destino: ' . $dest['name'],
-                    'type' => 'destination'
+                    'label'      => 'Destino: '.$dest['name'],
+                    'type'       => 'destination',
                 ];
             }
         } elseif ($existingDest) {
