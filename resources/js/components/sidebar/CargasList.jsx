@@ -595,6 +595,7 @@ export default function CargasList() {
                     onClose={() => setContactModalTarget(null)}
                     onSelect={async (contact) => {
                         await updateManualCarga(contactModalTarget.id, {
+                            vendor_id: contact.id,
                             vendor_name: contact.display_name || contact.name,
                         });
                         setContactModalTarget(null);

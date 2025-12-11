@@ -275,6 +275,36 @@ class RutasService
                     continue;
                 }
 
+                // 1) Si la carga tiene vendor_id (Odoo 19), usamos ese partner.
+                $vendor = $carga['vendor_id'] ?? null;
+                $vendorId = null;
+                if (is_array($vendor) && isset($vendor[0])) {
+                    $vendorId = (int) $vendor[0];
+                } elseif (is_int($vendor) || ctype_digit((string) $vendor)) {
+                    $vendorId = (int) $vendor;
+                }
+
+                if ($vendorId) {
+                    $p19 = $this->odoo->searchRead(
+                        'res.partner',
+                        [['id', '=', $vendorId]],
+                        ['id','name','latitude','longitude'],
+                        1
+                    );
+                    $v = $p19[0] ?? null;
+                    if ($v && $v['latitude'] !== null && $v['longitude'] !== null && ($v['latitude'] != 0 || $v['longitude'] != 0)) {
+                        $waypoints[] = [
+                            'lat'        => (float) $v['latitude'],
+                            'lon'        => (float) $v['longitude'],
+                            'load_id'    => $carga['id'],
+                            'partner_id' => $v['id'],
+                            'label'      => $carga['name'],
+                        ];
+                        continue; // ya construimos waypoint para esta carga
+                    }
+                }
+
+                // 2) Si no hay vendor_id válido, usamos el partner que viene armado
                 $partner = $carga['partner'] ?? null;
                 if (!$partner) continue;
 
@@ -485,6 +515,36 @@ class RutasService
                     continue;
                 }
 
+                // 1) Si la carga tiene vendor_id (Odoo 19), usamos ese partner.
+                $vendor = $load['vendor_id'] ?? null;
+                $vendorId = null;
+                if (is_array($vendor) && isset($vendor[0])) {
+                    $vendorId = (int) $vendor[0];
+                } elseif (is_int($vendor) || ctype_digit((string) $vendor)) {
+                    $vendorId = (int) $vendor;
+                }
+
+                if ($vendorId) {
+                    $p19 = $this->odoo->searchRead(
+                        'res.partner',
+                        [['id', '=', $vendorId]],
+                        ['id','name','latitude','longitude'],
+                        1
+                    );
+                    $v = $p19[0] ?? null;
+                    if ($v && $v['latitude'] !== null && $v['longitude'] !== null && ($v['latitude'] != 0 || $v['longitude'] != 0)) {
+                        $waypoints[] = [
+                            'lat'        => (float) $v['latitude'],
+                            'lon'        => (float) $v['longitude'],
+                            'load_id'    => $load['id'],
+                            'partner_id' => $v['id'],
+                            'label'      => $load['name'],
+                        ];
+                        continue; // ya construimos waypoint para esta carga
+                    }
+                }
+
+                // 2) Si no hay vendor_id válido, usamos el partner que viene armado
                 $partner = $load['partner'] ?? null;
                 if (!$partner) continue;
 

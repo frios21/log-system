@@ -12,133 +12,6 @@ class CargasService
         private readonly ContactosService $contactos16,
     ) {}
 
-    /**
-     * Sincroniza un partner desde Odoo 16 hacia Odoo 19 y devuelve el id en 19.
-     * Usa x_odoo16_partner_id si existe para no duplicar.
-     */
-    private function syncPartnerFromOdoo16(int $partner16Id): ?int
-    {
-        $c16 = $this->contactos16->porId($partner16Id);
-        if (!$c16) {
-            return null;
-        }
-
-        // 1) Buscar por x_odoo16_partner_id en Odoo 19
-        $existing = $this->odoo->searchRead(
-            'res.partner',
-            [['x_odoo16_partner_id', '=', $partner16Id]],
-            ['id'],
-            1
-        );
-        if (!empty($existing)) {
-            return (int) $existing[0]['id'];
-        }
-
-        // 2) Fallback: buscar por nombre exacto para evitar duplicados
-        $partnerId19 = null;
-        $byName = $this->odoo->searchRead(
-            'res.partner',
-            [['name', '=', $c16['name']]],
-            ['id'],
-            1
-        );
-        if (!empty($byName)) {
-            $partnerId19 = (int) $byName[0]['id'];
-        }
-
-        // 3) Construir valores básicos
-        $lat = $c16['latitude'] ?? null;
-        $lon = $c16['longitude'] ?? null;
-
-        $vals = [
-            'name'          => $c16['name'],
-            'supplier_rank' => 1,
-            'is_company'    => $c16['is_company'] ?? false,
-            'x_odoo16_partner_id' => $partner16Id,
-        ];
-
-        if (!empty($c16['phone'])) {
-            $vals['phone'] = $c16['phone'];
-        }
-        if (!empty($c16['email'])) {
-            $vals['email'] = $c16['email'];
-        }
-        if (!empty($c16['vat'])) {
-            $vals['vat'] = $c16['vat'];
-        }
-        if (!empty($c16['street'])) {
-            $vals['street'] = $c16['street'];
-        }
-        if (!empty($c16['street2'])) {
-            $vals['street2'] = $c16['street2'];
-        }
-        if (!empty($c16['city'])) {
-            $vals['city'] = $c16['city'];
-        }
-        if (!empty($c16['zip'])) {
-            $vals['zip'] = $c16['zip'];
-        }
-
-        if ($lat !== null) {
-            $vals['latitude'] = (float) $lat;
-            $vals['partner_latitude'] = (float) $lat;
-        }
-        if ($lon !== null) {
-            $vals['longitude'] = (float) $lon;
-            $vals['partner_longitude'] = (float) $lon;
-        }
-
-        // 4) Resolver país y estado por nombre si vienen desde Odoo 16
-        $country = $c16['country_id'] ?? null;
-        if (is_array($country) && isset($country[1])) {
-            $countryName = $country[1];
-            $countries19 = $this->odoo->searchRead(
-                'res.country',
-                [['name', '=', $countryName]],
-                ['id'],
-                1
-            );
-            if (!empty($countries19)) {
-                $vals['country_id'] = $countries19[0]['id'];
-            }
-        }
-
-        $state = $c16['state_id'] ?? null;
-        if (is_array($state) && isset($state[1]) && !empty($vals['country_id'])) {
-            $stateName = $state[1];
-            $states19 = $this->odoo->searchRead(
-                'res.country.state',
-                [
-                    ['name', '=', $stateName],
-                    ['country_id', '=', $vals['country_id']],
-                ],
-                ['id'],
-                1
-            );
-            if (!empty($states19)) {
-                $vals['state_id'] = $states19[0]['id'];
-            }
-        }
-
-        // 5) Si tiene padre en Odoo 16, intentar sincronizarlo primero
-        $parent = $c16['parent_id'] ?? null;
-        if (is_array($parent) && !empty($parent[0])) {
-            $parent19Id = $this->syncPartnerFromOdoo16((int) $parent[0]);
-            if ($parent19Id) {
-                $vals['parent_id'] = $parent19Id;
-            }
-        }
-
-        // 6) Crear o actualizar en Odoo 19
-        if ($partnerId19) {
-            $this->odoo->write('res.partner', $partnerId19, $vals);
-        } else {
-            $partnerId19 = (int) $this->odoo->create('res.partner', $vals);
-        }
-
-        return $partnerId19;
-    }
-
     public function todas(): array
     {
         return $this->odoo->searchRead(
@@ -359,31 +232,17 @@ class CargasService
 
     /**
      * Actualiza campos simples de una carga (pensado para cargas manuales):
-     * name, vendor_name, vendor_id (Odoo16 → se mapea a Odoo19),
-     * total_quantity, total_pallets y/o date.
+     * name, vendor_name, total_quantity, total_pallets y/o date.
      */
     public function updateSimpleFields(int $id, array $fields): void
     {
-        $allowed = ['name', 'vendor_name', 'vendor_id', 'total_quantity', 'total_pallets', 'date'];
+        // No tocamos vendor_id aquí para evitar problemas con IDs de Odoo 16.
+        $allowed = ['name', 'vendor_name', 'total_quantity', 'total_pallets', 'date'];
         $vals = [];
 
         foreach ($allowed as $key) {
             if (array_key_exists($key, $fields)) {
                 $vals[$key] = $fields[$key];
-            }
-        }
-
-        // Si viene vendor_id desde el frontend (ID Odoo 16),
-        // sincronizamos/creamos el partner en Odoo 19 y reemplazamos
-        // por el id real de res.partner en Odoo 19.
-        if (array_key_exists('vendor_id', $vals) && $vals['vendor_id']) {
-            $partner16Id = (int) $vals['vendor_id'];
-            $partner19Id = $this->syncPartnerFromOdoo16($partner16Id);
-            if ($partner19Id) {
-                $vals['vendor_id'] = $partner19Id;
-            } else {
-                // Si no pudimos sincronizar, evitamos enviar un id inválido a Odoo 19
-                unset($vals['vendor_id']);
             }
         }
 
