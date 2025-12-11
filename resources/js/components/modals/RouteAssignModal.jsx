@@ -268,8 +268,6 @@ export default function RouteAssignModal({ ruta, onClose }) {
         // 2. Destino
         let destId = sameAsOrigin ? originId : destinationId;
         const destination = partners.find(p => p.id === destId);
-        // Si no encontramos destino en la lista de contactos, continuamos igualmente;
-        // el backend se encargará de construir waypoints con las cargas y/origen existente.
 
         // 3. IDs de cargas en el orden seleccionado
         const loadIds = ordered.map(c => c.id);
