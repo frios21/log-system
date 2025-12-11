@@ -311,19 +311,12 @@ export default function RouteAssignModal({ ruta, onClose }) {
             const billing = Number(data.total_distance_km ?? distanceKm ?? 0);
             setDistanceKm(isNaN(billing) ? 0 : billing);
 
-            // expected_qnt del backend solo considera cargas con líneas (no manuales).
+            // expected_qnt ya viene calculado en el backend
             const backendExpected =
                 typeof data.expected_qnt === "number" ? data.expected_qnt : 0;
 
-            // Para cargas manuales (sin líneas), sumamos total_quantity del frontend.
-            const manualExtra = ordered.reduce((acc, carga) => {
-                const hasLines = Array.isArray(carga.lines) && carga.lines.length > 0;
-                if (hasLines) return acc;
-                const q = Number(carga.total_quantity ?? 0);
-                return acc + (isNaN(q) ? 0 : q);
-            }, 0);
-
-            setTotalKg(backendExpected + manualExtra);
+            // Lo usamos tal cual para la cantidad total esperada
+            setTotalKg(backendExpected);
 
             if (data.waypoints) {
                 window.dispatchEvent(new CustomEvent("draw-preview-route", {
