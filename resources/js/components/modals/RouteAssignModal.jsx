@@ -246,32 +246,30 @@ export default function RouteAssignModal({ ruta, onClose }) {
         }
 
         // 1. Origen
-        let origin = partners.find(p => p.id === originId);
+                let origin = partners.find(p => p.id === originId);
 
-        if (!origin) {
-          // fallback: usar el partner de la primera carga seleccionada
-          const firstLoad = ordered[0];
-          const loadPartnerId =
-            firstLoad?.partner?.id ??
-            (Array.isArray(firstLoad?.vendor_id) ? firstLoad.vendor_id[0] : firstLoad?.vendor_id);
+                if (!origin && ordered.length > 0) {
+                    // fallback: usar el partner de la primera carga seleccionada
+                    const firstLoad = ordered[0];
+                    const loadPartnerId =
+                        firstLoad?.partner?.id ??
+                        (Array.isArray(firstLoad?.vendor_id) ? firstLoad.vendor_id[0] : firstLoad?.vendor_id);
 
-          if (loadPartnerId) {
-            origin = partners.find(p => p.id === loadPartnerId);
-          }
-        }
-
-        if (!origin) {
-            setPreviewLoading(false);
-            return;
-        }
+                    if (loadPartnerId) {
+                        const fallbackOrigin = partners.find(p => p.id === loadPartnerId);
+                        if (fallbackOrigin) {
+                            origin = fallbackOrigin;
+                            // opcionalmente propagamos este origen al estado para próximos previews
+                            setOriginId(loadPartnerId);
+                        }
+                    }
+                }
 
         // 2. Destino
         let destId = sameAsOrigin ? originId : destinationId;
         const destination = partners.find(p => p.id === destId);
-        if (!destination) {
-            setPreviewLoading(false);
-            return;
-        }
+        // Si no encontramos destino en la lista de contactos, continuamos igualmente;
+        // el backend se encargará de construir waypoints con las cargas y/origen existente.
 
         // 3. IDs de cargas en el orden seleccionado
         const loadIds = ordered.map(c => c.id);
