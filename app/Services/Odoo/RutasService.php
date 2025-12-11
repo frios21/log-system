@@ -216,9 +216,11 @@ class RutasService
                 }
                 $orderedLoads[] = $carga;
 
-                // calcular esperado de esta carga: por líneas
+                // calcular esperado de esta carga:
+                // 1) por líneas (cargas normales)
+                // 2) si no tiene líneas (carga manual), usamos total_quantity
                 $lines = $carga['lines'] ?? [];
-                if (is_array($lines)) {
+                if (is_array($lines) && !empty($lines)) {
                     foreach ($lines as $line) {
                         $productName = $line['product_name'] ?? '';
                         $nPallets    = $line['n_pallets'] ?? 0;
@@ -253,6 +255,12 @@ class RutasService
                         if ($avgKg > 0) {
                             $sumExpected += ((float)$nPallets * (float)$avgKg);
                         }
+                    }
+                } else {
+                    // carga sin líneas -> la tratamos como manual y usamos total_quantity
+                    $q = $carga['total_quantity'] ?? null;
+                    if (is_numeric($q) && $q > 0) {
+                        $sumExpected += (float) $q;
                     }
                 }
             }
@@ -457,8 +465,10 @@ class RutasService
                 }
                 $orderedLoads[] = $carga;
 
+                // 1) cargas con líneas -> usamos pallets y código de producto
+                // 2) cargas sin líneas (manuales) -> usamos total_quantity
                 $lines = $carga['lines'] ?? [];
-                if (is_array($lines)) {
+                if (is_array($lines) && !empty($lines)) {
                     foreach ($lines as $line) {
                         $productName = $line['product_name'] ?? '';
                         $nPallets    = $line['n_pallets'] ?? 0;
@@ -492,6 +502,11 @@ class RutasService
                         if ($avgKg > 0) {
                             $sumExpected += ((float)$nPallets * (float)$avgKg);
                         }
+                    }
+                } else {
+                    $q = $carga['total_quantity'] ?? null;
+                    if (is_numeric($q) && $q > 0) {
+                        $sumExpected += (float) $q;
                     }
                 }
             }
