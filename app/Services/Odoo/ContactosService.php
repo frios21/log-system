@@ -104,25 +104,35 @@ class ContactosService
                 $this->apiKey16,
                 'res.partner',
                 'search_read',
-                // ilike para que sea más tolerante a mayúsculas/espacios
-                [[['active', '=', true], ['name', 'ilike', $name]]],
+                // Usamos display_name para poder matchear "Padre, Hijo"
+                [[['active', '=', true], ['display_name', 'ilike', $name]]],
                 [
                     'fields' => ['id','name','display_name','phone','email','partner_latitude','partner_longitude','street','is_company','parent_id'],
-                    'limit'  => 1,
+                    'limit'  => 10,
                 ]
             ]
         );
 
         if (empty($rows)) return null;
 
-        $r = $rows[0];
-        $r['latitude']  = $r['partner_latitude']  ?? ($r['latitude'] ?? null);
-        $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
-        if (!isset($r['display_name']) || !$r['display_name']) {
-            $r['display_name'] = $r['name'] ?? null;
+        // Normalizar y preferir el primer contacto que tenga coordenadas válidas
+        $normalized = array_map(function ($r) {
+            $r['latitude']  = $r['partner_latitude']  ?? ($r['latitude'] ?? null);
+            $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+            if (!isset($r['display_name']) || !$r['display_name']) {
+                $r['display_name'] = $r['name'] ?? null;
+            }
+            return $r;
+        }, $rows);
+
+        foreach ($normalized as $r) {
+            if ($r['latitude'] !== null && $r['longitude'] !== null && ($r['latitude'] != 0 || $r['longitude'] != 0)) {
+                return $r;
+            }
         }
 
-        return $r;
+        // Si ninguno tiene coords, devolvemos el primero igualmente
+        return $normalized[0];
     }
 
     /**
