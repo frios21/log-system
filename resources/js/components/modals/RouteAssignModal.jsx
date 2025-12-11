@@ -60,24 +60,30 @@ export default function RouteAssignModal({ ruta, onClose }) {
     const initializedFromRouteRef = useRef(false);
 
     const filteredOrigins = Array.isArray(partners)
-        ? partners.filter(p => !originQuery || normalize(p.name).includes(normalize(originQuery)))
+        ? partners.filter(p => {
+            const label = p.display_name || p.name || "";
+            return !originQuery || normalize(label).includes(normalize(originQuery));
+        })
         : [];
 
     const filteredDestinations = Array.isArray(partners)
-        ? partners.filter(p => !destQuery || normalize(p.name).includes(normalize(destQuery)))
+        ? partners.filter(p => {
+            const label = p.display_name || p.name || "";
+            return !destQuery || normalize(label).includes(normalize(destQuery));
+        })
         : [];
 
     useEffect(() => {
         if (originId && Array.isArray(partners)) {
             const p = partners.find(pt => pt.id === originId);
-            if (p) setOriginQuery(p.name);
+            if (p) setOriginQuery(p.display_name || p.name || "");
         }
     }, [originId, partners]);
 
     useEffect(() => {
         if (destinationId && Array.isArray(partners)) {
             const p = partners.find(pt => pt.id === destinationId);
-            if (p) setDestQuery(p.name);
+            if (p) setDestQuery(p.display_name || p.name || "");
         }
     }, [destinationId, partners]);
 
@@ -460,9 +466,9 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                         <div
                                             key={p.id}
                                             style={{ padding: "8px 10px", cursor: "pointer" }}
-                                            onMouseDown={(e) => { e.preventDefault(); setOriginId(p.id); setOriginQuery(p.name); setIsOriginOpen(false); }}
+                                            onMouseDown={(e) => { e.preventDefault(); setOriginId(p.id); setOriginQuery(p.display_name || p.name || ""); setIsOriginOpen(false); }}
                                         >
-                                            {p.name}
+                                            {p.display_name || p.name}
                                         </div>
                                     ))}
                                     {!filteredOrigins.length && (
@@ -560,9 +566,9 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                         <div
                                             key={p.id}
                                             style={{ padding: "8px 10px", cursor: "pointer" }}
-                                            onMouseDown={(e) => { e.preventDefault(); setDestinationId(p.id); setDestQuery(p.name); setIsDestOpen(false); }}
+                                            onMouseDown={(e) => { e.preventDefault(); setDestinationId(p.id); setDestQuery(p.display_name || p.name || ""); setIsDestOpen(false); }}
                                         >
-                                            {p.name}
+                                            {p.display_name || p.name}
                                         </div>
                                     ))}
                                     {!filteredDestinations.length && (
