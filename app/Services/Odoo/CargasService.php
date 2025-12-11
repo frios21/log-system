@@ -9,7 +9,7 @@ class CargasService
 {
     public function __construct(
         private readonly OdooJsonRpc $odoo,
-        private readonly ContactosService $contactos16,   // <-- nuevo
+        private readonly ContactosService $contactos16,
     ) {}
 
     public function todas(): array
@@ -19,7 +19,7 @@ class CargasService
             [],
             [
                 'name', 'vendor_name', 'total_pallets', 'total_quantity',
-                'state', 'date','destino' , 'priority', 'fleet_assigned',
+                'state', 'date', 'destino', 'priority', 'fleet_assigned',
             ]
         );
     }
