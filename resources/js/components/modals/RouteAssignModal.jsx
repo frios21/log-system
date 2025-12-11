@@ -283,6 +283,15 @@ export default function RouteAssignModal({ ruta, onClose }) {
         const loadIds = ordered.map(c => c.id);
 
         try {
+            console.log("[RouteAssignModal] preview payload", {
+                routeId,
+                loadIds,
+                originId,
+                destId,
+                sameAsOrigin,
+                distanceKm,
+            });
+
             const res = await fetch(`/api/rutas/${routeId}/preview`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -296,6 +305,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
             });
 
             const data = await res.json();
+            console.log("[RouteAssignModal] preview response", data);
             // preferimos la distancia que viene desde el frontend (ya en distanceKm)
             const billing = Number(data.total_distance_km ?? distanceKm ?? 0);
             setDistanceKm(isNaN(billing) ? 0 : billing);
@@ -351,6 +361,15 @@ export default function RouteAssignModal({ ruta, onClose }) {
         if (sameAsOrigin) dest = originId;
         try {
             setSaving(true);
+            console.log("[RouteAssignModal] save payload", {
+                routeId,
+                loadIds,
+                vehicleId,
+                originId,
+                destinationId: dest,
+                total_cost: costoTotal,
+                total_distance_km: distanceKm,
+            });
             await fetch(`/api/rutas/${routeId}/assign`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

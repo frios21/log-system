@@ -406,7 +406,7 @@ class RutasService
         ];
     }
 
-    public function previewCargas(int $routeId, array $loadIds, ?int $originId, ?int $destId)
+    public function previewCargas(int $routeId, array $loadIds, ?int $originId, ?int $destId, array $fakeLoads = [])
     {
         // 1. Obtener la ruta base (solo para referencia, no escribimos en ella)
         $existing = $this->porId($routeId);
