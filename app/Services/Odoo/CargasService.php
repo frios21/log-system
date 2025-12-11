@@ -19,7 +19,7 @@ class CargasService
             [],
             [
                 'name', 'vendor_name', 'total_pallets', 'total_quantity',
-                'state', 'date', 'priority', 'fleet_assigned',
+                'state', 'date','destino' , 'priority', 'fleet_assigned',
             ]
         );
     }
@@ -34,6 +34,7 @@ class CargasService
                 'name',
                 'vendor_id',
                 'vendor_name',
+                'destino',
                 'date',
                 'total_quantity',
                 'total_pallets',
