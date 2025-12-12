@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 // permite crear, eliminar, asignar rutas junto a
 // filtros de búsqueda y estado -> falta filtro de fecha
 
-export default function RoutesList() {
+export default function RoutesList({ onBlockingChange }) {
     const { data: rutasData = [], refetch, isLoading } = useRutas();
     const queryClient = useQueryClient();
     const [openAssignFor, setOpenAssignFor] = useState(null);
@@ -26,14 +26,17 @@ export default function RoutesList() {
 
     async function createRoute() {
         try {
+            onBlockingChange && onBlockingChange(true);
             const res = await fetch("/api/rutas", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" }
+                headers: { "Content-Type": "application/json" },
             });
             await res.json();
-            refetch();
+            await refetch();
         } catch (e) {
             console.error(e);
+        } finally {
+            onBlockingChange && onBlockingChange(false);
         }
     }
 

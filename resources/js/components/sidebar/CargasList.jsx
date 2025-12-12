@@ -31,7 +31,7 @@ function formatCargaDate(raw) {
 // permite ver detalles de cada carga
 // incluye filtros de búsqueda, estado y rango de fechas dentro de un desplegable
 
-export default function CargasList() {
+export default function CargasList({ onBlockingChange }) {
     const { data: cargasData = [], isLoading, isFetching, refetch } = useCargas();
     const { data: contactosData = [], isLoading: loadingContactos } = useContactos();
     const [selectedCarga, setSelectedCarga] = useState(null);
@@ -59,6 +59,7 @@ export default function CargasList() {
 
     async function createCarga() {
         try {
+            onBlockingChange && onBlockingChange(true);
             const res = await fetch("/api/cargas", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -67,9 +68,11 @@ export default function CargasList() {
             if (created && created.id != null) {
                 setLastCreatedId(created.id);
             }
-            refetch();
+            await refetch();
         } catch (e) {
             console.error(e);
+        } finally {
+            onBlockingChange && onBlockingChange(false);
         }
     }
 
