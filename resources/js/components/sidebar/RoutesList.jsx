@@ -52,7 +52,7 @@ export default function RoutesList({ onBlockingChange }) {
             queryClient.invalidateQueries({ queryKey: ["cargas"] });
         } catch (e) {
             console.error(e);
-        } finally {
+            // si hubo error, liberamos el estado de "eliminando"
             setDeletingId(null);
         }
     }
