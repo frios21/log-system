@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import RouteConfirmModal from "../modals/RouteConfirmModal";
 
 // Componente que muestra la información de una ruta
@@ -27,6 +27,18 @@ export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, on
     // modal de confirmación de cambio de estado
     const [modalOpen, setModalOpen] = useState(false);
     const [targetStatus, setTargetStatus] = useState(null);
+
+    // Cerrar modal de confirmación con ESC
+    useEffect(() => {
+        if (!modalOpen) return;
+        function handleKeyDown(e) {
+            if (e.key === "Escape") {
+                setModalOpen(false);
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [modalOpen]);
 
     // helpers calculados para el card
     const distance = (ruta.total_distance_km !== undefined && ruta.total_distance_km !== null)

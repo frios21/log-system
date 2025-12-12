@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { useCargas } from "../../api/cargas";
 import { useUpdateRutaTotalQnt } from "../../api/rutas";
@@ -112,18 +112,6 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
       setSaving(false);
     }
   };
-
-  // Cerrar con ESC
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(e) {
-      if (e.key === "Escape") {
-        onClose && onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
 
   const modalContent = (
     <div
