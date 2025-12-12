@@ -18,9 +18,9 @@ const estadoColors = {
 
 // colores de rutas por estado
 const routeStatusColor = {
-  draft: "#d32f2f",      // rojo
-  assigned: "#f9a825",   // amarillo
-  done: "#2e7d32",       // verde
+  draft: "#d32f2f",
+  assigned: "#f9a825",
+  done: "#2e7d32",
 };
 
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBiYWUyYWNlZjc0OTQxMGE5ZmMwODY1N2M2MTk0YzlmIiwiaCI6Im11cm11cjY0In0=";
@@ -62,7 +62,6 @@ function decodePolyline(str, precision = 5) {
 
 // helper global para pedir ruta a OpenRouteService (perfil truck)
 function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
-  // lo dejamos como function normal para que esté hoisted
   return (async () => {
     const cleaned = waypoints
       .map((p) => {
@@ -162,7 +161,7 @@ export default function MapView() {
   }
 
   // -------------------------------------------------------------
-  // INICIALIZACIÓN DEL MAPA -> cambiar mapa??
+  // INICIALIZACIÓN DEL MAPA
   // -------------------------------------------------------------
   useEffect(() => {
     const mapElement = document.getElementById("map");
@@ -188,7 +187,6 @@ export default function MapView() {
   }, []);
 
   /** UBICACIÓN TRACCAR EN TIEMPO REAL */
-  // falta optimizar: solo actualizar si está en linea
   // desconectodo -> offline (marcador gris)
   useEffect(() => {
     const map = mapRef.current;
@@ -252,7 +250,7 @@ export default function MapView() {
     }
 
     // primera ejecución y polling cada 5s
-    // -> definir tiempo de actualización 3-5s?s
+    // -> definir tiempo de actualización 3-5s?
     updateDraftVehiclesPositions();
     const interval = setInterval(updateDraftVehiclesPositions, 5000);
 
@@ -263,8 +261,7 @@ export default function MapView() {
   }, []);
 
   // -------------------------------------------------------------
-  // Lógica de dibujo GH -> falta corregir linea en carriles con
-  // sentidos separados (carretera, autopista, avenida grande)
+  // Lógica de dibujo ORS
   // -------------------------------------------------------------
   async function drawRouteOnMap(routeId, waypoints, isPreview = false, status = null) {
     const map = mapRef.current;
@@ -444,7 +441,7 @@ export default function MapView() {
       totalDistOld += leg.distM || 0;
     }
 
-    // ... resto del código que pintaba la polyline ...
+    // ... resto del código q ya no me acuerdo
     --- fin versión antigua --- */
   }
 
@@ -482,7 +479,6 @@ export default function MapView() {
 
   // -------------------------------------------------------------
   // LISTENER: Preview ruta 
-  // modal de edición de ruta? -> similar a RouteConfirmModal
   // -------------------------------------------------------------
   useEffect(() => {
     function onDrawPreview(ev) {
@@ -498,7 +494,7 @@ export default function MapView() {
 
   // -------------------------------------------------------------
   // LISTENER: Toggle visibilidad -> falta filtro en sidebar para
-  // mostrar/ocultar todas -> marcar sólo las in_progress??
+  // mostrar/ocultar todas
   // -------------------------------------------------------------
   useEffect(() => {
     function toggleVisibility(ev) {
