@@ -19,7 +19,7 @@ function stateColor(status) {
     }
 }
 
-export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehicle, onDelete }) {
+export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, onAssign, onAssignVehicle, onDelete }) {
     // estado local para reflejar cambios inmediatos en el card
     const [localStatus, setLocalStatus] = useState(ruta.status);
     const color = stateColor(localStatus);
@@ -138,6 +138,9 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
             className="card"
             style={{
                 marginBottom: 12,
+                position: "relative",
+                opacity: isDeleting ? 0.6 : 1,
+                pointerEvents: isDeleting ? "none" : "auto",
                 ...stateColor(localStatus)
             }}
         >
@@ -249,8 +252,33 @@ export default function RouteCard({ ruta, colorIndex = 0, onAssign, onAssignVehi
                     </button>
                 )}
 
-                <button title="Eliminar ruta" className="btn btn-danger" style={{ background: "#e74c3c", color: "white" }} onClick={onDelete}>🗑</button>
+                <button
+                    title="Eliminar ruta"
+                    className="btn btn-danger"
+                    style={{ background: "#e74c3c", color: "white" }}
+                    onClick={onDelete}
+                    disabled={isDeleting}
+                >
+                    {isDeleting ? "…" : "🗑"}
+                </button>
             </div>
+
+            {isDeleting && (
+                <div
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(255,255,255,0.6)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <span style={{ fontSize: 12, color: "#555" }}>
+                        Eliminando...
+                    </span>
+                </div>
+            )}
 
             {/* Modal de confirmación */}
             <RouteConfirmModal

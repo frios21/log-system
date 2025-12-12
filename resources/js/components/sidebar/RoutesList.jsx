@@ -20,6 +20,7 @@ export default function RoutesList({ onBlockingChange }) {
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
     const [filterDate, setFilterDate] = useState(""); // YYYY-MM-DD
     const [showFilters, setShowFilters] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     // datos base desde React Query
     const rutas = Array.isArray(rutasData) ? rutasData : [];
@@ -43,6 +44,7 @@ export default function RoutesList({ onBlockingChange }) {
     async function deleteRoute(id) {
         if (!confirm("¿Eliminar ruta?")) return;
         try {
+            setDeletingId(id);
             await fetch(`/api/rutas/${id}`, { method: "DELETE" });
             refetch();
             // al borrar una ruta, las cargas asociadas pueden cambiar de estado
@@ -50,6 +52,8 @@ export default function RoutesList({ onBlockingChange }) {
             queryClient.invalidateQueries({ queryKey: ["cargas"] });
         } catch (e) {
             console.error(e);
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -175,6 +179,7 @@ export default function RoutesList({ onBlockingChange }) {
                     key={r.id}
                     ruta={r}
                     colorIndex={i}
+                    isDeleting={deletingId === r.id}
                     onAssign={() => setOpenAssignFor(r)}
                     onAssignVehicle={(route) => setOpenVehicleAssignFor(route)}
                     onDelete={() => deleteRoute(r.id)}
