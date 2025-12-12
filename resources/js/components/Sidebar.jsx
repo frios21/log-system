@@ -9,7 +9,7 @@ export default function Sidebar({ currentView, onChangeView }) {
     const [isBlocking, setIsBlocking] = useState(false);
 
     return (
-        <div className="logistics-main-sidebar" style={{ position: "relative" }}>
+        <div className="logistics-main-sidebar">
 
             <div className="logistics-sidebar-header">
                 <h2>Logística</h2>
