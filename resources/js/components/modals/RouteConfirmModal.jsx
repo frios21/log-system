@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { useCargas } from "../../api/cargas";
-import { useUpdateRutaTotalQnt } from "../../api/rutas";
 import CircleLoader from "../common/CircleLoader";
 
 function parseWaypointsField(w) {
@@ -19,9 +17,6 @@ function parseWaypointsField(w) {
 }
 
 export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targetStatus }) {
-  const { data: cargasData = [] } = useCargas();
-  const { mutateAsync: updateTotalQnt } = useUpdateRutaTotalQnt();
-
   const [totalQnt, setTotalQnt] = useState(() =>
     ruta?.total_qnt != null
       ? Number(ruta.total_qnt)
@@ -33,10 +28,13 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
   if (!open || !ruta) return null;
 
-  const loadsDetails =
-    Array.isArray(cargasData) && Array.isArray(ruta.load_ids)
-      ? cargasData.filter((l) => ruta.load_ids.includes(l.id))
-      : [];
+  // Intentamos usar detalles de cargas embebidos en la ruta (si existen).
+  // Si no, degradamos a un listado mínimo sólo con el id/nombre básico.
+  let loadsDetails = Array.isArray(ruta.loads) ? ruta.loads : [];
+
+  if (!loadsDetails.length && Array.isArray(ruta.load_ids)) {
+    loadsDetails = ruta.load_ids.map((id) => ({ id }));
+  }
 
   const waypoints = parseWaypointsField(ruta.waypoints);
   const hasExplicitOrigin = waypoints.some((wp) => wp && wp.type === "origin");
@@ -99,7 +97,11 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
       if (targetStatus === "done") {
         try {
-          await updateTotalQnt({ id: ruta.id, total_qnt: totalQnt });
+          await fetch(`/api/rutas/${ruta.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ total_qnt: totalQnt }),
+          });
         } catch (e) {
           console.error("Error actualizando total_qnt", e);
         }
