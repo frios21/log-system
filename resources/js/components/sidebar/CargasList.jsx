@@ -56,6 +56,7 @@ export default function CargasList({ onBlockingChange }) {
     const [lastCreatedId, setLastCreatedId] = useState(null);
     const [editingManualFields, setEditingManualFields] = useState({}); // { [id]: { name, qty, pallets, date } }
     const [contactModalTarget, setContactModalTarget] = useState(null); // { id, title } | null
+    const [inlineStatus, setInlineStatus] = useState({}); // { [id]: 'saving' | 'success' | 'error' }
 
     async function createCarga() {
         try {
@@ -86,14 +87,27 @@ export default function CargasList({ onBlockingChange }) {
 
     async function updateManualCarga(id, patch) {
         try {
+            setInlineStatus(prev => ({ ...prev, [id]: 'saving' }));
             await fetch(`/api/cargas/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(patch),
             });
-            refetch();
+            await refetch();
+
+            setInlineStatus(prev => ({ ...prev, [id]: 'success' }));
+
+            setTimeout(() => {
+                setInlineStatus(prev => {
+                    if (prev[id] !== 'success') return prev;
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                });
+            }, 800);
         } catch (e) {
             console.error(e);
+            setInlineStatus(prev => ({ ...prev, [id]: 'error' }));
         }
     }
 
@@ -308,6 +322,7 @@ export default function CargasList({ onBlockingChange }) {
                                         autoFocus
                                         type="text"
                                         defaultValue={carga.name || ""}
+                                        onFocus={e => e.target.select()}
                                         onBlur={async (e) => {
                                             const newName = e.target.value.trim();
                                             setEditingManualFields(prev => ({
@@ -367,6 +382,7 @@ export default function CargasList({ onBlockingChange }) {
                                         autoFocus
                                         type="date"
                                         defaultValue={(carga.date || "").split(" ")[0] || ""}
+                                        onFocus={e => e.target.select()}
                                         onBlur={async (e) => {
                                             const value = e.target.value;
                                             setEditingManualFields(prev => ({
@@ -476,6 +492,7 @@ export default function CargasList({ onBlockingChange }) {
                                     type="number"
                                     min={0}
                                     defaultValue={carga.total_quantity ?? 0}
+                                    onFocus={e => e.target.select()}
                                     onBlur={async (e) => {
                                         const value = e.target.value;
                                         setEditingManualFields(prev => ({
@@ -522,6 +539,7 @@ export default function CargasList({ onBlockingChange }) {
                                     type="number"
                                     min={0}
                                     defaultValue={carga.total_pallets ?? 0}
+                                    onFocus={e => e.target.select()}
                                     onBlur={async (e) => {
                                         const value = e.target.value;
                                         setEditingManualFields(prev => ({
@@ -561,11 +579,22 @@ export default function CargasList({ onBlockingChange }) {
                                     {carga.total_pallets}
                                 </span>
                             )}
-                            {palletsStatus[carga.id] === "success" && (
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", marginLeft: 6, display: "inline-block" }} />
-                            )}
-                            {palletsStatus[carga.id] === "error" && (
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", marginLeft: 6, display: "inline-block" }} />
+                            {inlineStatus[carga.id] && (
+                                <span
+                                    style={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: "50%",
+                                        marginLeft: 6,
+                                        display: "inline-block",
+                                        background:
+                                            inlineStatus[carga.id] === 'success'
+                                                ? "#22c55e"
+                                                : inlineStatus[carga.id] === 'error'
+                                                    ? "#ef4444"
+                                                    : "#9ca3af",
+                                    }}
+                                />
                             )}
                         </div>
 
