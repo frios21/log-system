@@ -109,8 +109,8 @@ class TraccarController extends Controller
                 'vehicle_name' => $veh['name'] ?? '',
                 'driver_id' => $driverId,
                 'driver_name' => $drv['name'] ?? '',
-                'traccar_device_id' => (string) $storedUnique, // el que guardas
-                'traccar_internal_id' => (int) $internalId,     // el que usa Traccar en positions
+                'traccar_device_id' => (string) $storedUnique,
+                'traccar_internal_id' => (int) $internalId,
                 'position' => $pos,
             ];
         }

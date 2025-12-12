@@ -91,6 +91,17 @@ export default function RouteAssignModal({ ruta, onClose }) {
     useEffect(() => { if (destinationId) setIsDestOpen(false); }, [destinationId]);
     useEffect(() => { if (sameAsOrigin) setIsDestOpen(false); }, [sameAsOrigin]);
 
+    // Cerrar modal con tecla ESC
+    useEffect(() => {
+        function handleKeyDown(e) {
+            if (e.key === "Escape") {
+                onClose && onClose();
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
+
     // -------------------------------------------------------------
     // CARGA INICIAL Y ORDENAMIENTO POR WAYPOINTS (usando caché de cargas)
     // -------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 export default function ContactSelectModal({
     onClose,
@@ -22,6 +22,17 @@ export default function ContactSelectModal({
             );
         });
     }, [contacts, search]);
+
+    // Cerrar con ESC
+    useEffect(() => {
+        function handleKeyDown(e) {
+            if (e.key === "Escape") {
+                onClose && onClose();
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
 
     return (
         <div className="modal-backdrop">

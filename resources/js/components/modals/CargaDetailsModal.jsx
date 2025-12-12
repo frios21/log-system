@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function CargaDetailsModal({ carga, onClose }) {
     const [items, setItems] = useState(carga.lines || []);
@@ -10,6 +10,17 @@ export default function CargaDetailsModal({ carga, onClose }) {
     const subtotal = items.reduce((acc, i) => acc + i.price_subtotal, 0);
     const iva = subtotal * 0.19;
     const total = carga.total_cost;
+
+    // Cerrar con ESC
+    useEffect(() => {
+        function handleKeyDown(e) {
+            if (e.key === "Escape") {
+                onClose && onClose();
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
 
     async function saveLinePallets(lineId) {
         const value = tempPallets.trim();
