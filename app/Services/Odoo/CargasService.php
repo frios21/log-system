@@ -41,6 +41,7 @@ class CargasService
                 'total_cost',
                 'state',
                 'line_ids',
+                'partner', // nuevo campo JSON en Odoo
             ],
             1
         );
@@ -52,24 +53,9 @@ class CargasService
 
         $load['lines'] = $this->getLoadLines($load['line_ids'] ?? []);
 
-        $vendor     = $load['vendor_id'] ?? null;
-        $vendorName = $load['vendor_name'] ?? null;
-
-        // Usamos la misma lógica que en getLoadsWithLines para resolver coordenadas,
-        // pasando también el vendorName para que funcione el fallback Odoo 16
-        $partner = $this->getPartnerCoordinates($vendor ?? $vendorName, $vendorName);
-
-        if ($partner) {
-            $load['partner'] = [
-                'id'        => $partner['id'],
-                'name'      => $partner['name'],
-                'latitude'  => $partner['latitude'],
-                'longitude' => $partner['longitude'],
-                'street'    => $partner['street'],
-            ];
-        } else {
-            $load['partner'] = null;
-        }
+        // Resolver partner usando vendor_id/vendor_name y el snapshot JSON en Odoo,
+        // sin sobreescribir con null cuando ya no se encuentra.
+        $load['partner'] = $this->resolveAndPersistPartnerSnapshot($load);
 
         return $load;
     }
@@ -162,7 +148,8 @@ class CargasService
                 'total_pallets',
                 'total_cost',
                 'state',
-                'line_ids'
+                'line_ids',
+                'partner', // snapshot JSON del partner en Odoo
             ]
         );
 
@@ -171,23 +158,9 @@ class CargasService
             // Líneas
             $load['lines'] = $this->getLoadLines($load['line_ids'] ?? []);
 
-            // Partner (coordenadas) usando vendor_id + vendor_name
-            $vendor      = $load['vendor_id'] ?? null;      // puede ser [id, name]
-            $vendorName  = $load['vendor_name'] ?? null;
-
-            $partner = $this->getPartnerCoordinates($vendor ?? $vendorName, $vendorName);
-
-            if ($partner) {
-                $load['partner'] = [
-                    'id'        => $partner['id'],
-                    'name'      => $partner['name'],
-                    'latitude'  => $partner['latitude'],
-                    'longitude' => $partner['longitude'],
-                    'street'    => $partner['street'] ?? null,
-                ];
-            } else {
-                $load['partner'] = null;
-            }
+            // Partner: usar vendor_id/vendor_name y el snapshot JSON, sin borrar
+            // el partner guardado si ya no se encuentra en Odoo 16/19.
+            $load['partner'] = $this->resolveAndPersistPartnerSnapshot($load);
         }
 
         return $loads;
@@ -289,5 +262,86 @@ class CargasService
                 [[ $id ]]
             ]
         );
+    }
+
+    /**
+     * Normaliza el snapshot de partner que viene desde Odoo (campo JSON).
+     * Si viene como lista vacía o null, devuelve null.
+     */
+    private function normalizePartnerSnapshot($raw): ?array
+    {
+        if ($raw === null) {
+            return null;
+        }
+
+        if (is_array($raw)) {
+            if (count($raw) === 0) {
+                return null;
+            }
+
+            return [
+                'id'        => $raw['id']        ?? null,
+                'name'      => $raw['name']      ?? null,
+                'latitude'  => $raw['latitude']  ?? null,
+                'longitude' => $raw['longitude'] ?? null,
+                'street'    => $raw['street']    ?? null,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Compara dos partner para saber si cambiaron.
+     */
+    private function partnerSnapshotChanged(?array $old, array $new): bool
+    {
+        if ($old === null) {
+            return true;
+        }
+
+        return (
+            ($old['id']        ?? null) !== ($new['id']        ?? null) ||
+            ($old['name']      ?? null) !== ($new['name']      ?? null) ||
+            ($old['latitude']  ?? null) !== ($new['latitude']  ?? null) ||
+            ($old['longitude'] ?? null) !== ($new['longitude'] ?? null) ||
+            ($old['street']    ?? null) !== ($new['street']    ?? null)
+        );
+    }
+
+    /**
+     * Resuelve el partner usando vendor_id/vendor_name y, si lo encuentra,
+     * actualiza el campo JSON `partner` en logistics.load. Si no lo encuentra,
+     * reutiliza el snapshot anterior en vez de sobreescribir con null.
+     */
+    private function resolveAndPersistPartnerSnapshot(array $load): ?array
+    {
+        $snapshot = $this->normalizePartnerSnapshot($load['partner'] ?? null);
+
+        $vendor     = $load['vendor_id']   ?? null; // puede ser [id, name]
+        $vendorName = $load['vendor_name'] ?? null;
+
+        $resolved = $this->getPartnerCoordinates($vendor ?? $vendorName, $vendorName);
+
+        if ($resolved) {
+            $normalized = [
+                'id'        => $resolved['id']        ?? null,
+                'name'      => $resolved['name']      ?? null,
+                'latitude'  => $resolved['latitude']  ?? null,
+                'longitude' => $resolved['longitude'] ?? null,
+                'street'    => $resolved['street']    ?? null,
+            ];
+
+            $id = $load['id'] ?? null;
+            if ($id && $this->partnerSnapshotChanged($snapshot, $normalized)) {
+                $this->odoo->write('logistics.load', (int) $id, [
+                    'partner' => $normalized,
+                ]);
+            }
+
+            return $normalized;
+        }
+
+        return $snapshot;
     }
 }
