@@ -436,38 +436,22 @@ export default function CargasList({ onBlockingChange }) {
                                 onClick={() => {
                                     const hasLocation = !!(carga.partner || carga.vendor_id || carga.vendor_name);
 
+                                    // Para cargas manuales sin ubicación aún, abrimos el modal
+                                    // de selección de contacto.
                                     if (manual && !hasLocation) {
                                         setContactModalTarget({ id: carga.id, title: carga.name });
                                         return;
                                     }
 
+                                    // En todos los demás casos, sólo enfocamos el marcador
+                                    // de la carga (agrupado por partner) usando focus-client.
                                     const partnerId =
                                         carga.partner?.id ??
                                         (Array.isArray(carga.vendor_id)
                                             ? carga.vendor_id[0]
                                             : carga.vendor_id);
 
-                                    if (
-                                        carga.partner &&
-                                        carga.partner.latitude &&
-                                        carga.partner.longitude
-                                    ) {
-                                        const ct = {
-                                            id: Number(carga.partner.id),
-                                            name: carga.partner.name,
-                                            latitude: Number(carga.partner.latitude),
-                                            longitude: Number(carga.partner.longitude),
-                                            street: carga.partner.street,
-                                        };
-                                        window.dispatchEvent(
-                                            new CustomEvent("contacts-markers-show", {
-                                                detail: [ct],
-                                            })
-                                        );
-                                        window.dispatchEvent(
-                                            new CustomEvent("focus-contact", { detail: ct })
-                                        );
-                                    } else if (partnerId) {
+                                    if (partnerId) {
                                         window.dispatchEvent(
                                             new CustomEvent("focus-client", {
                                                 detail: Number(partnerId),
