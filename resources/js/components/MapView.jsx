@@ -18,9 +18,9 @@ const estadoColors = {
 
 // colores de rutas por estado
 const routeStatusColor = {
-  draft: "#d32f2f",
-  assigned: "#f9a825",
-  done: "#2e7d32",
+  draft: "#d32f2f",      // rojo
+  assigned: "#f9a825",   // amarillo
+  done: "#2e7d32",       // verde
 };
 
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBiYWUyYWNlZjc0OTQxMGE5ZmMwODY1N2M2MTk0YzlmIiwiaCI6Im11cm11cjY0In0=";
@@ -62,6 +62,7 @@ function decodePolyline(str, precision = 5) {
 
 // helper global para pedir ruta a OpenRouteService (perfil truck)
 function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
+  // lo dejamos como function normal para que esté hoisted
   return (async () => {
     const cleaned = waypoints
       .map((p) => {
@@ -161,7 +162,7 @@ export default function MapView() {
   }
 
   // -------------------------------------------------------------
-  // INICIALIZACIÓN DEL MAPA
+  // INICIALIZACIÓN DEL MAPA -> cambiar mapa??
   // -------------------------------------------------------------
   useEffect(() => {
     const mapElement = document.getElementById("map");
@@ -187,6 +188,7 @@ export default function MapView() {
   }, []);
 
   /** UBICACIÓN TRACCAR EN TIEMPO REAL */
+  // falta optimizar: solo actualizar si está en linea
   // desconectodo -> offline (marcador gris)
   useEffect(() => {
     const map = mapRef.current;
@@ -250,7 +252,7 @@ export default function MapView() {
     }
 
     // primera ejecución y polling cada 5s
-    // -> definir tiempo de actualización 3-5s?
+    // -> definir tiempo de actualización 3-5s?s
     updateDraftVehiclesPositions();
     const interval = setInterval(updateDraftVehiclesPositions, 5000);
 
@@ -261,7 +263,8 @@ export default function MapView() {
   }, []);
 
   // -------------------------------------------------------------
-  // Lógica de dibujo ORS
+  // Lógica de dibujo GH -> falta corregir linea en carriles con
+  // sentidos separados (carretera, autopista, avenida grande)
   // -------------------------------------------------------------
   async function drawRouteOnMap(routeId, waypoints, isPreview = false, status = null) {
     const map = mapRef.current;
@@ -301,45 +304,6 @@ export default function MapView() {
         dashArray,
       }).addTo(map);
       routesLayers.current[routeId] = { polyline, markers: [], visible: true };
-    }
-
-    // Marcadores naranjas para destinos intermedios (carga.destino)
-    const layerEntry = routesLayers.current[routeId];
-    if (layerEntry) {
-      // limpiar marcadores anteriores de esta ruta
-      (layerEntry.markers || []).forEach(m => {
-        if (map.hasLayer(m)) map.removeLayer(m);
-      });
-      layerEntry.markers = [];
-
-      const orangeIcon = L.divIcon({
-        className: "destino-intermedio-icon",
-        html: `
-          <div style="
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #e67e22;
-            border: 3px solid #fff;
-            box-shadow: 0 0 6px rgba(0,0,0,0.35);
-          "></div>
-        `,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-
-      (waypoints || []).forEach((wp) => {
-        if (!wp) return;
-        if (wp.type !== "intermediate_dest") return;
-        const lat = wp.lat ?? wp.latitude;
-        const lon = wp.lon ?? wp.longitude;
-        if (lat == null || lon == null) return;
-
-        const marker = L.marker([lat, lon], { icon: orangeIcon }).addTo(map);
-        const label = wp.label || "Destino intermedio";
-        marker.bindPopup(label);
-        layerEntry.markers.push(marker);
-      });
     }
 
     try {
@@ -441,7 +405,7 @@ export default function MapView() {
       totalDistOld += leg.distM || 0;
     }
 
-    // ... resto del código q ya no me acuerdo
+    // ... resto del código que pintaba la polyline ...
     --- fin versión antigua --- */
   }
 
@@ -479,6 +443,7 @@ export default function MapView() {
 
   // -------------------------------------------------------------
   // LISTENER: Preview ruta 
+  // modal de edición de ruta? -> similar a RouteConfirmModal
   // -------------------------------------------------------------
   useEffect(() => {
     function onDrawPreview(ev) {
@@ -494,7 +459,7 @@ export default function MapView() {
 
   // -------------------------------------------------------------
   // LISTENER: Toggle visibilidad -> falta filtro en sidebar para
-  // mostrar/ocultar todas
+  // mostrar/ocultar todas -> marcar sólo las in_progress??
   // -------------------------------------------------------------
   useEffect(() => {
     function toggleVisibility(ev) {
