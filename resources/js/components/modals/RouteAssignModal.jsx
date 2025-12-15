@@ -469,145 +469,143 @@ export default function RouteAssignModal({ ruta, onClose }) {
                 )}
                 {/* IZQUIERDA */}
                 <div className="left-panel">
-                    <div className="left-panel-scroll">
-                         <h3 className="modal-title">Asignar cargas a <strong>{routeDetails?.name}</strong></h3>
+                     <h3 className="modal-title">Asignar cargas a <strong>{routeDetails?.name}</strong></h3>
 
-                        {/* Origen */}
-                        <div className="section">
-                            <label className="section-label">Origen de la ruta</label>
-                            <div className="input" style={{ position: "relative", padding: 0 }}>
-                                <input
-                                    className="input"
-                                    style={{ border: "none", width: "100%" }}
-                                    placeholder="Buscar por nombre"
-                                    value={originQuery}
-                                    onFocus={() => setIsOriginOpen(true)}
-                                    onChange={e => {
-                                        const v = e.target.value;
-                                        setOriginQuery(v);
-                                        setOriginId(null);
-                                        setIsOriginOpen(Boolean(v));
-                                    }}
-                                    onKeyDown={e => { if (e.key === "Escape") setIsOriginOpen(false); }}
-                                    onBlur={() => setTimeout(() => setIsOriginOpen(false), 150)}
-                                />
-                                {isOriginOpen && originQuery && (
-                                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
-                                        {filteredOrigins.slice(0, 20).map(p => (
-                                            <div
-                                                key={p.id}
-                                                style={{ padding: "8px 10px", cursor: "pointer" }}
-                                                onMouseDown={(e) => { e.preventDefault(); setOriginId(p.id); setOriginQuery(p.display_name || p.name || ""); setIsOriginOpen(false); }}
-                                            >
-                                                {p.display_name || p.name}
-                                            </div>
-                                        ))}
-                                        {!filteredOrigins.length && (
-                                            <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                         {/* Cargas */}
-                        <div className="section">
-                            <label className="section-label">Cargas disponibles</label>
-                            <div className="cargas-list">
-                                {allLoads.map(c => {
-                                    let fechaLabel = "";
-                                    if (c.date) {
-                                        const d = new Date(c.date);
-                                        if (!isNaN(d.getTime())) {
-                                            const dd = String(d.getDate()).padStart(2, "0");
-                                            const mm = String(d.getMonth() + 1).padStart(2, "0");
-                                            const yy = String(d.getFullYear()).slice(-2);
-                                            fechaLabel = `${dd}/${mm}/${yy}`;
-                                        }
-                                    }
-
-                                    return (
-                                        <div key={c.id}
-                                             className={`carga-item ${selected.has(c.id) ? "selected" : ""}`}
-                                             onClick={() => toggle(c.id)}
+                    {/* Origen */}
+                    <div className="section">
+                        <label className="section-label">Origen de la ruta</label>
+                        <div className="input" style={{ position: "relative", padding: 0 }}>
+                            <input
+                                className="input"
+                                style={{ border: "none", width: "100%" }}
+                                placeholder="Buscar por nombre"
+                                value={originQuery}
+                                onFocus={() => setIsOriginOpen(true)}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    setOriginQuery(v);
+                                    setOriginId(null);
+                                    setIsOriginOpen(Boolean(v));
+                                }}
+                                onKeyDown={e => { if (e.key === "Escape") setIsOriginOpen(false); }}
+                                onBlur={() => setTimeout(() => setIsOriginOpen(false), 150)}
+                            />
+                            {isOriginOpen && originQuery && (
+                                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
+                                    {filteredOrigins.slice(0, 20).map(p => (
+                                        <div
+                                            key={p.id}
+                                            style={{ padding: "8px 10px", cursor: "pointer" }}
+                                            onMouseDown={(e) => { e.preventDefault(); setOriginId(p.id); setOriginQuery(p.display_name || p.name || ""); setIsOriginOpen(false); }}
                                         >
-                                            <div style={{display: "flex", gap: "8px", alignItems: "center", width: "100%"}}>
-                                                <div style={{flex: 1}}>
-                                                    {fechaLabel && (
-                                                        <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
-                                                            {fechaLabel}
-                                                        </div>
-                                                    )}
-                                                    <div className="carga-title">{c.name}</div>
-                                                    {c.destino && c.destino !== false && (
-                                                        <div style={{ fontSize: 11, color: "#555" }}>
-                                                            {c.destino}
-                                                        </div>
-                                                    )}
-                                                    <div className="carga-sub">{c.vendor_name}</div>
-                                                    <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-                                                        Pallets: {c.total_pallets ?? "-"}
-                                                    </div>
-                                                </div>
-
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selected.has(c.id)}
-                                                    onChange={() => toggle(c.id)}
-                                                    style={{marginLeft: 8}}
-                                                />
-                                            </div>
+                                            {p.display_name || p.name}
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    ))}
+                                    {!filteredOrigins.length && (
+                                        <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
+                    </div>
 
-                         {/* Destino */}
-                        <div className="section">
-                             <label className="section-label">Destino de la ruta</label>
-                             <div className="same-origin">
-                                <input
-                                    type="checkbox"
-                                    checked={sameAsOrigin}
-                                    onChange={e => setSameAsOrigin(e.target.checked)}
-                                />
-                                <span>Mismo que origen</span>
-                            </div>
-                            <div className="input" style={{ position: "relative", padding: 0 }}>
-                                <input
-                                    className="input"
-                                    style={{ border: "none", width: "100%" }}
-                                    placeholder="Buscar por nombre"
-                                    value={sameAsOrigin ? originQuery : destQuery}
-                                    disabled={sameAsOrigin}
-                                    onFocus={() => { if (!sameAsOrigin) setIsDestOpen(true); }}
-                                    onChange={e => {
-                                        const v = e.target.value;
-                                        setDestQuery(v);
-                                        setDestinationId(null);
-                                        if (!sameAsOrigin) setIsDestOpen(Boolean(v));
-                                    }}
-                                    onKeyDown={e => { if (e.key === "Escape") setIsDestOpen(false); }}
-                                    onBlur={() => setTimeout(() => setIsDestOpen(false), 150)}
-                                />
-                                {!sameAsOrigin && isDestOpen && destQuery && (
-                                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
-                                        {filteredDestinations.slice(0, 20).map(p => (
-                                            <div
-                                                key={p.id}
-                                                style={{ padding: "8px 10px", cursor: "pointer" }}
-                                                onMouseDown={(e) => { e.preventDefault(); setDestinationId(p.id); setDestQuery(p.display_name || p.name || ""); setIsDestOpen(false); }}
-                                            >
-                                                {p.display_name || p.name}
+                     {/* Cargas */}
+                    <div className="section">
+                        <label className="section-label">Cargas disponibles</label>
+                        <div className="cargas-list">
+                            {allLoads.map(c => {
+                                let fechaLabel = "";
+                                if (c.date) {
+                                    const d = new Date(c.date);
+                                    if (!isNaN(d.getTime())) {
+                                        const dd = String(d.getDate()).padStart(2, "0");
+                                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                                        const yy = String(d.getFullYear()).slice(-2);
+                                        fechaLabel = `${dd}/${mm}/${yy}`;
+                                    }
+                                }
+
+                                return (
+                                    <div key={c.id}
+                                         className={`carga-item ${selected.has(c.id) ? "selected" : ""}`}
+                                         onClick={() => toggle(c.id)}
+                                    >
+                                        <div style={{display: "flex", gap: "8px", alignItems: "center", width: "100%"}}>
+                                            <div style={{flex: 1}}>
+                                                {fechaLabel && (
+                                                    <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
+                                                        {fechaLabel}
+                                                    </div>
+                                                )}
+                                                <div className="carga-title">{c.name}</div>
+                                                {c.destino && c.destino !== false && (
+                                                    <div style={{ fontSize: 11, color: "#555" }}>
+                                                        {c.destino}
+                                                    </div>
+                                                )}
+                                                <div className="carga-sub">{c.vendor_name}</div>
+                                                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                                                    Pallets: {c.total_pallets ?? "-"}
+                                                </div>
                                             </div>
-                                        ))}
-                                        {!filteredDestinations.length && (
-                                            <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
-                                        )}
+
+                                            <input
+                                                type="checkbox"
+                                                checked={selected.has(c.id)}
+                                                onChange={() => toggle(c.id)}
+                                                style={{marginLeft: 8}}
+                                            />
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                     {/* Destino */}
+                    <div className="section">
+                         <label className="section-label">Destino de la ruta</label>
+                         <div className="same-origin">
+                            <input
+                                type="checkbox"
+                                checked={sameAsOrigin}
+                                onChange={e => setSameAsOrigin(e.target.checked)}
+                            />
+                            <span>Mismo que origen</span>
+                        </div>
+                        <div className="input" style={{ position: "relative", padding: 0 }}>
+                            <input
+                                className="input"
+                                style={{ border: "none", width: "100%" }}
+                                placeholder="Buscar por nombre"
+                                value={sameAsOrigin ? originQuery : destQuery}
+                                disabled={sameAsOrigin}
+                                onFocus={() => { if (!sameAsOrigin) setIsDestOpen(true); }}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    setDestQuery(v);
+                                    setDestinationId(null);
+                                    if (!sameAsOrigin) setIsDestOpen(Boolean(v));
+                                }}
+                                onKeyDown={e => { if (e.key === "Escape") setIsDestOpen(false); }}
+                                onBlur={() => setTimeout(() => setIsDestOpen(false), 150)}
+                            />
+                            {!sameAsOrigin && isDestOpen && destQuery && (
+                                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, maxHeight: 180, overflowY: "auto", background: "#fff", border: "1px solid #ddd", zIndex: 10 }}>
+                                    {filteredDestinations.slice(0, 20).map(p => (
+                                        <div
+                                            key={p.id}
+                                            style={{ padding: "8px 10px", cursor: "pointer" }}
+                                            onMouseDown={(e) => { e.preventDefault(); setDestinationId(p.id); setDestQuery(p.display_name || p.name || ""); setIsDestOpen(false); }}
+                                        >
+                                            {p.display_name || p.name}
+                                        </div>
+                                    ))}
+                                    {!filteredDestinations.length && (
+                                        <div style={{ padding: "8px 10px", color: "#666" }}>Sin resultados</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
