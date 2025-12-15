@@ -275,8 +275,19 @@ class CargasService
         ];
     }
 
-    public function eliminar(int $id): void
+    public function eliminar(int $id)
     {
-        $this->odoo->delete('logistics.load', $id);
+        return $this->odoo->call(
+            "object",
+            "execute_kw",
+            [
+                $this->odoo->getDb(),
+                $this->odoo->getUid(),
+                $this->odoo->getPassword(),
+                "logistics.load",
+                "unlink",
+                [[ $id ]]
+            ]
+        );
     }
 }
