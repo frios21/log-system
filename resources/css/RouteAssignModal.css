@@ -15,6 +15,12 @@
 .left-panel {
     flex: 0 0 30%;
     min-width: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.left-panel-scroll {
+    flex: 1;
     overflow-y: auto;
     padding-right: 10px; /* separación con la barra de scroll */
 }
@@ -27,8 +33,8 @@
 
 /* Sections */
 .section {
-    margin-top: 18px;
-    padding: 14px 14px;
+    margin-top: 12px;
+    padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid #ddd;
     background: #fafafa;
@@ -44,9 +50,9 @@
 
 /* Cargas list */
 .cargas-list {
-    max-height: 32vh; /* antes 25vh */
+    max-height: 26vh; /* hacer más compacta la columna izquierda */
     overflow-y: auto;
-    padding-right: 10px;
+    padding-right: 8px;
 }
 
 .carga-item {
@@ -117,7 +123,7 @@
 .buttons {
     display: flex;
     justify-content: space-between;
-    margin-top: 20px;
+    margin-top: 14px;
 }
 
 /* Input generic */
