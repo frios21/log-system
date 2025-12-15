@@ -78,9 +78,10 @@ class LoadController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Load $load)
+    public function destroy(int $id)
     {
-        //
+        $this->service->eliminar($id);
+        return response()->json(['ok' => true]);
     }
 
     /**

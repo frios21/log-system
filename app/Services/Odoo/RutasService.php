@@ -52,8 +52,7 @@ class RutasService
             ];
         }
 
-        // 2) Si por alguna razón no hay contacto 16 usable, podemos
-        //    intentar Odoo 19 como respaldo (por si hay datos históricos).
+        // fallback odoo 19 por si odoo 16 falla
         $rows19 = $this->odoo->searchRead(
             'res.partner',
             [['id', '=', $id]],
@@ -65,7 +64,6 @@ class RutasService
             return $p19;
         }
 
-        // Si no encontramos coords válidas devolvemos lo que haya o null
         return $p16 ?: $p19 ?: null;
     }
 

@@ -274,4 +274,9 @@ class CargasService
             'name' => $name,
         ];
     }
+
+    public function eliminar(int $id): void
+    {
+        $this->odoo->delete('logistics.load', $id);
+    }
 }
