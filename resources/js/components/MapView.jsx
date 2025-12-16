@@ -44,6 +44,9 @@ const routeStatusColor = {
   done: "#2e7d32",
 };
 
+// selector simple de proveedor de ruta: true = Google Directions, false = ORS
+const USE_GOOGLE_DIRECTIONS = true;
+
 // Decode encoded polyline (ORS/Google-style) -> array [lat, lon]
 function decodePolyline(str, precision = 5) {
   let index = 0;
@@ -127,6 +130,71 @@ function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
 
     return { coords, distM };
   })();
+}
+
+// helper alternativo: pedir ruta a Google Directions API (vía JS SDK)
+async function fetchRouteFromGoogleDirections(waypoints) {
+  const maps = await loadGoogleMaps();
+
+  const cleaned = (waypoints || [])
+    .map((p) => {
+      const lat = p.lat ?? p.latitude;
+      const lon = p.lon ?? p.longitude ?? p.lon;
+      if (lat == null || lon == null) return null;
+      return { lat: Number(lat), lon: Number(lon) };
+    })
+    .filter(Boolean);
+
+  if (cleaned.length < 2) {
+    return { coords: [], distM: 0 };
+  }
+
+  const origin = { lat: cleaned[0].lat, lng: cleaned[0].lon };
+  const destination = {
+    lat: cleaned[cleaned.length - 1].lat,
+    lng: cleaned[cleaned.length - 1].lon,
+  };
+
+  const waypointsReq = cleaned.slice(1, cleaned.length - 1).map((p) => ({
+    location: { lat: p.lat, lng: p.lon },
+    stopover: true,
+  }));
+
+  const service = new maps.DirectionsService();
+
+  const result = await new Promise((resolve) => {
+    service.route(
+      {
+        origin,
+        destination,
+        waypoints: waypointsReq,
+        travelMode: maps.TravelMode.DRIVING,
+      },
+      (res, status) => {
+        if (status === "OK" && res && res.routes && res.routes[0]) {
+          resolve(res);
+        } else {
+          console.warn("Google Directions error", status, res);
+          resolve(null);
+        }
+      }
+    );
+  });
+
+  if (!result) {
+    return { coords: [], distM: 0 };
+  }
+
+  const route = result.routes[0];
+  const overviewPath = route.overview_path || [];
+  const coords = overviewPath.map((ll) => [ll.lat(), ll.lng()]); // [lat, lon]
+
+  let distM = 0;
+  (route.legs || []).forEach((leg) => {
+    distM += leg.distance?.value ?? 0;
+  });
+
+  return { coords, distM };
 }
 
 export default function MapView() {
@@ -302,9 +370,10 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map) return false;
 
-    // usar OpenRouteService (perfil truck) sólo en frontend
-    const { coords: combinedCoords, distM: totalDist } =
-      await fetchRouteFromORS(waypoints, "driving-hgv");
+    // elegir proveedor de ruta (Google Directions o ORS)
+    const { coords: combinedCoords, distM: totalDist } = USE_GOOGLE_DIRECTIONS
+      ? await fetchRouteFromGoogleDirections(waypoints)
+      : await fetchRouteFromORS(waypoints, "driving-hgv");
 
     if (!combinedCoords || combinedCoords.length < 2) {
       if (routesLayers.current[routeId]) {
