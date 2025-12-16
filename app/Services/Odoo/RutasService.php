@@ -11,7 +11,7 @@ class RutasService
 {
     private const DESTINO_COORDS = [
         'RIO FUTURO' => ['lat' => -40.346769151031054, 'lon' => -72.98031639966771],
-        'FREIRE'      => ['lat' => -38.9514242,          'lon' => -72.6254333],
+        'FREIRE'      => ['lat' => -38,9675200,          'lon' => -72,6481100],
         'ROFUCO'      => ['lat' => -40.2301500,          'lon' => -72.9397300],
         'CHOROICO'    => ['lat' => -40.2067083,          'lon' => -72.9160047],
         'TRAIGUEN'    => ['lat' => -38.1187544,          'lon' => -72.6860926],
