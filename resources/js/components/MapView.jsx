@@ -44,7 +44,8 @@ const routeStatusColor = {
   done: "#2e7d32",
 };
 
-// selector simple de proveedor de ruta: true = Google Directions, false = ORS
+// selector simple de enrutador
+// true = Google Directions, false = ORS
 const USE_GOOGLE_DIRECTIONS = true;
 
 // Decode encoded polyline (ORS/Google-style) -> array [lat, lon]
