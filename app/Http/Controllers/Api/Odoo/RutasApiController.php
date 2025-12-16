@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Odoo\RutasService;
 use Illuminate\Http\Request;
 use App\Services\Odoo\OdooJsonRpc;
+use Illuminate\Support\Facades\Http;
 
 class RutasApiController extends Controller
 {
@@ -103,6 +104,61 @@ class RutasApiController extends Controller
             "coste_nuevo_por_kg" => $costo_nuevo_por_kg,
             "conviene" => $costo_nuevo_por_kg <= $costo_original_por_kg
         ]);
+    }
+
+    /**
+     * Proxy backend para OpenRouteService, para evitar CORS en el frontend.
+     * POST /api/rutas/ors-directions
+     * Body esperado: { coordinates: [[lon, lat], ...] }
+     */
+    public function orsDirections(Request $request)
+    {
+        $coordinates = $request->input('coordinates', []);
+
+        if (!is_array($coordinates) || count($coordinates) < 2) {
+            return response()->json([
+                'error' => 'coordinates array with at least 2 points required',
+            ], 422);
+        }
+
+        $orsUrl = env('ORS_DIRECTIONS_URL', 'https://api.openrouteservice.org/v2/directions/driving-hgv');
+        $orsKey = env('ORS_API_KEY');
+
+        if (!$orsUrl || !$orsKey) {
+            return response()->json([
+                'error' => 'ORS configuration missing',
+            ], 500);
+        }
+
+        // opcional: dar más margen de "snap" a la red vial
+        $radiuses = array_fill(0, count($coordinates), 1000);
+
+        try {
+            $res = Http::timeout(20)
+                ->withHeaders([
+                    'Authorization' => $orsKey,
+                    'Content-Type'  => 'application/json',
+                ])
+                ->post($orsUrl, [
+                    'coordinates' => $coordinates,
+                    'radiuses'    => $radiuses,
+                ]);
+
+            if (!$res->ok()) {
+                return response()->json([
+                    'error'  => 'ors_request_failed',
+                    'status' => $res->status(),
+                    'body'   => $res->json(),
+                ], $res->status() ?: 500);
+            }
+
+            return response()->json($res->json());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error'   => 'ors_exception',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
    public function updateVehicle($id, Request $request)

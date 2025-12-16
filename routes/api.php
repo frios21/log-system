@@ -53,6 +53,8 @@ Route::middleware('api')->group(function () {
     Route::post('/rutas', [RouteController::class, 'store']);
     Route::post('/rutas/{id}/assign', [RouteController::class, 'assign'])->whereNumber('id');
     Route::post('/rutas/{id}/preview', [RouteController::class, 'preview'])->whereNumber('id');
+    // Proxy backend para ORS (evita CORS en el navegador)
+    Route::post('/rutas/ors-directions', [RutasApiController::class, 'orsDirections']);
     Route::post('/rutas/{id}/distance', [RutasApiController::class, 'actualizarDistancia'])->whereNumber('id');
     Route::patch('/rutas/{id}/total-qnt', [RutasApiController::class, 'updateTotalQnt'])->whereNumber('id');
     Route::patch('/rutas/{id}/update-vehicle', [RutasApiController::class, 'updateVehicle'])->whereNumber('id');

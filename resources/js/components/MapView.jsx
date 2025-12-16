@@ -44,8 +44,6 @@ const routeStatusColor = {
   done: "#2e7d32",
 };
 
-const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBiYWUyYWNlZjc0OTQxMGE5ZmMwODY1N2M2MTk0YzlmIiwiaCI6Im11cm11cjY0In0=";
-
 // Decode encoded polyline (ORS/Google-style) -> array [lat, lon]
 function decodePolyline(str, precision = 5) {
   let index = 0;
@@ -99,21 +97,16 @@ function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
 
     // ORS espera [lon, lat]
     const coordinates = cleaned.map((p) => [p.lon, p.lat]);
-    
-  // Aumentamos el radio de "snap" a la red vial para cada punto
-  // (por defecto ORS usa 350m y aquí damos más margen para ubicaciones
-  // industriales o puntos algo alejados del camino).
-  const radiuses = cleaned.map(() => 1000); // 500 m por punto
 
-    const url = `https://api.openrouteservice.org/v2/directions/${profile}`;
+    // llamar al backend, que a su vez llama a ORS (evita CORS y expone menos la API key)
+    const url = `/api/rutas/ors-directions`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: ORS_API_KEY,
       },
-      body: JSON.stringify({ coordinates, radiuses }),
+      body: JSON.stringify({ coordinates, profile }),
     });
 
     if (!res.ok) {
