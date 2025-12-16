@@ -105,7 +105,7 @@ export default function RoutesList({ onBlockingChange }) {
                         </span>
                     </button>
 
-                    <button style={{color: "green"}} className="btn btn-primary" onClick={createRoute}>+</button>
+                    <button style={{background: "green"}} className="btn btn-primary" onClick={createRoute}>+</button>
                 </div>
 
                 {showFilters && (
