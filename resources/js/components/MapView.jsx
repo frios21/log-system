@@ -202,6 +202,7 @@ export default function MapView() {
         center: { lat: -40.34647463463274, lng: -72.98086926441867 },
         zoom: 14,
         mapTypeId: maps.MapTypeId.ROADMAP,
+        mapId: "5cdcae24b9280b50c03d91a7",
       });
 
       mapRef.current = map;
