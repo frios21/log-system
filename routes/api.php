@@ -37,7 +37,7 @@ Route::middleware('api')->group(function () {
     Route::patch('/cargas/{id}/pallets', [LoadController::class, 'updatePallets'])->whereNumber('id');
     Route::patch('/cargas/lineas/{lineId}/pallets', [LoadController::class, 'updateLinePallets'])->whereNumber('lineId');
     Route::post('/cargas/reset', [LoadController::class, 'resetAll']);
-    //Route::delete('/cargas/{id}', [LoadController::class, 'destroy'])->whereNumber('id');
+    Route::delete('/cargas/{id}', [LoadController::class, 'destroy'])->whereNumber('id');
 
     // =====================
     // TRACCAR API (colocar antes de /rutas/{id} para evitar colisión)
