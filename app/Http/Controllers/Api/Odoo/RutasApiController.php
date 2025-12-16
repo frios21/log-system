@@ -130,9 +130,6 @@ class RutasApiController extends Controller
             ], 500);
         }
 
-        // opcional: dar más margen de "snap" a la red vial
-        $radiuses = array_fill(0, count($coordinates), 1000);
-
         try {
             $res = Http::timeout(20)
                 ->withHeaders([
@@ -140,8 +137,7 @@ class RutasApiController extends Controller
                     'Content-Type'  => 'application/json',
                 ])
                 ->post($orsUrl, [
-                    'coordinates' => $coordinates,
-                    'radiuses'    => $radiuses,
+                    'coordinates' => $coordinates
                 ]);
 
             if (!$res->ok()) {
@@ -222,7 +218,7 @@ class RutasApiController extends Controller
             }
     }
 
-    // Nuevo: PATCH /api/rutas/{id} - actualizar nombre o estado
+    // PATCH /api/rutas/{id} - actualizar nombre o estado
     public function update($id, Request $request)
     {
         $status = $request->input('status');
