@@ -1,13 +1,34 @@
 import { useEffect, useRef, useState } from "react";
-import L from "leaflet";
 
-// iconos y configuracion
-const cargaIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -28],
-});
+// --- Google Maps API ---
+const GOOGLE_MAPS_API_KEY = "AIzaSyCzyopAjQY-wGVrAPTqfVH1S24YiHuoamk";
+
+let googleMapsPromise = null;
+function loadGoogleMaps() {
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise((resolve, reject) => {
+    if (window.google && window.google.maps) {
+      resolve(window.google.maps);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
+    script.async = true;
+    script.onload = () => {
+      if (window.google && window.google.maps) {
+        resolve(window.google.maps);
+      } else {
+        reject(new Error("Google Maps API no disponible"));
+      }
+    };
+    script.onerror = (e) => reject(e);
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
 
 const estadoColors = {
   draft: "#3498db", 
@@ -123,21 +144,17 @@ export default function MapView() {
   const traccarMarkersRef = useRef({});
   function cargaIconForState(state) {
     const color = estadoColors[state] || "#7f8c8d";
-    return L.divIcon({
-      className: "carga-icon",
-      html: `
-        <div style="
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: ${color};
-          border: 3px solid white;
-          box-shadow: 0 0 4px rgba(0,0,0,0.3);
-        "></div>
-      `,
-      iconSize: [26, 26],
-      iconAnchor: [13, 13],
-    });
+    const size = 20;
+    const border = 3;
+    // usamos símbolos SVG de Google Maps para simular el circulito
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: color,
+      fillOpacity: 1,
+      strokeColor: "#ffffff",
+      strokeWeight: border / 2,
+      scale: size / 2,
+    };
   }
 
   function groupByPartner(data) {
@@ -169,25 +186,30 @@ export default function MapView() {
   // INICIALIZACIÓN DEL MAPA
   // -------------------------------------------------------------
   useEffect(() => {
-    const mapElement = document.getElementById("map");
-    if (mapRef.current) return;
+    let cancelled = false;
 
-    const map = L.map(mapElement, {
-      center: [-40.34647463463274, -72.98086926441867],
-      zoom: 14,
-    });
+    async function initMap() {
+      if (mapRef.current) return;
+      const maps = await loadGoogleMaps();
+      if (cancelled) return;
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-    }).addTo(map);
+      const mapElement = document.getElementById("map");
+      if (!mapElement) return;
 
-    mapRef.current = map;
+      const map = new maps.Map(mapElement, {
+        center: { lat: -40.34647463463274, lng: -72.98086926441867 },
+        zoom: 14,
+        mapTypeId: maps.MapTypeId.ROADMAP,
+      });
+
+      mapRef.current = map;
+    }
+
+    initMap();
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      cancelled = true;
+      mapRef.current = null;
     };
   }, []);
 
@@ -225,17 +247,27 @@ export default function MapView() {
 
           const existing = traccarMarkersRef.current[deviceId];
           if (existing) {
-            existing.setLatLng([lat, lon]);
-            existing.setPopupContent(popup);
+            existing.setPosition({ lat, lng: lon });
+            existing._popupContent = popup;
           } else {
-            const marker = L.marker([lat, lon], { icon: L.divIcon({
-              className: 'traccar-marker',
-              html: '<div style="width:14px;height:14px;border-radius:50%;background:#ff4757;border:3px solid #fff;box-shadow:0 0 8px rgba(0,0,0,.25)"></div>',
-              iconSize: [20, 20],
-              iconAnchor: [10, 10],
-            }) });
-            marker.addTo(map);
-            marker.bindPopup(popup);
+            const marker = new google.maps.Marker({
+              position: { lat, lng: lon },
+              map,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: "#ff4757",
+                fillOpacity: 1,
+                strokeColor: "#ffffff",
+                strokeWeight: 3,
+                scale: 7,
+              },
+            });
+            marker._popupContent = popup;
+            const info = new google.maps.InfoWindow();
+            marker.addListener("click", () => {
+              info.setContent(marker._popupContent || "");
+              info.open({ map, anchor: marker });
+            });
             traccarMarkersRef.current[deviceId] = marker;
           }
         });
@@ -244,7 +276,7 @@ export default function MapView() {
         Object.keys(traccarMarkersRef.current).forEach(idStr => {
           if (!seen.has(idStr)) {
             const m = traccarMarkersRef.current[idStr];
-            if (m && map.hasLayer(m)) map.removeLayer(m);
+            if (m) m.setMap(null);
             delete traccarMarkersRef.current[idStr];
           }
         });
@@ -295,16 +327,21 @@ export default function MapView() {
 
     const existing = routesLayers.current[routeId];
     if (existing && existing.polyline) {
-      existing.polyline.setLatLngs(combinedCoords);
-      existing.polyline.setStyle({ color, dashArray, weight, opacity });
+      existing.polyline.setOptions({
+        path: combinedCoords.map(([lat, lon]) => ({ lat, lng: lon })),
+        strokeColor: color,
+        strokeOpacity: opacity,
+        strokeWeight: weight,
+      });
       existing.visible = true;
     } else {
-      const polyline = L.polyline(combinedCoords, {
-        color,
-        weight,
-        opacity,
-        dashArray,
-      }).addTo(map);
+      const polyline = new google.maps.Polyline({
+        path: combinedCoords.map(([lat, lon]) => ({ lat, lng: lon })),
+        strokeColor: color,
+        strokeOpacity: opacity,
+        strokeWeight: weight,
+        map,
+      });
       routesLayers.current[routeId] = { polyline, markers: [], visible: true };
     }
 
@@ -313,25 +350,18 @@ export default function MapView() {
     if (layerEntry) {
       // limpiar marcadores anteriores de esta ruta
       (layerEntry.markers || []).forEach(m => {
-        if (map.hasLayer(m)) map.removeLayer(m);
+        if (m) m.setMap(null);
       });
       layerEntry.markers = [];
 
-      const orangeIcon = L.divIcon({
-        className: "destino-intermedio-icon",
-        html: `
-          <div style="
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #e67e22;
-            border: 3px solid #fff;
-            box-shadow: 0 0 6px rgba(0,0,0,0.35);
-          "></div>
-        `,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
+      const orangeIcon = {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: "#e67e22",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 3,
+        scale: 8,
+      };
 
       (waypoints || []).forEach((wp) => {
         if (!wp) return;
@@ -340,17 +370,24 @@ export default function MapView() {
         const lon = wp.lon ?? wp.longitude;
         if (lat == null || lon == null) return;
 
-        const marker = L.marker([lat, lon], { icon: orangeIcon }).addTo(map);
+        const marker = new google.maps.Marker({
+          position: { lat, lng: lon },
+          map,
+          icon: orangeIcon,
+        });
         const label = wp.label || "Destino intermedio";
-        marker.bindPopup(label);
+        const info = new google.maps.InfoWindow({ content: label });
+        marker.addListener("click", () => {
+          info.open({ map, anchor: marker });
+        });
         layerEntry.markers.push(marker);
       });
     }
 
     try {
-      map.fitBounds(routesLayers.current[routeId].polyline.getBounds(), {
-        padding: [40, 40],
-      });
+      const bounds = new google.maps.LatLngBounds();
+      combinedCoords.forEach(([lat, lon]) => bounds.extend({ lat, lng: lon }));
+      map.fitBounds(bounds, 40);
     } catch (e) {}
 
     const totalKm = (totalDist || 0) / 1000;
@@ -504,16 +541,14 @@ export default function MapView() {
   useEffect(() => {
     function toggleVisibility(ev) {
       const { id, visible } = ev.detail;
-      const map = mapRef.current;
-      if (!map) return;
       const layer = routesLayers.current[id];
-      if (!layer) return;
+      if (!layer || !layer.polyline) return;
 
       if (visible) {
-        if (layer.polyline && !map.hasLayer(layer.polyline)) map.addLayer(layer.polyline);
+        layer.polyline.setMap(mapRef.current);
         layer.visible = true;
       } else {
-        if (layer.polyline && map.hasLayer(layer.polyline)) map.removeLayer(layer.polyline);
+        layer.polyline.setMap(null);
         layer.visible = false;
       }
     }
@@ -534,17 +569,18 @@ export default function MapView() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !groups.length) return;
-
-    markersRef.current.forEach((m) => map.removeLayer(m));
+    markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
     groups.forEach((group) => {
       const { partner, cargas } = group;
       const state = cargas.length === 1 ? cargas[0].state : "draft"; // Simplificado
 
-      const marker = L.marker([partner.latitude, partner.longitude], {
+      const marker = new google.maps.Marker({
+        position: { lat: partner.latitude, lng: partner.longitude },
+        map,
         icon: cargaIconForState(state),
-      }).addTo(map);
+      });
 
       // popup contacto
       let popupHtml = `<strong>${partner.name}</strong><br/>`;
@@ -554,7 +590,10 @@ export default function MapView() {
         popupHtml += `<div>${cargas.length} cargas</div>`;
       }
 
-      marker.bindPopup(popupHtml);
+      const info = new google.maps.InfoWindow({ content: popupHtml });
+      marker.addListener("click", () => {
+        info.open({ map, anchor: marker });
+      });
       markersRef.current.push(marker);
       marker.partnerId = Number(partner.id);
     });
@@ -570,10 +609,11 @@ export default function MapView() {
       partnerId = Number(partnerId);
 
       const marker = markersRef.current.find((m) => Number(m.partnerId) === partnerId);
-      if (!marker || !mapRef.current) return;
+      const map = mapRef.current;
+      if (!marker || !map) return;
 
-      mapRef.current.flyTo(marker.getLatLng(), 14, { duration: 0.8 });
-      setTimeout(() => marker.openPopup(), 900);
+      map.panTo(marker.getPosition());
+      map.setZoom(14);
     }
 
     window.addEventListener("focus-client", focusClient);
@@ -593,31 +633,24 @@ export default function MapView() {
       if (!Array.isArray(list)) return;
 
       // limpiar anteriores
-      contactMarkersRef.current.forEach(m => map.removeLayer(m));
+      contactMarkersRef.current.forEach(m => m.setMap(null));
       contactMarkersRef.current = [];
 
       list.forEach(ct => {
         if (!ct.latitude || !ct.longitude) return;
 
-        const empresaIcon = (emoji = "🏭") => L.divIcon({
-          className: "empresa-icon",
-          html: `
-            <div style="
-              font-size: 24px;
-              line-height: 32px;
-              text-align: center;
-            ">${emoji}</div>
-          `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
+        const marker = new google.maps.Marker({
+          position: { lat: ct.latitude, lng: ct.longitude },
+          map,
+          label: "🏭",
+        });
+        const info = new google.maps.InfoWindow({
+          content: `<strong>${ct.name}</strong><br/>${ct.street ?? ""} ${ct.city ?? ""}`,
+        });
+        marker.addListener("click", () => {
+          info.open({ map, anchor: marker });
         });
 
-        const marker = L.marker(
-          [ct.latitude, ct.longitude],
-          { icon: empresaIcon("🏭") }
-        ).addTo(map);
-
-        marker.bindPopup(`<strong>${ct.name}</strong><br/>${ct.street ?? ""} ${ct.city ?? ""}`);
         marker.contactId = ct.id;
         contactMarkersRef.current.push(marker);
       });
@@ -625,7 +658,7 @@ export default function MapView() {
 
     // limpiar contactos
     function onClearContacts() {
-      contactMarkersRef.current.forEach(m => map.removeLayer(m));
+      contactMarkersRef.current.forEach(m => m.setMap(null));
       contactMarkersRef.current = [];
     }
 
@@ -637,8 +670,8 @@ export default function MapView() {
       const marker = contactMarkersRef.current.find(m => m.contactId === ct.id);
       if (!marker) return;
 
-      map.flyTo(marker.getLatLng(), 16, { duration: 0.8 });
-      setTimeout(() => marker.openPopup(), 900);
+      map.panTo(marker.getPosition());
+      map.setZoom(16);
     }
 
     window.addEventListener("contacts-markers-show", onShowContacts);
