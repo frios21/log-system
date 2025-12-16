@@ -130,6 +130,9 @@ class RutasApiController extends Controller
             ], 500);
         }
 
+        // opcional: dar más margen de "snap" a la red vial
+        $radiuses = array_fill(0, count($coordinates), 1000);
+
         try {
             $res = Http::timeout(20)
                 ->withHeaders([
@@ -137,7 +140,8 @@ class RutasApiController extends Controller
                     'Content-Type'  => 'application/json',
                 ])
                 ->post($orsUrl, [
-                    'coordinates' => $coordinates
+                    'coordinates' => $coordinates,
+                    'radiuses'    => $radiuses,
                 ]);
 
             if (!$res->ok()) {
