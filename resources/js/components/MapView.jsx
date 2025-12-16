@@ -82,7 +82,7 @@ function fetchRouteFromORS(waypoints, profile = "driving-hgv") {
   // Aumentamos el radio de "snap" a la red vial para cada punto
   // (por defecto ORS usa 350m y aquí damos más margen para ubicaciones
   // industriales o puntos algo alejados del camino).
-  const radiuses = cleaned.map(() => 500); // 500 m por punto
+  const radiuses = cleaned.map(() => 1000); // 500 m por punto
 
     const url = `https://api.openrouteservice.org/v2/directions/${profile}`;
 
