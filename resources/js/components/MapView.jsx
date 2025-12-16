@@ -14,7 +14,7 @@ function loadGoogleMaps() {
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=maps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=marker`;
     script.async = true;
     script.onload = () => {
       if (window.google && window.google.maps) {
@@ -141,20 +141,22 @@ export default function MapView() {
   const markersRef = useRef([]);
   const routesLayers = useRef({});
   const [groups, setGroups] = useState([]);
+  const [mapReady, setMapReady] = useState(false);
   const traccarMarkersRef = useRef({});
+
+  function createCircleMarkerElement({ color, size = 20, borderColor = "#ffffff", borderWidth = 3 }) {
+    const div = document.createElement("div");
+    div.style.width = `${size}px`;
+    div.style.height = `${size}px`;
+    div.style.borderRadius = "50%";
+    div.style.background = color;
+    div.style.border = `${borderWidth}px solid ${borderColor}`;
+    div.style.boxShadow = "0 0 4px rgba(0,0,0,0.3)";
+    return div;
+  }
   function cargaIconForState(state) {
     const color = estadoColors[state] || "#7f8c8d";
-    const size = 20;
-    const border = 3;
-    // usamos símbolos SVG de Google Maps para simular el circulito
-    return {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: color,
-      fillOpacity: 1,
-      strokeColor: "#ffffff",
-      strokeWeight: border / 2,
-      scale: size / 2,
-    };
+    return createCircleMarkerElement({ color, size: 20, borderColor: "#ffffff", borderWidth: 3 });
   }
 
   function groupByPartner(data) {
@@ -203,6 +205,7 @@ export default function MapView() {
       });
 
       mapRef.current = map;
+      setMapReady(true);
     }
 
     initMap();
@@ -210,6 +213,7 @@ export default function MapView() {
     return () => {
       cancelled = true;
       mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
@@ -217,7 +221,7 @@ export default function MapView() {
   // desconectodo -> offline (marcador gris)
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     let active = true;
 
@@ -247,20 +251,20 @@ export default function MapView() {
 
           const existing = traccarMarkersRef.current[deviceId];
           if (existing) {
-            existing.setPosition({ lat, lng: lon });
+            existing.position = { lat, lng: lon };
             existing._popupContent = popup;
           } else {
-            const marker = new google.maps.Marker({
+            const { AdvancedMarkerElement } = google.maps.marker;
+            const content = createCircleMarkerElement({
+              color: "#ff4757",
+              size: 18,
+              borderColor: "#ffffff",
+              borderWidth: 3,
+            });
+            const marker = new AdvancedMarkerElement({
               position: { lat, lng: lon },
               map,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: "#ff4757",
-                fillOpacity: 1,
-                strokeColor: "#ffffff",
-                strokeWeight: 3,
-                scale: 7,
-              },
+              content,
             });
             marker._popupContent = popup;
             const info = new google.maps.InfoWindow();
@@ -276,7 +280,7 @@ export default function MapView() {
         Object.keys(traccarMarkersRef.current).forEach(idStr => {
           if (!seen.has(idStr)) {
             const m = traccarMarkersRef.current[idStr];
-            if (m) m.setMap(null);
+            if (m) m.map = null;
             delete traccarMarkersRef.current[idStr];
           }
         });
@@ -295,7 +299,7 @@ export default function MapView() {
       active = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [mapReady]);
 
   // -------------------------------------------------------------
   // Lógica de dibujo ORS
@@ -311,7 +315,7 @@ export default function MapView() {
     if (!combinedCoords || combinedCoords.length < 2) {
       if (routesLayers.current[routeId]) {
         const { polyline } = routesLayers.current[routeId];
-        if (polyline) map.removeLayer(polyline);
+        if (polyline) polyline.setMap(null);
       }
       return false;
     }
@@ -355,12 +359,12 @@ export default function MapView() {
       layerEntry.markers = [];
 
       const orangeIcon = {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: "#e67e22",
-        fillOpacity: 1,
-        strokeColor: "#ffffff",
-        strokeWeight: 3,
-        scale: 8,
+        content: createCircleMarkerElement({
+          color: "#e67e22",
+          size: 18,
+          borderColor: "#ffffff",
+          borderWidth: 3,
+        }),
       };
 
       (waypoints || []).forEach((wp) => {
@@ -370,10 +374,11 @@ export default function MapView() {
         const lon = wp.lon ?? wp.longitude;
         if (lat == null || lon == null) return;
 
-        const marker = new google.maps.Marker({
+        const { AdvancedMarkerElement } = google.maps.marker;
+        const marker = new AdvancedMarkerElement({
           position: { lat, lng: lon },
           map,
-          icon: orangeIcon,
+          content: orangeIcon.content,
         });
         const label = wp.label || "Destino intermedio";
         const info = new google.maps.InfoWindow({ content: label });
@@ -491,6 +496,8 @@ export default function MapView() {
   // LISTENER: Cargar todas las rutas existentes en inicio
   // -------------------------------------------------------------
   useEffect(() => {
+    if (!mapReady) return;
+
     let active = true;
     async function loadAllRoutes() {
       const map = mapRef.current;
@@ -517,7 +524,7 @@ export default function MapView() {
 
     loadAllRoutes();
     return () => { active = false; };
-  }, []);
+  }, [mapReady]);
 
   // -------------------------------------------------------------
   // LISTENER: Preview ruta 
@@ -568,18 +575,19 @@ export default function MapView() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !groups.length) return;
+    if (!map || !mapReady || !groups.length) return;
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
     groups.forEach((group) => {
       const { partner, cargas } = group;
       const state = cargas.length === 1 ? cargas[0].state : "draft"; // Simplificado
-
-      const marker = new google.maps.Marker({
+      const { AdvancedMarkerElement } = google.maps.marker;
+      const content = cargaIconForState(state);
+      const marker = new AdvancedMarkerElement({
         position: { lat: partner.latitude, lng: partner.longitude },
         map,
-        icon: cargaIconForState(state),
+        content,
       });
 
       // popup contacto
@@ -597,7 +605,7 @@ export default function MapView() {
       markersRef.current.push(marker);
       marker.partnerId = Number(partner.id);
     });
-  }, [groups]);
+  }, [groups, mapReady]);
 
   // -------------------------------------------------------------
   // FOCUS CONCTACO
@@ -612,7 +620,7 @@ export default function MapView() {
       const map = mapRef.current;
       if (!marker || !map) return;
 
-      map.panTo(marker.getPosition());
+      map.panTo(marker.position);
       map.setZoom(14);
     }
 
@@ -625,7 +633,7 @@ export default function MapView() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     // mostrar contactos en el mapa
     function onShowContacts(ev) {
@@ -638,11 +646,17 @@ export default function MapView() {
 
       list.forEach(ct => {
         if (!ct.latitude || !ct.longitude) return;
+        const { AdvancedMarkerElement } = google.maps.marker;
+        const div = document.createElement("div");
+        div.style.fontSize = "24px";
+        div.style.lineHeight = "32px";
+        div.style.textAlign = "center";
+        div.textContent = "🏭";
 
-        const marker = new google.maps.Marker({
+        const marker = new AdvancedMarkerElement({
           position: { lat: ct.latitude, lng: ct.longitude },
           map,
-          label: "🏭",
+          content: div,
         });
         const info = new google.maps.InfoWindow({
           content: `<strong>${ct.name}</strong><br/>${ct.street ?? ""} ${ct.city ?? ""}`,
@@ -658,7 +672,7 @@ export default function MapView() {
 
     // limpiar contactos
     function onClearContacts() {
-      contactMarkersRef.current.forEach(m => m.setMap(null));
+      contactMarkersRef.current.forEach(m => { m.map = null; });
       contactMarkersRef.current = [];
     }
 
@@ -670,7 +684,7 @@ export default function MapView() {
       const marker = contactMarkersRef.current.find(m => m.contactId === ct.id);
       if (!marker) return;
 
-      map.panTo(marker.getPosition());
+      map.panTo(marker.position);
       map.setZoom(16);
     }
 
@@ -683,7 +697,7 @@ export default function MapView() {
       window.removeEventListener("contacts-markers-clear", onClearContacts);
       window.removeEventListener("focus-contact", onFocusContact);
     };
-  }, []);
+  }, [mapReady]);
 
   // listener para enfocar una ruta y para recolorear tras cambio de estado
   useEffect(() => {
@@ -693,8 +707,11 @@ export default function MapView() {
       if (!map || !routeId) return;
       const layer = routesLayers.current[routeId];
       if (layer && layer.polyline) {
-        const bounds = layer.polyline.getBounds();
-        map.fitBounds(bounds, { padding: [50, 50] });
+        const path = layer.polyline.getPath();
+        if (!path || path.getLength() === 0) return;
+        const bounds = new google.maps.LatLngBounds();
+        path.forEach((latLng) => bounds.extend(latLng));
+        map.fitBounds(bounds);
       }
     }
 
@@ -710,7 +727,7 @@ export default function MapView() {
         done: "#2e7d32",
       };
       const color = routeStatusColor[status] || "#555";
-      layer.polyline.setStyle({ color });
+      layer.polyline.setOptions({ strokeColor: color });
     }
 
     window.addEventListener('focus-route', onFocusRoute);
