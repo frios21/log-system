@@ -1,3 +1,4 @@
+// sólo Dios sabe cómo funciona este código 🥀
 import { useEffect, useRef, useState } from "react";
 
 // --- Google Maps API ---
@@ -46,7 +47,7 @@ const routeStatusColor = {
 
 // selector simple de enrutador
 // true = Google Directions, false = ORS
-const USE_GOOGLE_DIRECTIONS = true;
+const USE_GOOGLE_DIRECTIONS = false;
 
 // Decode encoded polyline (ORS/Google-style) -> array [lat, lon]
 function decodePolyline(str, precision = 5) {

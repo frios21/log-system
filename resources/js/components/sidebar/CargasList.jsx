@@ -225,7 +225,7 @@ export default function CargasList({ onBlockingChange }) {
                         </span>
                     </button>
 
-                    <button className="btn btn-primary" onClick={createCarga}>+</button>
+                    <button style={{background: "green"}} className="btn btn-primary" onClick={createCarga}>+</button>
                 </div>
 
                 {showFilters && (
