@@ -454,11 +454,15 @@ export default function MapView() {
       });
     }
 
-    try {
-      const bounds = new google.maps.LatLngBounds();
-      combinedCoords.forEach(([lat, lon]) => bounds.extend({ lat, lng: lon }));
-      map.fitBounds(bounds, 40);
-    } catch (e) {}
+    // Ajustamos el zoom automáticamente cuando es un preview
+    // (por ejemplo, al probar una ruta desde el sidebar).
+    if (isPreview) {
+      try {
+        const bounds = new google.maps.LatLngBounds();
+        combinedCoords.forEach(([lat, lon]) => bounds.extend({ lat, lng: lon }));
+        map.fitBounds(bounds, 40);
+      } catch (e) {}
+    }
 
     const totalKm = (totalDist || 0) / 1000;
     window.dispatchEvent(

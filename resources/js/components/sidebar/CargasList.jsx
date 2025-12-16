@@ -205,7 +205,7 @@ export default function CargasList({ onBlockingChange }) {
             {/* ---- FILTROS (DESPLEGABLE) ---- */}
             <div style={{ marginBottom: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    {/* Botón/Chip "Filtros" que abre/cierra */}
+                    {/* Botón "Filtros" que se abre/cierra */}
                     <button
                         type="button"
                         className="btn btn-outlined"
