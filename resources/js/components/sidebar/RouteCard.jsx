@@ -19,10 +19,12 @@ function stateColor(status) {
     }
 }
 
-export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, onAssign, onAssignVehicle, onDelete }) {
+export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, selectAllVisible = true, onAssign, onAssignVehicle, onDelete }) {
     // estado local para reflejar cambios inmediatos en el card
     const [localStatus, setLocalStatus] = useState(ruta.status);
     const color = stateColor(localStatus);
+
+    const [visible, setVisible] = useState(selectAllVisible && localStatus !== 'done');
 
     // modal de confirmación de cambio de estado
     const [modalOpen, setModalOpen] = useState(false);
@@ -39,6 +41,16 @@ export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, on
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [modalOpen]);
+
+    useEffect(() => {
+        const nextVisible = selectAllVisible && localStatus !== 'done';
+        setVisible(nextVisible);
+        window.dispatchEvent(
+            new CustomEvent("toggle-route-visible", {
+                detail: { id: ruta.id, visible: nextVisible },
+            })
+        );
+    }, [selectAllVisible, localStatus, ruta.id]);
 
     // helpers calculados para el card
     const distance = (ruta.total_distance_km !== undefined && ruta.total_distance_km !== null)
@@ -74,9 +86,11 @@ export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, on
     const [editingDate, setEditingDate] = useState(false);
 
     function toggleVisible(e) {
+        const checked = e.target.checked;
+        setVisible(checked);
         window.dispatchEvent(
             new CustomEvent("toggle-route-visible", {
-                detail: { id: ruta.id, visible: e.target.checked }
+                detail: { id: ruta.id, visible: checked },
             })
         );
     }
@@ -160,7 +174,7 @@ export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, on
                 <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <input
                         type="checkbox"
-                        defaultChecked={localStatus !== 'done'}
+                        checked={visible}
                         onChange={toggleVisible}
                     />
                     <span>{ruta.name}</span>

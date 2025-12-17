@@ -21,6 +21,7 @@ export default function RoutesList({ onBlockingChange }) {
     const [filterDate, setFilterDate] = useState(""); // YYYY-MM-DD
     const [showFilters, setShowFilters] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
+    const [selectAllVisible, setSelectAllVisible] = useState(true);
 
     // datos base desde React Query
     const rutas = Array.isArray(rutasData) ? rutasData : [];
@@ -165,8 +166,16 @@ export default function RoutesList({ onBlockingChange }) {
                                     style={{ width: "75%", boxSizing: "border-box" }}
                                 />
                             </div>
-
-                            <div />
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectAllVisible}
+                                    onChange={e => setSelectAllVisible(e.target.checked)}
+                                />
+                                <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                    Seleccionar todas
+                                </span>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -180,6 +189,7 @@ export default function RoutesList({ onBlockingChange }) {
                     ruta={r}
                     colorIndex={i}
                     isDeleting={deletingId === r.id}
+                    selectAllVisible={selectAllVisible}
                     onAssign={() => setOpenAssignFor(r)}
                     onAssignVehicle={(route) => setOpenVehicleAssignFor(route)}
                     onDelete={() => deleteRoute(r.id)}
