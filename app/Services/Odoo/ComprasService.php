@@ -84,13 +84,15 @@ class ComprasService
 
             $partner16Id = $this->findOrCreatePartner16($rut, $name, $isCompany);
 
+            $rutaName = (string) ($ruta['name'] ?? '');
+
             $distKm = $ruta['total_distance_km'] ?? 0;
             if (!is_numeric($distKm)) {
                 $distKm = 0;
             }
             $qty = round((float) $distKm, 2); // km con 2 decimales
 
-            $poId = $this->createPurchaseOrder16($partner16Id);
+            $poId = $this->createPurchaseOrder16($partner16Id, $rutaName);
 
             // Crear línea de servicio de flete.
             // Nota: price_unit fijo 1000 CLP por ahora; ajustar a tarifa futura.
@@ -202,8 +204,12 @@ class ComprasService
     /**
      * Crea la cabecera de purchase.order en Odoo 16.
      */
-    private function createPurchaseOrder16(int $partnerId): int
+    private function createPurchaseOrder16(int $partnerId, string $rutaName = ''): int
     {
+        $notes = $rutaName
+            ? sprintf('Orden de compra generada a partir de la ruta %s.', $rutaName)
+            : 'Orden de compra generada automáticamente desde el sistema de logística.';
+
         $poId = $this->call16(
             'object',
             'execute_kw',
@@ -217,6 +223,7 @@ class ComprasService
                     'partner_id'                   => $partnerId,
                     'x_studio_selection_field_yUNPd' => 'RECEPCION',
                     'picking_type_id'              => 151,
+                    'notes'                        => $notes,
                 ]],
             ]
         );
