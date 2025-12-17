@@ -169,6 +169,39 @@ class ContactosService
     }
 
     /**
+     * Devuelve contactos que son transportistas en Odoo 16.
+     * Por ahora se filtra por category_id = 1.
+     */
+    public function transportistas(): array
+    {
+        $rows = $this->call16(
+            'object',
+            'execute_kw',
+            [
+                $this->db16,
+                $this->uid16,
+                $this->apiKey16,
+                'res.partner',
+                'search_read',
+                [[['active', '=', true], ['category_id', 'in', [1]]]],
+                [
+                    'fields' => ['id','name','display_name','phone','email','partner_latitude','partner_longitude','street','is_company','parent_id','category_id'],
+                    'limit'  => 0,
+                ]
+            ]
+        );
+
+        return array_map(function ($r) {
+            $r['latitude'] = $r['partner_latitude'] ?? ($r['latitude'] ?? null);
+            $r['longitude'] = $r['partner_longitude'] ?? ($r['longitude'] ?? null);
+            if (!isset($r['display_name']) || !$r['display_name']) {
+                $r['display_name'] = $r['name'] ?? null;
+            }
+            return $r;
+        }, $rows);
+    }
+
+    /**
      * Busca un contacto por ID en Odoo 16 y normaliza lat/lon/display_name.
      */
     public function porId(int $id): ?array

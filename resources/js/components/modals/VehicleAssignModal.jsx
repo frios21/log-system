@@ -21,11 +21,18 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     const [driverDetail, setDriverDetail] = useState(null);
     const [loadingDrivers, setLoadingDrivers] = useState(false);
 
+    const [carriers, setCarriers] = useState([]);
+    const [carrierQuery, setCarrierQuery] = useState("");
+    const [selectedCarrierId, setSelectedCarrierId] = useState(null);
+    const [carrierDetail, setCarrierDetail] = useState(null);
+    const [loadingCarriers, setLoadingCarriers] = useState(false);
+
     // Cargar datos iniciales
     useEffect(() => {
         fetchOcupados();
         fetchVehicles();
         fetchDrivers();
+        fetchCarriers();
     }, []);
 
     // Cerrar modal con tecla ESC
@@ -108,6 +115,58 @@ export default function VehicleAssignModal({ ruta, onClose }) {
         }
     }
 
+    async function fetchCarriers(q = "") {
+        try {
+            setLoadingCarriers(true);
+            const res = await fetch(`/api/contactos/transportistas`);
+            const data = await res.json();
+            let list = Array.isArray(data) ? data : [];
+
+            if (q) {
+                const qLower = q.toLowerCase();
+                list = list.filter(c => {
+                    const texto = String(c.display_name || c.name || "").toLowerCase();
+                    return texto.includes(qLower);
+                });
+            }
+
+            setCarriers(list);
+
+            // Si la ruta ya tiene un transportista (company_id) y
+            // aún no hay uno seleccionado en el modal, intentamos
+            // preseleccionarlo por nombre cuando cargamos la lista
+            // inicial (sin filtro de búsqueda).
+            if (!selectedCarrierId && !q && ruta) {
+                const rawCompany = ruta.company_id;
+                let companyName = null;
+
+                if (Array.isArray(rawCompany)) {
+                    companyName = rawCompany[1] || null;
+                } else if (typeof rawCompany === "string") {
+                    companyName = rawCompany;
+                }
+
+                if (companyName) {
+                    const match = list.find(c => {
+                        const texto = String(
+                            c.display_name || c.name || ""
+                        ).toLowerCase();
+                        return texto === companyName.toLowerCase();
+                    });
+
+                    if (match) {
+                        setSelectedCarrierId(match.id);
+                        setCarrierDetail(match);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error fetching carriers", e);
+        } finally {
+            setLoadingCarriers(false);
+        }
+    }
+
     function selectVehicle(v) {
         setSelectedId(v.id);
         setDetail(v);
@@ -116,6 +175,52 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     function selectDriver(d) {
         setSelectedDriverId(d.id);
         setDriverDetail(d);
+    }
+
+    function selectCarrier(c) {
+        setSelectedCarrierId(c.id);
+        setCarrierDetail(c);
+    }
+
+    async function assignCarrier() {
+        try {
+            const body = { company_id: selectedCarrierId };
+            const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error("Error assigning carrier", data);
+                if (data?.message) alert(data.message);
+                return;
+            }
+            window.dispatchEvent(new CustomEvent("rutas:changed"));
+        } catch (e) {
+            console.error("Error assigning carrier", e);
+        }
+    }
+
+    async function unassignCarrier() {
+        try {
+            const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ company_id: null }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error("Error unassigning carrier", data);
+                if (data?.message) alert(data.message);
+                return;
+            }
+            setSelectedCarrierId(null);
+            setCarrierDetail(null);
+            window.dispatchEvent(new CustomEvent("rutas:changed"));
+        } catch (e) {
+            console.error("Error unassigning carrier", e);
+        }
     }
 
     const visible = vehicles.filter(v => {
@@ -514,7 +619,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                         </div>
                     </div>
 
-                    {/* COLUMNA 3: DETALLE + RESUMEN */}
+                    {/* COLUMNA 3: TRANSPORTISTAS + DETALLE */}
                     <div
                         style={{
                             width: 360,
@@ -610,89 +715,196 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                                                 {detail.model || ""}
                                             </div>
 
-                                            <div style={{ marginTop: 8 }}>
-                                                <div>
-                                                    Patente:{" "}
-                                                    {detail.license_plate ||
-                                                        "—"}
-                                                </div>
-                                                <div>
-                                                    Capacidad:{" "}
-                                                    {detail.x_capacidad ??
-                                                        "—"}{" "}
-                                                    {detail.x_unidad_capacidad ||
-                                                        ""}
-                                                </div>
-                                                <div>
-                                                    Pallets:{" "}
-                                                    {detail.x_capacidad_pallets ??
-                                                        "—"}
-                                                </div>
-                                            </div>
-                                        </div>
+                            <h4 style={{ margin: "0 0 8px 0" }}>
+                                Transportistas (Odoo 16)
+                            </h4>
 
-                                        {detail.image && (
-                                            <img
-                                                src={detail.image}
-                                                alt="avatar"
-                                                style={{
-                                                    width: "100%",
-                                                    borderRadius: 6,
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div style={{ color: "#666" }}>
-                                        Selecciona un vehículo para ver
-                                        detalles
-                                    </div>
-                                )}
-                            </div>
+                            <input
+                                placeholder="Buscar transportista..."
+                                value={carrierQuery}
+                                onChange={e => {
+                                    const q = e.target.value;
+                                    setCarrierQuery(q);
+                                    fetchCarriers(q);
+                                }}
+                                style={{ width: "100%", marginBottom: 8 }}
+                                className="input"
+                            />
 
                             <div
                                 style={{
-                                    flex: 1,
+                                    maxHeight: 200,
+                                    overflow: "auto",
                                     border: "1px solid #eee",
                                     borderRadius: 6,
-                                    padding: 10,
-                                    overflow: "auto",
+                                    padding: 6,
                                 }}
                             >
-                                <h4 style={{ marginTop: 0 }}>
-                                    Detalle del conductor
-                                </h4>
-                                {driverDetail ? (
-                                    <div>
-                                        <div style={{ marginBottom: 8 }}>
-                                            <strong>{driverDetail.name}</strong>
-                                            <div
-                                                style={{
-                                                    fontSize: 13,
-                                                    color: "#666",
-                                                }}
-                                            >
-                                                {driverDetail.phone ||
-                                                    driverDetail.email ||
-                                                    ""}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
+                                {loadingCarriers && (
+                                    <div>Cargando transportistas...</div>
+                                    })}
+                            </div>
+
+                            <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                                <button
+                                    className="btn btn-outlined"
+                                    onClick={unassignCarrier}
+                                >
+                                    Quitar transportista
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={assignCarrier}
+                                >
+                                    Asignar transportista
+                                </button>
+                            </div>
                                     <div style={{ color: "#666" }}>
-                                        Selecciona un conductor para ver
-                                        detalles
+                                        No se encontraron transportistas
                                     </div>
                                 )}
-                            </div>
-                        </div>
 
-                        <div
-                            style={{
-                                marginTop: 8,
-                                display: "flex",
-                                justifyContent: "flex-end",
+                                {!loadingCarriers &&
+                                    carriers.map(c => {
+                                        const isSelected =
+                                            Number(selectedCarrierId) ===
+                                            Number(c.id);
+                                        return (
+                                            <div
+                                                key={c.id}
+                                                onClick={() =>
+                                                    selectCarrier(c)
+                                                }
+                                                style={{
+                                                    padding: 6,
+                                                    borderRadius: 6,
+                                                    cursor: "pointer",
+                                                    background: isSelected
+                                                        ? "#f0f8ff"
+                                                        : "transparent",
+                                                    marginBottom: 4,
+                                                    fontSize: 13,
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        fontWeight: 700,
+                                                    }}
+                                                >
+                                                    {c.display_name ||
+                                                        c.name}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        fontSize: 12,
+                                                        color: "#666",
+                                                    }}
+                                                >
+                                                    {c.phone || c.email || ""}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                                    padding: 10,
+                                    overflow: "auto",
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        border: "1px solid #eee",
+                                        borderRadius: 6,
+                                        padding: 10,
+                                        overflow: "auto",
+                                    }}
+                                >
+                                    <h4 style={{ marginTop: 0 }}>
+                                        Detalle del conductor
+                                    </h4>
+                                    {driverDetail ? (
+                                        <div>
+                                            <div style={{ marginBottom: 8 }}>
+                                                <strong>{driverDetail.name}</strong>
+                                                <div
+                                                    style={{
+                                                        fontSize: 13,
+                                                        color: "#666",
+                                                    }}
+                                                >
+                                                    {driverDetail.phone ||
+                                                        driverDetail.email ||
+                                                        ""}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: "#666" }}>
+                                            Selecciona un conductor para ver
+                                            detalles
+                                        </div>
+                                    )}
+                                </div>
                             }}
+
+                            {/* Fila de resumen horizontal de vehículo / conductor / transportista */}
+                            <div
+                                style={{
+                                    marginTop: 8,
+                                    border: "1px solid #eee",
+                                    borderRadius: 6,
+                                    padding: 8,
+                                    display: "flex",
+                                    gap: 12,
+                                    fontSize: 13,
+                                }}
+                            >
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            color: "#666",
+                                        }}
+                                    >
+                                        Vehículo
+                                    </div>
+                                    <div style={{ fontWeight: 700 }}>
+                                        {detail
+                                            ? `${detail.name || ""}$${
+                                                  detail.license_plate
+                                                      ? ` (${detail.license_plate})`
+                                                      : ""
+                                              }`
+                                            : "Ninguno"}
+                                    </div>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            color: "#666",
+                                        }}
+                                    >
+                                        Conductor
+                                    </div>
+                                    <div style={{ fontWeight: 700 }}>
+                                        {driverDetail?.name || "Ninguno"}
+                                    </div>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            color: "#666",
+                                        }}
+                                    >
+                                        Transportista
+                                    </div>
+                                    <div style={{ fontWeight: 700 }}>
+                                        {carrierDetail?.display_name ||
+                                            carrierDetail?.name ||
+                                            "Ninguno"}
+                                    </div>
+                                </div>
+                            </div>
                         >
                             <button
                                 className="btn btn-outlined"

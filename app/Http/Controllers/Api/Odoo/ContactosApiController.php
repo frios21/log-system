@@ -24,4 +24,11 @@ class ContactosApiController extends Controller
             $this->contactos->personas()
         );
     }
+
+    public function transportistas()
+    {
+        return response()->json(
+            $this->contactos->transportistas()
+        );
+    }
 }

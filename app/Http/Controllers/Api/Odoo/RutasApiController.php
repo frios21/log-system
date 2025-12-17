@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Odoo;
 use App\Http\Controllers\Controller;
 use App\Services\Odoo\RutasService;
 use Illuminate\Http\Request;
-use App\Services\Odoo\OdooJsonRpc;
 use Illuminate\Support\Facades\Http;
 
 class RutasApiController extends Controller
@@ -40,9 +39,7 @@ class RutasApiController extends Controller
             return response()->json(['error' => 'distance_km required'], 422);
         }
 
-        $service = new RutasService(new OdooJsonRpc());
-
-        $ok = $service->actualizarDistancia($id, floatval($km));
+        $ok = $this->rutas->actualizarDistancia($id, floatval($km));
 
         return response()->json([
             'success' => $ok,
@@ -58,9 +55,7 @@ class RutasApiController extends Controller
             return response()->json(['error' => 'name required'], 422);
         }
 
-        $service = new RutasService(new OdooJsonRpc());
-
-        $ok = $service->actualizarNombre($id, $name);
+        $ok = $this->rutas->actualizarNombre($id, $name);
 
         return response()->json([
             'success' => $ok,
@@ -220,6 +215,32 @@ class RutasApiController extends Controller
             } catch (\Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
+    }
+
+    public function updateCompany($id, Request $request)
+    {
+        $companyId = $request->input('company_id');
+
+        // Si viene null, desasignamos el transportista
+        if ($companyId === null) {
+            try {
+                $result = $this->rutas->asignarTransportista((int) $id, null);
+                return response()->json(['success' => (bool) $result]);
+            } catch (\Exception $e) {
+                return response()->json(['message' => $e->getMessage()], 500);
+            }
+        }
+
+        if (!$companyId) {
+            return response()->json(['message' => 'company_id requerido'], 422);
+        }
+
+        try {
+            $result = $this->rutas->asignarTransportista((int) $id, (int) $companyId);
+            return response()->json(['success' => (bool) $result]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 
     // PATCH /api/rutas/{id} - actualizar nombre o estado

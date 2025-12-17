@@ -4,6 +4,8 @@ namespace App\Services\Odoo;
 
 use App\Services\Odoo\OdooJsonRpc;
 use App\Services\Odoo\CService;
+use App\Services\Odoo\CargasService;
+use App\Services\Odoo\ComprasService;
 use App\Services\Odoo\ContactosService;
 use Illuminate\Support\Facades\Http;
 
@@ -23,6 +25,7 @@ class RutasService
         private readonly OdooJsonRpc $odoo,
         private readonly CargasService $cargas,
         private readonly ContactosService $contactos16,
+        private readonly ComprasService $compras,
     ) {}
 
     private function getDestinoCoords(?string $destino): ?array
@@ -72,7 +75,7 @@ class RutasService
         return $this->odoo->searchRead(
             'logistics.route',
             [],
-            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','company_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
     }
 
@@ -81,7 +84,7 @@ class RutasService
         $routes = $this->odoo->searchRead(
             'logistics.route',
             [['id','=', $id]],
-            ['id','name','status','vehicle_id','driver_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','company_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
 
         $route = $routes[0] ?? null;
@@ -770,6 +773,16 @@ class RutasService
         ]);
     }
 
+    /**
+     * Asigna o desasigna el transportista (company_id) a la ruta.
+     */
+    public function asignarTransportista(int $idRuta, ?int $companyId)
+    {
+        return $this->odoo->write('logistics.route', $idRuta, [
+            'company_id' => $companyId !== null ? $companyId : false,
+        ]);
+    }
+
     public function actualizarEstado(int $id, string $status): bool
     {
         // Actualizar estado de la ruta
@@ -791,6 +804,15 @@ class RutasService
                     } catch (\Throwable $e) {
                         // noop
                     }
+                }
+            }
+
+            // Crear orden de compra en Odoo 16 (mejor esfuerzo).
+            if ($ruta) {
+                try {
+                    $this->compras->crearOrdenDesdeRuta($ruta);
+                } catch (\Throwable $e) {
+                    // noop: no bloqueamos el cierre de la ruta
                 }
             }
         }
