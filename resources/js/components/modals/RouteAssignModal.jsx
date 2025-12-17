@@ -33,6 +33,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
 
     const sortableRef = useRef(null);
     const recalcTimeoutRef = useRef(null);
+    const cargasListRef = useRef(null);
 
     const [vehicleId, setVehicleId] = useState(
         ruta.vehicle_id ? (Array.isArray(ruta.vehicle_id) ? ruta.vehicle_id[0] : ruta.vehicle_id) : null
@@ -204,6 +205,10 @@ export default function RouteAssignModal({ ruta, onClose }) {
     ];
 
     function toggle(id) {
+        const scrollTop = cargasListRef.current
+            ? cargasListRef.current.scrollTop
+            : null;
+
         const newSelected = new Set(selected);
         const isSelecting = !newSelected.has(id);
 
@@ -229,6 +234,14 @@ export default function RouteAssignModal({ ruta, onClose }) {
         }
 
         setSelected(newSelected);
+
+        if (scrollTop !== null) {
+            requestAnimationFrame(() => {
+                if (cargasListRef.current) {
+                    cargasListRef.current.scrollTop = scrollTop;
+                }
+            });
+        }
     }
 
     function toggleFake(id, e) {
@@ -512,7 +525,7 @@ export default function RouteAssignModal({ ruta, onClose }) {
                      {/* Cargas */}
                     <div className="section">
                         <label className="section-label">Cargas disponibles</label>
-                        <div className="cargas-list">
+                        <div className="cargas-list" ref={cargasListRef}>
                             {allLoads.map(c => {
                                 let fechaLabel = "";
                                 if (c.date) {
@@ -521,7 +534,9 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                         const dd = String(d.getDate()).padStart(2, "0");
                                         const mm = String(d.getMonth() + 1).padStart(2, "0");
                                         const yy = String(d.getFullYear()).slice(-2);
-                                        fechaLabel = `${dd}/${mm}/${yy}`;
+                                        const hh = String(d.getHours()).padStart(2, "0");
+                                        const min = String(d.getMinutes()).padStart(2, "0");
+                                        fechaLabel = `${dd}/${mm}/${yy} ${hh}:${min}`;
                                     }
                                 }
 
@@ -627,7 +642,9 @@ export default function RouteAssignModal({ ruta, onClose }) {
                                     const dd = String(d.getDate()).padStart(2, "0");
                                     const mm = String(d.getMonth() + 1).padStart(2, "0");
                                     const yy = String(d.getFullYear()).slice(-2);
-                                    fechaLabel = `${dd}/${mm}/${yy}`;
+                                    const hh = String(d.getHours()).padStart(2, "0");
+                                    const min = String(d.getMinutes()).padStart(2, "0");
+                                    fechaLabel = `${dd}/${mm}/${yy} ${hh}:${min}`;
                                 }
                             }
 
