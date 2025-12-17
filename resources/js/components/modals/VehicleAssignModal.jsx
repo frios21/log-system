@@ -1,24 +1,59 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+function m2oId(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
+function m2oName(value) {
+  if (!value) return "";
+  if (Array.isArray(value)) return value[1] ?? "";
+  if (typeof value === "string") return value;
+  return "";
+}
 
 export default function VehicleAssignModal({ ruta, onClose }) {
+  // ids/nombres desde ruta (Odoo)
+  const rutaVehicleId = m2oId(ruta?.vehicle_id);
+  const rutaVehicleName = m2oName(ruta?.vehicle_id);
+
+  const rutaDriverId = m2oId(ruta?.driver_id);
+  const rutaDriverName = m2oName(ruta?.driver_id);
+
+  const rutaCarrierId = m2oId(ruta?.company_id);
+  const rutaCarrierName = m2oName(ruta?.company_id);
+
   const [vehicles, setVehicles] = useState([]);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(ruta?.vehicle_id || null);
-  const [detail, setDetail] = useState(null);
+
+  const [selectedId, setSelectedId] = useState(rutaVehicleId);
+  const [detail, setDetail] = useState(
+    rutaVehicleId
+      ? { id: rutaVehicleId, name: rutaVehicleName } // fallback
+      : null
+  );
+
   const [loading, setLoading] = useState(false);
   const [ocupados, setOcupados] = useState(new Set());
   const [soloDisponibles, setSoloDisponibles] = useState(false);
 
   const [drivers, setDrivers] = useState([]);
   const [driverQuery, setDriverQuery] = useState("");
-  const [selectedDriverId, setSelectedDriverId] = useState(ruta?.driver_id || null);
-  const [driverDetail, setDriverDetail] = useState(null);
+
+  const [selectedDriverId, setSelectedDriverId] = useState(rutaDriverId);
+  const [driverDetail, setDriverDetail] = useState(
+    rutaDriverId ? { id: rutaDriverId, name: rutaDriverName } : null
+  );
   const [loadingDrivers, setLoadingDrivers] = useState(false);
 
   const [carriers, setCarriers] = useState([]);
   const [carrierQuery, setCarrierQuery] = useState("");
-  const [selectedCarrierId, setSelectedCarrierId] = useState(null);
-  const [carrierDetail, setCarrierDetail] = useState(null);
+
+  const [selectedCarrierId, setSelectedCarrierId] = useState(rutaCarrierId);
+  const [carrierDetail, setCarrierDetail] = useState(
+    rutaCarrierId ? { id: rutaCarrierId, display_name: rutaCarrierName } : null
+  );
   const [loadingCarriers, setLoadingCarriers] = useState(false);
 
   useEffect(() => {
@@ -44,9 +79,10 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
       const usados = new Set(
         (data || [])
-          .filter((r) => r.vehicle_id && Array.isArray(r.vehicle_id))
-          .map((r) => r.vehicle_id[0])
-          .filter((id) => typeof id === "number")
+          .map((r) => m2oId(r?.vehicle_id))
+          .filter((id) => typeof id === "number" || typeof id === "string")
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
       );
 
       setOcupados(usados);
@@ -63,10 +99,13 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       const list = Array.isArray(data) ? data : [];
       setVehicles(list);
 
-      if (ruta?.vehicle_id) {
-        const d = list.find((v) => Number(v.id) === Number(ruta.vehicle_id));
-        setSelectedId(ruta.vehicle_id);
-        setDetail(d || null);
+      // refrescar detail desde lista si existe
+      if (rutaVehicleId) {
+        const d = list.find((v) => Number(v.id) === Number(rutaVehicleId));
+        setSelectedId(rutaVehicleId);
+        setDetail(
+          d || (rutaVehicleName ? { id: rutaVehicleId, name: rutaVehicleName } : null)
+        );
       } else {
         setDetail(null);
       }
@@ -85,15 +124,10 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       const list = Array.isArray(data) ? data : [];
       setDrivers(list);
 
-      const rawId = ruta?.driver_id;
-      let curId = null;
-      if (rawId) {
-        curId = Array.isArray(rawId) ? rawId[0] : rawId;
-        if (curId) {
-          const d = list.find((x) => Number(x.id) === Number(curId));
-          setSelectedDriverId(curId);
-          setDriverDetail(d || null);
-        }
+      if (rutaDriverId) {
+        const d = list.find((x) => Number(x.id) === Number(rutaDriverId));
+        setSelectedDriverId(rutaDriverId);
+        setDriverDetail(d || (rutaDriverName ? { id: rutaDriverId, name: rutaDriverName } : null));
       }
     } catch (e) {
       console.error("Error fetching drivers", e);
@@ -111,30 +145,31 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
       if (q) {
         const qLower = q.toLowerCase();
-        list = list.filter((c) => {
-          const texto = String(c.display_name || c.name || "").toLowerCase();
-          return texto.includes(qLower);
-        });
+        list = list.filter((c) => String(c.display_name || c.name || "").toLowerCase().includes(qLower));
       }
 
       setCarriers(list);
 
-      // preselección por nombre desde ruta.company_id
-      if (!selectedCarrierId && !q && ruta) {
-        const rawCompany = ruta.company_id;
-        let companyName = null;
-
-        if (Array.isArray(rawCompany)) companyName = rawCompany[1] || null;
-        else if (typeof rawCompany === "string") companyName = rawCompany;
-
-        if (companyName) {
-          const match = list.find((c) => {
+      // preselección si company_id viene como [id, name]
+      if (rutaCarrierId && !q) {
+        const matchById = list.find((c) => Number(c.id) === Number(rutaCarrierId));
+        if (matchById) {
+          setSelectedCarrierId(matchById.id);
+          setCarrierDetail(matchById);
+        } else if (rutaCarrierName) {
+          setSelectedCarrierId(rutaCarrierId);
+          setCarrierDetail({ id: rutaCarrierId, display_name: rutaCarrierName });
+        }
+      } else if (!rutaCarrierId && !q) {
+        // si viene solo nombre (caso raro), intenta match por nombre
+        if (rutaCarrierName) {
+          const matchByName = list.find((c) => {
             const texto = String(c.display_name || c.name || "").toLowerCase();
-            return texto === companyName.toLowerCase();
+            return texto === rutaCarrierName.toLowerCase();
           });
-          if (match) {
-            setSelectedCarrierId(match.id);
-            setCarrierDetail(match);
+          if (matchByName) {
+            setSelectedCarrierId(matchByName.id);
+            setCarrierDetail(matchByName);
           }
         }
       }
@@ -162,7 +197,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
   async function assign() {
     try {
-      const body = { vehicle_id: selectedId };
+      const body = { vehicle_id: selectedId ? Number(selectedId) : null };
       const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -203,7 +238,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
   async function assignDriver() {
     try {
-      const body = { driver_id: selectedDriverId };
+      const body = { driver_id: selectedDriverId ? Number(selectedDriverId) : null };
       await fetch(`/api/rutas/${ruta.id}/update-driver`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -237,7 +272,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
   async function assignCarrier() {
     try {
-      const body = { company_id: selectedCarrierId };
+      const body = { company_id: selectedCarrierId ? Number(selectedCarrierId) : null };
       const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -274,16 +309,19 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     }
   }
 
-  const visible = vehicles.filter((v) => {
-    const texto = String(v.name || v.model || v.license_plate || "").toLowerCase();
-    if (query && !texto.includes(query.toLowerCase())) return false;
+  const visible = useMemo(() => {
+    return vehicles.filter((v) => {
+      const texto = String(v.name || v.model || v.license_plate || "").toLowerCase();
+      if (query && !texto.includes(query.toLowerCase())) return false;
 
-    if (soloDisponibles) {
-      const isOcupado = ocupados.has(Number(v.id));
-      if (isOcupado && Number(selectedId) !== Number(v.id)) return false;
-    }
-    return true;
-  });
+      if (soloDisponibles) {
+        const isOcupado = ocupados.has(Number(v.id));
+        // permite el que ya está asignado a esta ruta
+        if (isOcupado && Number(selectedId) !== Number(v.id)) return false;
+      }
+      return true;
+    });
+  }, [vehicles, query, soloDisponibles, ocupados, selectedId]);
 
   const overlayStyle = {
     position: "fixed",
@@ -310,7 +348,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     gap: 12,
   };
 
-  const cardStyle = {
+  const summaryCard = {
     border: "1px solid #eee",
     borderRadius: 6,
     padding: 10,
@@ -322,17 +360,9 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         {/* FILA SUPERIOR: 3 COLUMNAS */}
         <div style={{ display: "flex", gap: 12, minHeight: 0 }}>
-          {/* COLUMNA 1: VEHÍCULOS */}
+          {/* Vehículos */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
-                gap: 8,
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
               <h3 style={{ margin: 0 }}>Vehículos — {ruta?.name}</h3>
               <input
                 placeholder="Buscar vehículo..."
@@ -344,97 +374,48 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: 8 }}>
-              <input
-                type="checkbox"
-                checked={soloDisponibles}
-                onChange={(e) => setSoloDisponibles(e.target.checked)}
-              />
+              <input type="checkbox" checked={soloDisponibles} onChange={(e) => setSoloDisponibles(e.target.checked)} />
               Mostrar solo disponibles
             </label>
 
-            <div
-              style={{
-                flex: 1,
-                minHeight: 0,
-                overflow: "auto",
-                border: "1px solid #eee",
-                borderRadius: 6,
-                padding: 8,
-              }}
-            >
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto", border: "1px solid #eee", borderRadius: 6, padding: 8 }}>
               {loading && <div style={{ padding: 8 }}>Cargando...</div>}
-              {!loading && visible.length === 0 && (
-                <div style={{ padding: 8, color: "#666" }}>No se encontraron vehículos</div>
-              )}
+              {!loading && visible.length === 0 && <div style={{ padding: 8, color: "#666" }}>No se encontraron vehículos</div>}
 
               {!loading &&
                 visible.map((v) => {
                   const isOcupado = ocupados.has(Number(v.id));
                   const isSelected = Number(selectedId) === Number(v.id);
+                  const bloqueado = isOcupado && !isSelected;
 
                   return (
                     <div
                       key={v.id}
-                      onClick={() => !isOcupado && selectVehicle(v)}
+                      onClick={() => !bloqueado && selectVehicle(v)}
                       style={{
                         padding: 10,
                         borderRadius: 6,
-                        cursor: isOcupado ? "not-allowed" : "pointer",
+                        cursor: bloqueado ? "not-allowed" : "pointer",
                         display: "flex",
                         gap: 10,
                         alignItems: "center",
                         marginBottom: 6,
                         background: isSelected ? "#f0f8ff" : "transparent",
-                        opacity: isOcupado ? 0.45 : 1,
-                        pointerEvents: isOcupado ? "none" : "auto",
+                        opacity: bloqueado ? 0.45 : 1,
                         position: "relative",
                       }}
                     >
-                      {isOcupado && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 6,
-                            right: 6,
-                            background: "#d9534f",
-                            color: "white",
-                            padding: "2px 6px",
-                            fontSize: 10,
-                            borderRadius: 4,
-                            fontWeight: 700,
-                          }}
-                        >
+                      {bloqueado && (
+                        <div style={{ position: "absolute", top: 6, right: 6, background: "#d9534f", color: "white", padding: "2px 6px", fontSize: 10, borderRadius: 4, fontWeight: 700 }}>
                           Ocupado
                         </div>
                       )}
-
-                      <div
-                        style={{
-                          width: 56,
-                          height: 44,
-                          borderRadius: 6,
-                          overflow: "hidden",
-                          background: "#fafafa",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {v.image ? (
-                          <img
-                            src={v.image}
-                            alt=""
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
-                        ) : (
-                          <div style={{ fontSize: 12 }}>{v.model || "—"}</div>
-                        )}
-                      </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700 }}>
                           {v.name} {v.license_plate ? `(${v.license_plate})` : ""}
                         </div>
+                        <div style={{ fontSize: 12, color: "#666" }}>{v.model || ""}</div>
                       </div>
                     </div>
                   );
@@ -442,26 +423,14 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button className="btn btn-outlined" onClick={unassignVehicle}>
-                Quitar vehículo
-              </button>
-              <button className="btn btn-primary" onClick={assign}>
-                Asignar vehículo
-              </button>
+              <button className="btn btn-outlined" onClick={unassignVehicle}>Quitar vehículo</button>
+              <button className="btn btn-primary" onClick={assign}>Asignar vehículo</button>
             </div>
           </div>
 
-          {/* COLUMNA 2: CONDUCTORES */}
+          {/* Conductores */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
-                gap: 8,
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
               <h3 style={{ margin: 0 }}>Conductores</h3>
               <input
                 placeholder="Buscar conductor..."
@@ -472,20 +441,9 @@ export default function VehicleAssignModal({ ruta, onClose }) {
               />
             </div>
 
-            <div
-              style={{
-                flex: 1,
-                minHeight: 0,
-                overflow: "auto",
-                border: "1px solid #eee",
-                borderRadius: 6,
-                padding: 8,
-              }}
-            >
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto", border: "1px solid #eee", borderRadius: 6, padding: 8 }}>
               {loadingDrivers && <div>Cargando conductores...</div>}
-              {!loadingDrivers && drivers.length === 0 && (
-                <div style={{ color: "#666" }}>No se encontraron conductores</div>
-              )}
+              {!loadingDrivers && drivers.length === 0 && <div style={{ color: "#666" }}>No se encontraron conductores</div>}
 
               {!loadingDrivers &&
                 drivers
@@ -500,13 +458,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                       <div
                         key={d.id}
                         onClick={() => selectDriver(d)}
-                        style={{
-                          padding: 8,
-                          borderRadius: 6,
-                          cursor: "pointer",
-                          background: isSelected ? "#f0f8ff" : "transparent",
-                          marginBottom: 6,
-                        }}
+                        style={{ padding: 8, borderRadius: 6, cursor: "pointer", background: isSelected ? "#f0f8ff" : "transparent", marginBottom: 6 }}
                       >
                         <div style={{ fontWeight: 700 }}>{d.name}</div>
                         <div style={{ fontSize: 12, color: "#666" }}>{d.phone || d.email || ""}</div>
@@ -516,16 +468,12 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button className="btn btn-outlined" onClick={unassignDriver}>
-                Quitar conductor
-              </button>
-              <button className="btn btn-primary" onClick={assignDriver}>
-                Asignar conductor
-              </button>
+              <button className="btn btn-outlined" onClick={unassignDriver}>Quitar conductor</button>
+              <button className="btn btn-primary" onClick={assignDriver}>Asignar conductor</button>
             </div>
           </div>
 
-          {/* COLUMNA 3: TRANSPORTISTAS */}
+          {/* Transportistas */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>Transportistas</h3>
@@ -543,20 +491,9 @@ export default function VehicleAssignModal({ ruta, onClose }) {
               className="input"
             />
 
-            <div
-              style={{
-                flex: 1,
-                minHeight: 0,
-                overflow: "auto",
-                border: "1px solid #eee",
-                borderRadius: 6,
-                padding: 8,
-              }}
-            >
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto", border: "1px solid #eee", borderRadius: 6, padding: 8 }}>
               {loadingCarriers && <div>Cargando transportistas...</div>}
-              {!loadingCarriers && carriers.length === 0 && (
-                <div style={{ color: "#666" }}>No se encontraron transportistas</div>
-              )}
+              {!loadingCarriers && carriers.length === 0 && <div style={{ color: "#666" }}>No se encontraron transportistas</div>}
 
               {!loadingCarriers &&
                 carriers.map((c) => {
@@ -565,13 +502,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                     <div
                       key={c.id}
                       onClick={() => selectCarrier(c)}
-                      style={{
-                        padding: 8,
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        background: isSelected ? "#f0f8ff" : "transparent",
-                        marginBottom: 6,
-                      }}
+                      style={{ padding: 8, borderRadius: 6, cursor: "pointer", background: isSelected ? "#f0f8ff" : "transparent", marginBottom: 6 }}
                     >
                       <div style={{ fontWeight: 700 }}>{c.display_name || c.name}</div>
                       <div style={{ fontSize: 12, color: "#666" }}>{c.phone || c.email || ""}</div>
@@ -581,34 +512,32 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button className="btn btn-outlined" onClick={unassignCarrier}>
-                Quitar transportista
-              </button>
-              <button className="btn btn-primary" onClick={assignCarrier}>
-                Asignar transportista
-              </button>
+              <button className="btn btn-outlined" onClick={unassignCarrier}>Quitar transportista</button>
+              <button className="btn btn-primary" onClick={assignCarrier}>Asignar transportista</button>
             </div>
           </div>
         </div>
 
         {/* FILA INFERIOR: RESUMEN HORIZONTAL */}
-        <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div style={{ ...summaryCard, display: "flex", gap: 12, alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Vehículo</div>
             <div style={{ fontWeight: 700 }}>
-              {detail ? `${detail.id[1] || ""}${detail.license_plate ? ` (${detail.license_plate})` : ""}` : "Ninguno"}
+              {detail?.name || rutaVehicleName || "Ninguno"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Conductor</div>
-            <div style={{ fontWeight: 700 }}>{driverDetail?.id[1] || "Ninguno"}</div>
+            <div style={{ fontWeight: 700 }}>
+              {driverDetail?.name || rutaDriverName || "Ninguno"}
+            </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Transportista</div>
             <div style={{ fontWeight: 700 }}>
-              {carrierDetail?.id[1] || "Ninguno"}
+              {carrierDetail?.display_name || carrierDetail?.name || rutaCarrierName || "Ninguno"}
             </div>
           </div>
 
