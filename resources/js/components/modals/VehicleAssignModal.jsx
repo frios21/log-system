@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from "react";
 
-// Modal para asignar vehículo a una ruta
-// Muestra lista de vehículos, permite buscar y filtrar
-// Falta agregar paginación si hay muchos vehículos
-// y agregar un botón para desvincular vehículos
-// -> separar vehículo de chofer (asignar cada uno por separado)
-
 export default function VehicleAssignModal({ ruta, onClose }) {
   const [vehicles, setVehicles] = useState([]);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(ruta.vehicle_id || null);
+  const [selectedId, setSelectedId] = useState(ruta?.vehicle_id || null);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [ocupados, setOcupados] = useState(new Set());
@@ -17,7 +11,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
   const [drivers, setDrivers] = useState([]);
   const [driverQuery, setDriverQuery] = useState("");
-  const [selectedDriverId, setSelectedDriverId] = useState(ruta.driver_id || null);
+  const [selectedDriverId, setSelectedDriverId] = useState(ruta?.driver_id || null);
   const [driverDetail, setDriverDetail] = useState(null);
   const [loadingDrivers, setLoadingDrivers] = useState(false);
 
@@ -27,7 +21,6 @@ export default function VehicleAssignModal({ ruta, onClose }) {
   const [carrierDetail, setCarrierDetail] = useState(null);
   const [loadingCarriers, setLoadingCarriers] = useState(false);
 
-  // Cargar datos iniciales
   useEffect(() => {
     fetchOcupados();
     fetchVehicles();
@@ -36,12 +29,9 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cerrar modal con tecla ESC
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === "Escape") {
-        onClose && onClose();
-      }
+      if (e.key === "Escape") onClose && onClose();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -73,8 +63,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       const list = Array.isArray(data) ? data : [];
       setVehicles(list);
 
-      if (ruta.vehicle_id) {
-        const d = list.find((v) => v.id === ruta.vehicle_id);
+      if (ruta?.vehicle_id) {
+        const d = list.find((v) => Number(v.id) === Number(ruta.vehicle_id));
         setSelectedId(ruta.vehicle_id);
         setDetail(d || null);
       } else {
@@ -98,9 +88,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       const rawId = ruta?.driver_id;
       let curId = null;
       if (rawId) {
-        if (Array.isArray(rawId)) curId = rawId[0];
-        else curId = rawId;
-
+        curId = Array.isArray(rawId) ? rawId[0] : rawId;
         if (curId) {
           const d = list.find((x) => Number(x.id) === Number(curId));
           setSelectedDriverId(curId);
@@ -131,22 +119,19 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
       setCarriers(list);
 
+      // preselección por nombre desde ruta.company_id
       if (!selectedCarrierId && !q && ruta) {
         const rawCompany = ruta.company_id;
         let companyName = null;
 
-        if (Array.isArray(rawCompany)) {
-          companyName = rawCompany[1] || null;
-        } else if (typeof rawCompany === "string") {
-          companyName = rawCompany;
-        }
+        if (Array.isArray(rawCompany)) companyName = rawCompany[1] || null;
+        else if (typeof rawCompany === "string") companyName = rawCompany;
 
         if (companyName) {
           const match = list.find((c) => {
             const texto = String(c.display_name || c.name || "").toLowerCase();
             return texto === companyName.toLowerCase();
           });
-
           if (match) {
             setSelectedCarrierId(match.id);
             setCarrierDetail(match);
@@ -175,6 +160,81 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     setCarrierDetail(c);
   }
 
+  async function assign() {
+    try {
+      const body = { vehicle_id: selectedId };
+      const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.message) alert(data.message);
+        return;
+      }
+      window.dispatchEvent(new CustomEvent("rutas:changed"));
+      fetchOcupados();
+    } catch (e) {
+      console.error("Error assigning vehicle", e);
+    }
+  }
+
+  async function unassignVehicle() {
+    try {
+      const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicle_id: null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.message) alert(data.message);
+        return;
+      }
+      setSelectedId(null);
+      setDetail(null);
+      fetchOcupados();
+      window.dispatchEvent(new CustomEvent("rutas:changed"));
+    } catch (e) {
+      console.error("Error unassigning vehicle", e);
+    }
+  }
+
+  async function assignDriver() {
+    try {
+      const body = { driver_id: selectedDriverId };
+      await fetch(`/api/rutas/${ruta.id}/update-driver`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      window.dispatchEvent(new CustomEvent("rutas:changed"));
+    } catch (e) {
+      console.error("Error assigning driver", e);
+    }
+  }
+
+  async function unassignDriver() {
+    try {
+      const res = await fetch(`/api/rutas/${ruta.id}/update-driver`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driver_id: null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.message) alert(data.message);
+        return;
+      }
+      setSelectedDriverId(null);
+      setDriverDetail(null);
+      window.dispatchEvent(new CustomEvent("rutas:changed"));
+    } catch (e) {
+      console.error("Error unassigning driver", e);
+    }
+  }
+
   async function assignCarrier() {
     try {
       const body = { company_id: selectedCarrierId };
@@ -185,7 +245,6 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        console.error("Error assigning carrier", data);
         if (data?.message) alert(data.message);
         return;
       }
@@ -204,7 +263,6 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        console.error("Error unassigning carrier", data);
         if (data?.message) alert(data.message);
         return;
       }
@@ -227,84 +285,6 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     return true;
   });
 
-  async function assign() {
-    try {
-      const body = { vehicle_id: selectedId };
-      const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        console.error("Error assigning vehicle", data);
-        if (data?.message) alert(data.message);
-        return;
-      }
-      window.dispatchEvent(new CustomEvent("rutas:changed"));
-      fetchOcupados();
-    } catch (e) {
-      console.error("Error assigning vehicle", e);
-    }
-  }
-
-  async function assignDriver() {
-    try {
-      const body = { driver_id: selectedDriverId };
-      await fetch(`/api/rutas/${ruta.id}/update-driver`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      window.dispatchEvent(new CustomEvent("rutas:changed"));
-    } catch (e) {
-      console.error("Error assigning driver", e);
-    }
-  }
-
-  async function unassignVehicle() {
-    try {
-      const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicle_id: null }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        console.error("Error unassigning vehicle", data);
-        if (data?.message) alert(data.message);
-        return;
-      }
-      setSelectedId(null);
-      setDetail(null);
-      fetchOcupados();
-      window.dispatchEvent(new CustomEvent("rutas:changed"));
-    } catch (e) {
-      console.error("Error unassigning vehicle", e);
-    }
-  }
-
-  async function unassignDriver() {
-    try {
-      const res = await fetch(`/api/rutas/${ruta.id}/update-driver`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driver_id: null }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        console.error("Error unassigning driver", data);
-        if (data?.message) alert(data.message);
-        return;
-      }
-      setSelectedDriverId(null);
-      setDriverDetail(null);
-      window.dispatchEvent(new CustomEvent("rutas:changed"));
-    } catch (e) {
-      console.error("Error unassigning driver", e);
-    }
-  }
-
   const overlayStyle = {
     position: "fixed",
     inset: 0,
@@ -325,14 +305,25 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
     padding: 16,
     overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  };
+
+  const cardStyle = {
+    border: "1px solid #eee",
+    borderRadius: 6,
+    padding: 10,
+    minWidth: 0,
   };
 
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", gap: 12 }}>
+        {/* FILA SUPERIOR: 3 COLUMNAS */}
+        <div style={{ display: "flex", gap: 12, minHeight: 0 }}>
           {/* COLUMNA 1: VEHÍCULOS */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <div
               style={{
                 display: "flex",
@@ -352,15 +343,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
               />
             </div>
 
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                cursor: "pointer",
-                marginBottom: 8,
-              }}
-            >
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: 8 }}>
               <input
                 type="checkbox"
                 checked={soloDisponibles}
@@ -371,7 +354,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
             <div
               style={{
-                maxHeight: "62vh",
+                flex: 1,
+                minHeight: 0,
                 overflow: "auto",
                 border: "1px solid #eee",
                 borderRadius: 6,
@@ -452,13 +436,6 @@ export default function VehicleAssignModal({ ruta, onClose }) {
                           {v.name} {v.license_plate ? `(${v.license_plate})` : ""}
                         </div>
                       </div>
-
-                      <div style={{ minWidth: 120, textAlign: "right", fontSize: 12 }}>
-                        <div style={{ fontWeight: 700 }}>
-                          {v.x_capacidad ?? "—"} {v.x_unidad_capacidad ?? ""}
-                        </div>
-                        <div style={{ color: "#666" }}>Pallets: {v.x_capacidad_pallets ?? "—"}</div>
-                      </div>
                     </div>
                   );
                 })}
@@ -475,7 +452,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
           </div>
 
           {/* COLUMNA 2: CONDUCTORES */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <div
               style={{
                 display: "flex",
@@ -497,7 +474,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
             <div
               style={{
-                maxHeight: "62vh",
+                flex: 1,
+                minHeight: 0,
                 overflow: "auto",
                 border: "1px solid #eee",
                 borderRadius: 6,
@@ -547,172 +525,97 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
           </div>
 
-          {/* COLUMNA 3: RESUMEN + DETALLES + TRANSPORTISTAS */}
-          <div
-            style={{
-              width: 360,
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              minWidth: 0,
-            }}
-          >
-            {/* Resumen */}
-            <div style={{ border: "1px solid #eee", borderRadius: 6, padding: 10 }}>
-              <h4 style={{ margin: "0 0 8px 0" }}>Resumen asignaciones</h4>
-
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666" }}>Vehículo asignado</div>
-                {detail ? (
-                  <div style={{ fontWeight: 700 }}>
-                    {detail.name} {detail.license_plate ? `(${detail.license_plate})` : ""}
-                  </div>
-                ) : (
-                  <div style={{ color: "#666" }}>Ninguno</div>
-                )}
-              </div>
-
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666" }}>Conductor asignado</div>
-                {driverDetail ? (
-                  <div style={{ fontWeight: 700 }}>{driverDetail.name}</div>
-                ) : (
-                  <div style={{ color: "#666" }}>Ninguno</div>
-                )}
-              </div>
-
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>Transportista asignado</div>
-                {carrierDetail ? (
-                  <div style={{ fontWeight: 700 }}>{carrierDetail.display_name || carrierDetail.name}</div>
-                ) : (
-                  <div style={{ color: "#666" }}>Ninguno</div>
-                )}
-              </div>
+          {/* COLUMNA 3: TRANSPORTISTAS */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h3 style={{ margin: 0 }}>Transportistas</h3>
             </div>
 
-            {/* Detalles (vehículo / conductor) */}
-            <div style={{ display: "flex", gap: 8, flex: 1, minHeight: 0 }}>
-              <div
-                style={{
-                  flex: 1,
-                  border: "1px solid #eee",
-                  borderRadius: 6,
-                  padding: 10,
-                  overflow: "auto",
-                }}
-              >
-                <h4 style={{ marginTop: 0 }}>Detalle del vehículo</h4>
-                {detail ? (
-                  <div>
-                    <div style={{ marginBottom: 8 }}>
-                      <strong>{detail.name}</strong>
-                      <div style={{ fontSize: 13, color: "#666" }}>{detail.model || ""}</div>
-                      <div style={{ fontSize: 13, color: "#666" }}>
-                        {detail.license_plate ? `Patente: ${detail.license_plate}` : ""}
-                      </div>
+            <input
+              placeholder="Buscar transportista..."
+              value={carrierQuery}
+              onChange={(e) => {
+                const q = e.target.value;
+                setCarrierQuery(q);
+                fetchCarriers(q);
+              }}
+              style={{ width: "100%", marginBottom: 8 }}
+              className="input"
+            />
+
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflow: "auto",
+                border: "1px solid #eee",
+                borderRadius: 6,
+                padding: 8,
+              }}
+            >
+              {loadingCarriers && <div>Cargando transportistas...</div>}
+              {!loadingCarriers && carriers.length === 0 && (
+                <div style={{ color: "#666" }}>No se encontraron transportistas</div>
+              )}
+
+              {!loadingCarriers &&
+                carriers.map((c) => {
+                  const isSelected = Number(selectedCarrierId) === Number(c.id);
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => selectCarrier(c)}
+                      style={{
+                        padding: 8,
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        background: isSelected ? "#f0f8ff" : "transparent",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700 }}>{c.display_name || c.name}</div>
+                      <div style={{ fontSize: 12, color: "#666" }}>{c.phone || c.email || ""}</div>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ color: "#666" }}>Selecciona un vehículo para ver detalles</div>
-                )}
-              </div>
-
-              <div
-                style={{
-                  flex: 1,
-                  border: "1px solid #eee",
-                  borderRadius: 6,
-                  padding: 10,
-                  overflow: "auto",
-                }}
-              >
-                <h4 style={{ marginTop: 0 }}>Detalle del conductor</h4>
-                {driverDetail ? (
-                  <div>
-                    <div style={{ marginBottom: 8 }}>
-                      <strong>{driverDetail.name}</strong>
-                      <div style={{ fontSize: 13, color: "#666" }}>
-                        {driverDetail.phone || driverDetail.email || ""}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ color: "#666" }}>Selecciona un conductor para ver detalles</div>
-                )}
-              </div>
+                  );
+                })}
             </div>
 
-            {/* Transportistas */}
-            <div style={{ border: "1px solid #eee", borderRadius: 6, padding: 10 }}>
-              <h4 style={{ margin: "0 0 8px 0" }}>Transportistas (Odoo 16)</h4>
-
-              <input
-                placeholder="Buscar transportista..."
-                value={carrierQuery}
-                onChange={(e) => {
-                  const q = e.target.value;
-                  setCarrierQuery(q);
-                  fetchCarriers(q);
-                }}
-                style={{ width: "100%", marginBottom: 8 }}
-                className="input"
-              />
-
-              <div
-                style={{
-                  maxHeight: 200,
-                  overflow: "auto",
-                  border: "1px solid #eee",
-                  borderRadius: 6,
-                  padding: 6,
-                }}
-              >
-                {loadingCarriers && <div>Cargando transportistas...</div>}
-
-                {!loadingCarriers && carriers.length === 0 && (
-                  <div style={{ color: "#666" }}>No se encontraron transportistas</div>
-                )}
-
-                {!loadingCarriers &&
-                  carriers.map((c) => {
-                    const isSelected = Number(selectedCarrierId) === Number(c.id);
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => selectCarrier(c)}
-                        style={{
-                          padding: 6,
-                          borderRadius: 6,
-                          cursor: "pointer",
-                          background: isSelected ? "#f0f8ff" : "transparent",
-                          marginBottom: 4,
-                          fontSize: 13,
-                        }}
-                      >
-                        <div style={{ fontWeight: 700 }}>{c.display_name || c.name}</div>
-                        <div style={{ fontSize: 12, color: "#666" }}>{c.phone || c.email || ""}</div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                <button className="btn btn-outlined" onClick={unassignCarrier}>
-                  Quitar transportista
-                </button>
-                <button className="btn btn-primary" onClick={assignCarrier}>
-                  Asignar transportista
-                </button>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn btn-outlined" onClick={onClose}>
-                Cerrar
+            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+              <button className="btn btn-outlined" onClick={unassignCarrier}>
+                Quitar transportista
+              </button>
+              <button className="btn btn-primary" onClick={assignCarrier}>
+                Asignar transportista
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* FILA INFERIOR: RESUMEN HORIZONTAL */}
+        <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: "#666" }}>Vehículo</div>
+            <div style={{ fontWeight: 700 }}>
+              {detail ? `${detail.name || ""}${detail.license_plate ? ` (${detail.license_plate})` : ""}` : "Ninguno"}
+            </div>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: "#666" }}>Conductor</div>
+            <div style={{ fontWeight: 700 }}>{driverDetail?.name || "Ninguno"}</div>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: "#666" }}>Transportista</div>
+            <div style={{ fontWeight: 700 }}>
+              {carrierDetail?.display_name || carrierDetail?.name || "Ninguno"}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button className="btn btn-outlined" onClick={onClose}>
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
