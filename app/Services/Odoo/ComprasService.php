@@ -106,31 +106,48 @@ class ComprasService
     }
 
     /**
-     * Obtiene desde Odoo 19 el partner asociado a la ruta.
+     * Obtiene el partner asociado a la ruta para facturar el flete.
      * Prioridad:
-     *  1) company_id (transportista)
-     *  2) driver_id (chofer), como fallback
+     *  1) company_id -> ID de res.partner en Odoo 16 (transportista)
+     *  2) driver_id  -> partner en Odoo 19 (chofer), como fallback
      */
     private function resolveRoutePartner19(array $ruta): ?array
     {
-        // 1) Transportista (company_id) si viene informado en la ruta
+        // 1) Transportista (company_id) viene ahora como entero (ID de Odoo 16)
         $companyField = $ruta['company_id'] ?? null;
-        $partnerId    = null;
+        if ($companyField !== null && $companyField !== '') {
+            $partner16Id = (int) $companyField;
 
-        if (is_array($companyField)) {
-            $partnerId = $companyField[0] ?? null;
-        } elseif (is_int($companyField) || ctype_digit((string) $companyField)) {
-            $partnerId = (int) $companyField;
+            if ($partner16Id > 0) {
+                // Leemos directamente el partner en Odoo 16
+                $rows = $this->call16(
+                    'object',
+                    'execute_kw',
+                    [
+                        $this->db16,
+                        $this->uid16,
+                        $this->apiKey16,
+                        'res.partner',
+                        'read',
+                        [[$partner16Id]],
+                        ['fields' => ['id', 'name', 'vat', 'is_company', 'parent_id']],
+                    ]
+                );
+
+                if (!empty($rows) && isset($rows[0]['id'])) {
+                    return $rows[0];
+                }
+            }
         }
 
-        // 2) Si no hay company_id, usamos driver_id como antes
-        if (!$partnerId) {
-            $driverField = $ruta['driver_id'] ?? null;
-            if (is_array($driverField)) {
-                $partnerId = $driverField[0] ?? null;
-            } elseif (is_int($driverField) || ctype_digit((string) $driverField)) {
-                $partnerId = (int) $driverField;
-            }
+        // 2) Si no hay company_id válido, usamos driver_id como antes (partner en Odoo 19)
+        $driverField = $ruta['driver_id'] ?? null;
+        $partnerId   = null;
+
+        if (is_array($driverField)) {
+            $partnerId = $driverField[0] ?? null;
+        } elseif (is_int($driverField) || ctype_digit((string) $driverField)) {
+            $partnerId = (int) $driverField;
         }
 
         if (!$partnerId) {

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import CircleLoader from "../common/CircleLoader";
 
 function m2oId(value) {
   if (!value) return null;
@@ -21,8 +22,9 @@ export default function VehicleAssignModal({ ruta, onClose }) {
   const rutaDriverId = m2oId(ruta?.driver_id);
   const rutaDriverName = m2oName(ruta?.driver_id);
 
-  const rutaCarrierId = m2oId(ruta?.company_id);
-  const rutaCarrierName = m2oName(ruta?.company_id);
+  // company_id ahora es integer (ID de transportista en Odoo 16)
+  const rutaCarrierId = ruta?.company_id ?? null;
+  const rutaCarrierName = "";
 
   const [vehicles, setVehicles] = useState([]);
   const [query, setQuery] = useState("");
@@ -55,6 +57,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     rutaCarrierId ? { id: rutaCarrierId, display_name: rutaCarrierName } : null
   );
   const [loadingCarriers, setLoadingCarriers] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     fetchOcupados();
@@ -197,6 +200,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
   async function assign() {
     try {
+      if (busy) return;
+      setBusy(true);
       const body = { vehicle_id: selectedId ? Number(selectedId) : null };
       const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
         method: "PATCH",
@@ -212,11 +217,15 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       fetchOcupados();
     } catch (e) {
       console.error("Error assigning vehicle", e);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function unassignVehicle() {
     try {
+      if (busy) return;
+      setBusy(true);
       const res = await fetch(`/api/rutas/${ruta.id}/update-vehicle`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -233,11 +242,15 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error unassigning vehicle", e);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function assignDriver() {
     try {
+      if (busy) return;
+      setBusy(true);
       const body = { driver_id: selectedDriverId ? Number(selectedDriverId) : null };
       await fetch(`/api/rutas/${ruta.id}/update-driver`, {
         method: "PATCH",
@@ -247,11 +260,15 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error assigning driver", e);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function unassignDriver() {
     try {
+      if (busy) return;
+      setBusy(true);
       const res = await fetch(`/api/rutas/${ruta.id}/update-driver`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -267,11 +284,15 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error unassigning driver", e);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function assignCarrier() {
     try {
+      if (busy) return;
+      setBusy(true);
       const body = { company_id: selectedCarrierId ? Number(selectedCarrierId) : null };
       const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
         method: "PATCH",
@@ -286,11 +307,15 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error assigning carrier", e);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function unassignCarrier() {
     try {
+      if (busy) return;
+      setBusy(true);
       const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -306,6 +331,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error unassigning carrier", e);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -358,6 +385,26 @@ export default function VehicleAssignModal({ ruta, onClose }) {
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        {busy && (
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 8px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.9)",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+              zIndex: 30,
+            }}
+          >
+            <CircleLoader size={18} />
+            <span style={{ fontSize: 12, color: "#374151" }}>Guardando...</span>
+          </div>
+        )}
         {/* FILA SUPERIOR: 3 COLUMNAS */}
         <div style={{ display: "flex", gap: 12, minHeight: 0 }}>
           {/* Vehículos */}
@@ -423,8 +470,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button className="btn btn-outlined" onClick={unassignVehicle}>Quitar vehículo</button>
-              <button className="btn btn-primary" onClick={assign}>Asignar vehículo</button>
+              <button className="btn btn-outlined" onClick={unassignVehicle} disabled={busy}>Quitar vehículo</button>
+              <button className="btn btn-primary" onClick={assign} disabled={busy}>Asignar vehículo</button>
             </div>
           </div>
 
@@ -468,8 +515,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button className="btn btn-outlined" onClick={unassignDriver}>Quitar conductor</button>
-              <button className="btn btn-primary" onClick={assignDriver}>Asignar conductor</button>
+              <button className="btn btn-outlined" onClick={unassignDriver} disabled={busy}>Quitar conductor</button>
+              <button className="btn btn-primary" onClick={assignDriver} disabled={busy}>Asignar conductor</button>
             </div>
           </div>
 
@@ -512,8 +559,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button className="btn btn-outlined" onClick={unassignCarrier}>Quitar transportista</button>
-              <button className="btn btn-primary" onClick={assignCarrier}>Asignar transportista</button>
+              <button className="btn btn-outlined" onClick={unassignCarrier} disabled={busy}>Quitar transportista</button>
+              <button className="btn btn-primary" onClick={assignCarrier} disabled={busy}>Asignar transportista</button>
             </div>
           </div>
         </div>
@@ -523,21 +570,21 @@ export default function VehicleAssignModal({ ruta, onClose }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Vehículo</div>
             <div style={{ fontWeight: 700 }}>
-              {detail?.name || rutaVehicleName || "Ninguno"}
+              {rutaVehicleName || "Ninguno"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Conductor</div>
             <div style={{ fontWeight: 700 }}>
-              {driverDetail?.name || rutaDriverName || "Ninguno"}
+              {rutaDriverName || "Ninguno"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Transportista</div>
             <div style={{ fontWeight: 700 }}>
-              {carrierDetail?.display_name || carrierDetail?.name || rutaCarrierName || "Ninguno"}
+              {rutaCarrierName || (rutaCarrierId ? `ID ${rutaCarrierId}` : "Ninguno")}
             </div>
           </div>
 
