@@ -596,19 +596,19 @@ export default function VehicleAssignModal({ ruta, onClose }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Vehículo</div>
             <div style={{ fontWeight: 700 }}>
-              {detail ? `${detail.name || ""}${detail.license_plate ? ` (${detail.license_plate})` : ""}` : "Ninguno"}
+              {detail ? `${detail.id[1] || ""}${detail.license_plate ? ` (${detail.license_plate})` : ""}` : "Ninguno"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Conductor</div>
-            <div style={{ fontWeight: 700 }}>{driverDetail?.name || "Ninguno"}</div>
+            <div style={{ fontWeight: 700 }}>{driverDetail?.id[1] || "Ninguno"}</div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Transportista</div>
             <div style={{ fontWeight: 700 }}>
-              {carrierDetail?.display_name || carrierDetail?.name || "Ninguno"}
+              {carrierDetail?.id[1] || "Ninguno"}
             </div>
           </div>
 
