@@ -15,7 +15,7 @@ function loadGoogleMaps() {
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=marker`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
     script.async = true;
     script.onload = () => {
       if (window.google && window.google.maps) {
@@ -219,7 +219,7 @@ export default function MapView() {
   }
   function cargaIconForState(state) {
     const color = estadoColors[state] || "#7f8c8d";
-    return createCircleMarkerElement({ color, size: 20, borderColor: "#ffffff", borderWidth: 3 });
+    return color;
   }
 
   function groupByPartner(data) {
@@ -315,26 +315,26 @@ export default function MapView() {
 
           const existing = traccarMarkersRef.current[deviceId];
           if (existing) {
-            existing.position = { lat, lng: lon };
+            existing.setPosition({ lat, lng: lon });
             existing._popupContent = popup;
           } else {
-            const { AdvancedMarkerElement } = google.maps.marker;
-            const content = createCircleMarkerElement({
-              color: "#ff4757",
-              size: 18,
-              borderColor: "#ffffff",
-              borderWidth: 3,
-            });
-            const marker = new AdvancedMarkerElement({
+            const marker = new google.maps.Marker({
               position: { lat, lng: lon },
               map,
-              content,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 6,
+                fillColor: "#ff4757",
+                fillOpacity: 1,
+                strokeColor: "#ffffff",
+                strokeWeight: 2,
+              },
             });
             marker._popupContent = popup;
             const info = new google.maps.InfoWindow();
             marker.addListener("click", () => {
               info.setContent(marker._popupContent || "");
-              info.open({ map, anchor: marker });
+              info.open(map, marker);
             });
             traccarMarkersRef.current[deviceId] = marker;
           }
@@ -344,7 +344,7 @@ export default function MapView() {
         Object.keys(traccarMarkersRef.current).forEach(idStr => {
           if (!seen.has(idStr)) {
             const m = traccarMarkersRef.current[idStr];
-            if (m) m.map = null;
+            if (m) m.setMap(null);
             delete traccarMarkersRef.current[idStr];
           }
         });
@@ -423,15 +423,6 @@ export default function MapView() {
       });
       layerEntry.markers = [];
 
-      const orangeIcon = {
-        content: createCircleMarkerElement({
-          color: "#e67e22",
-          size: 18,
-          borderColor: "#ffffff",
-          borderWidth: 3,
-        }),
-      };
-
       (waypoints || []).forEach((wp) => {
         if (!wp) return;
         if (wp.type !== "intermediate_dest") return;
@@ -439,16 +430,22 @@ export default function MapView() {
         const lon = wp.lon ?? wp.longitude;
         if (lat == null || lon == null) return;
 
-        const { AdvancedMarkerElement } = google.maps.marker;
-        const marker = new AdvancedMarkerElement({
+        const marker = new google.maps.Marker({
           position: { lat, lng: lon },
           map,
-          content: orangeIcon.content,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 5,
+            fillColor: "#e67e22",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
         });
         const label = wp.label || "Destino intermedio";
         const info = new google.maps.InfoWindow({ content: label });
         marker.addListener("click", () => {
-          info.open({ map, anchor: marker });
+          info.open(map, marker);
         });
         layerEntry.markers.push(marker);
       });
@@ -651,12 +648,18 @@ export default function MapView() {
     groups.forEach((group) => {
       const { partner, cargas } = group;
       const state = cargas.length === 1 ? cargas[0].state : "draft"; // Simplificado
-      const { AdvancedMarkerElement } = google.maps.marker;
-      const content = cargaIconForState(state);
-      const marker = new AdvancedMarkerElement({
+      const color = cargaIconForState(state);
+      const marker = new google.maps.Marker({
         position: { lat: partner.latitude, lng: partner.longitude },
         map,
-        content,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
       });
 
       // popup contacto
@@ -669,7 +672,7 @@ export default function MapView() {
 
       const info = new google.maps.InfoWindow({ content: popupHtml });
       marker.addListener("click", () => {
-        info.open({ map, anchor: marker });
+        info.open(map, marker);
       });
       markersRef.current.push(marker);
       marker.partnerId = Number(partner.id);
@@ -689,7 +692,9 @@ export default function MapView() {
       const map = mapRef.current;
       if (!marker || !map) return;
 
-      map.panTo(marker.position);
+      const pos = marker.getPosition();
+      if (!pos) return;
+      map.panTo(pos);
       map.setZoom(14);
     }
 
@@ -715,17 +720,10 @@ export default function MapView() {
 
       list.forEach(ct => {
         if (!ct.latitude || !ct.longitude) return;
-        const { AdvancedMarkerElement } = google.maps.marker;
-        const div = document.createElement("div");
-        div.style.fontSize = "24px";
-        div.style.lineHeight = "32px";
-        div.style.textAlign = "center";
-        div.textContent = "🏭";
-
-        const marker = new AdvancedMarkerElement({
+        const marker = new google.maps.Marker({
           position: { lat: ct.latitude, lng: ct.longitude },
           map,
-          content: div,
+          label: "🏭",
         });
         const info = new google.maps.InfoWindow({
           content: `<strong>${ct.name}</strong><br/>${ct.street ?? ""} ${ct.city ?? ""}`,
@@ -741,7 +739,7 @@ export default function MapView() {
 
     // limpiar contactos
     function onClearContacts() {
-      contactMarkersRef.current.forEach(m => { m.map = null; });
+      contactMarkersRef.current.forEach(m => { m.setMap(null); });
       contactMarkersRef.current = [];
     }
 
@@ -753,7 +751,9 @@ export default function MapView() {
       const marker = contactMarkersRef.current.find(m => m.contactId === ct.id);
       if (!marker) return;
 
-      map.panTo(marker.position);
+      const pos = marker.getPosition();
+      if (!pos) return;
+      map.panTo(pos);
       map.setZoom(16);
     }
 
