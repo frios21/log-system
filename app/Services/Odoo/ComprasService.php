@@ -227,7 +227,7 @@ class ComprasService
     /**
      * Crea una línea de servicio de flete en purchase.order.line.
      */
-    private function createPurchaseOrderLine16(int $orderId, float $qtyKm, float $priceUnit): void
+    private function createPurchaseOrderLine16(int $orderId, float $qtyKm): void
     {
         $this->call16(
             'object',
@@ -243,7 +243,7 @@ class ComprasService
                     'product_template_id'=> 873, // SERVICIO DE FLETE
                     'name'               => 'SERVICIO DE FLETE',
                     'product_qty'        => $qtyKm,
-                    'price_unit'         => $priceUnit,
+                    'price_unit'         => 1000,
                 ]],
             ]
         );
