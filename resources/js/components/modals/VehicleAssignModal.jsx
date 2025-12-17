@@ -22,8 +22,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
   const rutaDriverId = m2oId(ruta?.driver_id);
   const rutaDriverName = m2oName(ruta?.driver_id);
 
-  // company_id ahora es integer (ID de transportista en Odoo 16)
-  const rutaCarrierId = ruta?.company_id ?? null;
+  // carrier_id ahora es integer (ID de transportista en Odoo 16)
+  const rutaCarrierId = ruta?.carrier_id ?? null;
   const rutaCarrierName = "";
 
   const [vehicles, setVehicles] = useState([]);
@@ -153,7 +153,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
       setCarriers(list);
 
-      // preselección si company_id viene como [id, name]
+      // preselección si carrier_id viene definido en la ruta
       if (rutaCarrierId && !q) {
         const matchById = list.find((c) => Number(c.id) === Number(rutaCarrierId));
         if (matchById) {
@@ -293,7 +293,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
     try {
       if (busy) return;
       setBusy(true);
-      const body = { company_id: selectedCarrierId ? Number(selectedCarrierId) : null };
+      const body = { carrier_id: selectedCarrierId ? Number(selectedCarrierId) : null };
       const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -319,7 +319,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       const res = await fetch(`/api/rutas/${ruta.id}/update-company`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company_id: null }),
+        body: JSON.stringify({ carrier_id: null }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

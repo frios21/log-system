@@ -106,17 +106,17 @@ class ComprasService
     }
 
     /**
-     * Obtiene el partner asociado a la ruta para facturar el flete.
-     * Prioridad:
-     *  1) company_id -> ID de res.partner en Odoo 16 (transportista)
-     *  2) driver_id  -> partner en Odoo 19 (chofer), como fallback
+    * Obtiene el partner asociado a la ruta para facturar el flete.
+    * Prioridad:
+    *  1) carrier_id -> ID de res.partner en Odoo 16 (transportista)
+    *  2) driver_id  -> partner en Odoo 19 (chofer), como fallback
      */
     private function resolveRoutePartner19(array $ruta): ?array
     {
-        // 1) Transportista (company_id) viene ahora como entero (ID de Odoo 16)
-        $companyField = $ruta['company_id'] ?? null;
-        if ($companyField !== null && $companyField !== '') {
-            $partner16Id = (int) $companyField;
+        // 1) Transportista (carrier_id) viene como entero (ID de Odoo 16)
+        $carrierField = $ruta['carrier_id'] ?? null;
+        if ($carrierField !== null && $carrierField !== '') {
+            $partner16Id = (int) $carrierField;
 
             if ($partner16Id > 0) {
                 // Leemos directamente el partner en Odoo 16
@@ -140,7 +140,7 @@ class ComprasService
             }
         }
 
-        // 2) Si no hay company_id válido, usamos driver_id como antes (partner en Odoo 19)
+        // 2) Si no hay carrier_id válido, usamos driver_id como antes (partner en Odoo 19)
         $driverField = $ruta['driver_id'] ?? null;
         $partnerId   = null;
 

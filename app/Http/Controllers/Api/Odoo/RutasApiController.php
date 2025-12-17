@@ -219,10 +219,11 @@ class RutasApiController extends Controller
 
     public function updateCompany($id, Request $request)
     {
-        $companyId = $request->input('company_id');
+        // ahora usamos carrier_id como campo de transportista en Odoo 19
+        $carrierId = $request->input('carrier_id');
 
         // Si viene null, desasignamos el transportista
-        if ($companyId === null) {
+        if ($carrierId === null) {
             try {
                 $result = $this->rutas->asignarTransportista((int) $id, null);
                 return response()->json(['success' => (bool) $result]);
@@ -231,12 +232,12 @@ class RutasApiController extends Controller
             }
         }
 
-        if (!$companyId) {
-            return response()->json(['message' => 'company_id requerido'], 422);
+        if (!$carrierId) {
+            return response()->json(['message' => 'carrier_id requerido'], 422);
         }
 
         try {
-            $result = $this->rutas->asignarTransportista((int) $id, (int) $companyId);
+            $result = $this->rutas->asignarTransportista((int) $id, (int) $carrierId);
             return response()->json(['success' => (bool) $result]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);

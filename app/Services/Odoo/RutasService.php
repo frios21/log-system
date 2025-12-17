@@ -75,7 +75,7 @@ class RutasService
         return $this->odoo->searchRead(
             'logistics.route',
             [],
-            ['id','name','status','vehicle_id','driver_id','company_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','carrier_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
     }
 
@@ -84,7 +84,7 @@ class RutasService
         $routes = $this->odoo->searchRead(
             'logistics.route',
             [['id','=', $id]],
-            ['id','name','status','vehicle_id','driver_id','company_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','carrier_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
 
         $route = $routes[0] ?? null;
@@ -774,12 +774,12 @@ class RutasService
     }
 
     /**
-     * Asigna o desasigna el transportista (company_id) a la ruta.
+     * Asigna o desasigna el transportista (carrier_id) a la ruta.
      */
-    public function asignarTransportista(int $idRuta, ?int $companyId)
+    public function asignarTransportista(int $idRuta, ?int $carrierId)
     {
         return $this->odoo->write('logistics.route', $idRuta, [
-            'company_id' => $companyId !== null ? $companyId : false,
+            'carrier_id' => $carrierId !== null ? $carrierId : false,
         ]);
     }
 
