@@ -129,6 +129,7 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
         overflow: "hidden",
         fontSize: 13,
+        position: "relative",
       }}
     >
       <div
@@ -256,25 +257,32 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
   return createPortal(
     <>
+      {modalContent}
       {saving && (
         <div
           style={{
             position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
+            left: 12,
+            top: 72,
+            width: 340,
+            height: "auto",
+            maxHeight: "calc(100vh - 100px)",
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.9)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 3999,
+            zIndex: 4001,
+            pointerEvents: "auto",
           }}
         >
           <div
             style={{
-              width: 120,
-              height: 120,
-              borderRadius: 12,
+              width: 100,
+              height: 100,
+              borderRadius: 8,
               background: "#ffffff",
-              boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -284,7 +292,6 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
           </div>
         </div>
       )}
-      {modalContent}
     </>,
     document.body
   );
