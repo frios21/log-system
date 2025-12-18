@@ -59,6 +59,12 @@ export default function VehicleAssignModal({ ruta, onClose }) {
   const [loadingCarriers, setLoadingCarriers] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // resumen inferior, basado en lo que está realmente asignado en la ruta
+  const [summaryVehicleName, setSummaryVehicleName] = useState(rutaVehicleName || "");
+  const [summaryDriverName, setSummaryDriverName] = useState(rutaDriverName || "");
+  const [summaryCarrierId, setSummaryCarrierId] = useState(rutaCarrierId || null);
+  const [summaryCarrierName, setSummaryCarrierName] = useState(rutaCarrierName || "");
+
   useEffect(() => {
     fetchOcupados();
     fetchVehicles();
@@ -214,6 +220,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
         if (data?.message) alert(data.message);
         return;
       }
+      // actualizar resumen con el vehículo realmente asignado
+      setSummaryVehicleName(detail?.name || "");
       window.dispatchEvent(new CustomEvent("rutas:changed"));
       fetchOcupados();
     } catch (e) {
@@ -239,6 +247,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       }
       setSelectedId(null);
       setDetail(null);
+      setSummaryVehicleName("");
       fetchOcupados();
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
@@ -253,11 +262,18 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       if (busy) return;
       setBusy(true);
       const body = { driver_id: selectedDriverId ? Number(selectedDriverId) : null };
-      await fetch(`/api/rutas/${ruta.id}/update-driver`, {
+      const res = await fetch(`/api/rutas/${ruta.id}/update-driver`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.message) alert(data.message);
+        return;
+      }
+      // actualizar resumen con el conductor asignado
+      setSummaryDriverName(driverDetail?.name || "");
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error assigning driver", e);
@@ -282,6 +298,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       }
       setSelectedDriverId(null);
       setDriverDetail(null);
+      setSummaryDriverName("");
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error unassigning driver", e);
@@ -305,6 +322,11 @@ export default function VehicleAssignModal({ ruta, onClose }) {
         if (data?.message) alert(data.message);
         return;
       }
+      // actualizar resumen con el transportista asignado
+      setSummaryCarrierId(selectedCarrierId ? Number(selectedCarrierId) : null);
+      setSummaryCarrierName(
+        carrierDetail?.display_name || carrierDetail?.name || ""
+      );
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error assigning carrier", e);
@@ -329,6 +351,8 @@ export default function VehicleAssignModal({ ruta, onClose }) {
       }
       setSelectedCarrierId(null);
       setCarrierDetail(null);
+      setSummaryCarrierId(null);
+      setSummaryCarrierName("");
       window.dispatchEvent(new CustomEvent("rutas:changed"));
     } catch (e) {
       console.error("Error unassigning carrier", e);
@@ -571,21 +595,21 @@ export default function VehicleAssignModal({ ruta, onClose }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Vehículo</div>
             <div style={{ fontWeight: 700 }}>
-              {rutaVehicleName || "Ninguno"}
+              {summaryVehicleName || "Ninguno"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Conductor</div>
             <div style={{ fontWeight: 700 }}>
-              {rutaDriverName || "Ninguno"}
+              {summaryDriverName || "Ninguno"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: "#666" }}>Transportista</div>
             <div style={{ fontWeight: 700 }}>
-              {rutaCarrierName || (rutaCarrierId ? `ID ${rutaCarrierId}` : "Ninguno")}
+              {summaryCarrierName || (summaryCarrierId ? `ID ${summaryCarrierId}` : "Ninguno")}
             </div>
           </div>
 
