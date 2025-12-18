@@ -131,26 +131,6 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         fontSize: 13,
       }}
     >
-      {saving && (
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 8px",
-            borderRadius: 999,
-            background: "rgba(255,255,255,0.9)",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-            zIndex: 1,
-          }}
-        >
-          <CircleLoader size={18} />
-          <span style={{ fontSize: 12, color: "#374151" }}>Guardando...</span>
-        </div>
-      )}
       <div
         style={{
           padding: "10px 12px",
@@ -274,5 +254,38 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
     </div>
   );
 
-  return createPortal(modalContent, document.body);
+  return createPortal(
+    <>
+      {saving && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 3999,
+          }}
+        >
+          <div
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 12,
+              background: "#ffffff",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CircleLoader size={40} />
+          </div>
+        </div>
+      )}
+      {modalContent}
+    </>,
+    document.body
+  );
 }
