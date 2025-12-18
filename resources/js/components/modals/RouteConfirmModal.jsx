@@ -97,7 +97,7 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
 
       if (targetStatus === "done") {
         try {
-          await fetch(`/api/rutas/${ruta.id}`, {
+          await fetch(`/api/rutas/${ruta.id}/total-qnt`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ total_qnt: totalQnt }),
