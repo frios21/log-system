@@ -118,7 +118,6 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
   const modalContent = (
     <div
       style={{
-        position: "fixed",
         left: 12,
         top: 72,
         width: 340,
