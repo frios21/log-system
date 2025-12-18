@@ -24,7 +24,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
   // carrier_id ahora es integer (ID de transportista en Odoo 16)
   const rutaCarrierId = ruta?.carrier_id ?? null;
-  const rutaCarrierName = "";
+  const rutaCarrierName = ruta?.carrier_name || "";
 
   const [vehicles, setVehicles] = useState([]);
   const [query, setQuery] = useState("");

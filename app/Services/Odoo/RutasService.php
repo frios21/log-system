@@ -72,11 +72,28 @@ class RutasService
 
     public function todas(): array
     {
-        return $this->odoo->searchRead(
+        $routes = $this->odoo->searchRead(
             'logistics.route',
             [],
             ['id','name','status','vehicle_id','driver_id','carrier_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
         );
+
+        // Enriquecer con nombre de transportista (carrier_name) usando Odoo 16
+        foreach ($routes as &$route) {
+            $carrierId = $route['carrier_id'] ?? null;
+            if ($carrierId && is_numeric($carrierId)) {
+                try {
+                    $p = $this->contactos16->porId((int) $carrierId);
+                    if ($p) {
+                        $route['carrier_name'] = $p['display_name'] ?? ($p['name'] ?? null);
+                    }
+                } catch (\Throwable $e) {
+                    // mejor esfuerzo: si falla, simplemente no añadimos carrier_name
+                }
+            }
+        }
+
+        return $routes;
     }
 
     public function porId(int $id): ?array
@@ -89,6 +106,19 @@ class RutasService
 
         $route = $routes[0] ?? null;
         if (!$route) return null;
+
+        // Añadir nombre de transportista (carrier_name) si existe carrier_id
+        $carrierId = $route['carrier_id'] ?? null;
+        if ($carrierId && is_numeric($carrierId)) {
+            try {
+                $p = $this->contactos16->porId((int) $carrierId);
+                if ($p) {
+                    $route['carrier_name'] = $p['display_name'] ?? ($p['name'] ?? null);
+                }
+            } catch (\Throwable $e) {
+                // ignorar errores, mejor esfuerzo
+            }
+        }
 
         $loadIds = $route['load_ids'] ?? [];
         $loads = [];
