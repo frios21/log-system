@@ -267,7 +267,7 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
             height: "auto",
             maxHeight: "calc(100vh - 100px)",
             borderRadius: 8,
-            background: "rgba(255,255,255,0.9)",
+            background: "rgba(0,0,0,0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
