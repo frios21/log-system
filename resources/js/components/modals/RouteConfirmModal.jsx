@@ -129,7 +129,6 @@ export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targ
         boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
         overflow: "hidden",
         fontSize: 13,
-        position: "relative",
       }}
     >
       <div
