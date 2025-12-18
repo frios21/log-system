@@ -749,8 +749,19 @@ class RutasService
     public function buscarPorVehiculo(int $vehicleId)
     {
         $res = $this->odoo->searchRead('logistics.route', [
-            ['vehicle_id', '=', $vehicleId]
-        ], ['id', 'name', 'vehicle_id']);
+            ['vehicle_id', '=', $vehicleId],
+            ['status', '!=', 'done'],
+        ], ['id', 'name', 'vehicle_id', 'status']);
+
+        return $res[0] ?? null;
+    }
+
+    public function buscarPorConductor(int $driverId)
+    {
+        $res = $this->odoo->searchRead('logistics.route', [
+            ['driver_id', '=', $driverId],
+            ['status', '!=', 'done'],
+        ], ['id', 'name', 'driver_id', 'status']);
 
         return $res[0] ?? null;
     }

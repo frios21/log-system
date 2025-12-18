@@ -209,6 +209,17 @@ class RutasApiController extends Controller
                 return response()->json(['message' => 'driver_id requerido'], 422);
             }
 
+            // Evitar que un mismo conductor esté en dos rutas activas a la vez
+            $rutaExistente = $this->rutas->buscarPorConductor((int) $driverId);
+
+            if ($rutaExistente && (int) $rutaExistente['id'] !== (int) $id) {
+                return response()->json([
+                    'message' => 'Este conductor ya está asignado a otra ruta en curso',
+                    'ruta_id' => $rutaExistente['id'],
+                    'ruta_name' => $rutaExistente['name'],
+                ], 409);
+            }
+
             try {
                 $result = $this->rutas->asignarConductor((int) $id, (int) $driverId);
                 return response()->json(['success' => (bool) $result]);
