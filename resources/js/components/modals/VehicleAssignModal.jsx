@@ -82,6 +82,7 @@ export default function VehicleAssignModal({ ruta, onClose }) {
 
       const usados = new Set(
         (data || [])
+          .filter((r) => r && r.status !== "done")
           .map((r) => m2oId(r?.vehicle_id))
           .filter((id) => typeof id === "number" || typeof id === "string")
           .map((id) => Number(id))
