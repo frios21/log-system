@@ -71,18 +71,32 @@ class ComprasService
     public function crearOrdenDesdeRuta(array $ruta): ?int
     {
         try {
-            $partner19 = $this->resolveRoutePartner19($ruta);
-            if (!$partner19) {
-                return null;
+            // 1) Si la ruta tiene transportista (carrier_id de Odoo 16), usamos ese partner directamente.
+            $partner16Id = null;
+            $carrierField = $ruta['carrier_id'] ?? null;
+
+            if ($carrierField !== null && $carrierField !== '') {
+                $partner16Id = (int) $carrierField;
+            } else {
+                // 2) Si no hay carrier_id, resolvemos el partner desde Odoo 19 (driver)
+                $partner19 = $this->resolveRoutePartner19($ruta);
+                if (!$partner19) {
+                    return null;
+                }
+
+                $rut       = isset($partner19['vat']) && $partner19['vat'] !== ''
+                    ? (string) $partner19['vat']
+                    : null;
+                $name      = (string) ($partner19['name'] ?? 'Sin nombre');
+                $isCompany = (bool) ($partner19['is_company'] ?? false);
+
+                // Creamos/buscamos el partner en Odoo 16 sólo en este caso
+                $partner16Id = $this->findOrCreatePartner16($rut, $name, $isCompany);
             }
 
-            $rut       = isset($partner19['vat']) && $partner19['vat'] !== ''
-                ? (string) $partner19['vat']
-                : null;
-            $name      = (string) ($partner19['name'] ?? 'Sin nombre');
-            $isCompany = (bool) ($partner19['is_company'] ?? false);
-
-            $partner16Id = $this->findOrCreatePartner16($rut, $name, $isCompany);
+            if (!$partner16Id || $partner16Id <= 0) {
+                return null;
+            }
 
             $rutaName = (string) ($ruta['name'] ?? '');
 
@@ -106,41 +120,13 @@ class ComprasService
     }
 
     /**
-    * Obtiene el partner asociado a la ruta para facturar el flete.
-    * Prioridad:
-    *  1) carrier_id -> ID de res.partner en Odoo 16 (transportista)
-    *  2) driver_id  -> partner en Odoo 19 (chofer), como fallback
+    * Obtiene el partner (chofer) asociado a la ruta en Odoo 19
+    * para el caso en que NO haya transportista (carrier_id).
+    * Usa driver_id como origen y devuelve el partner de Odoo 19.
      */
     private function resolveRoutePartner19(array $ruta): ?array
     {
-        // 1) Transportista (carrier_id) viene como entero (ID de Odoo 16)
-        $carrierField = $ruta['carrier_id'] ?? null;
-        if ($carrierField !== null && $carrierField !== '') {
-            $partner16Id = (int) $carrierField;
-
-            if ($partner16Id > 0) {
-                // Leemos directamente el partner en Odoo 16
-                $rows = $this->call16(
-                    'object',
-                    'execute_kw',
-                    [
-                        $this->db16,
-                        $this->uid16,
-                        $this->apiKey16,
-                        'res.partner',
-                        'read',
-                        [[$partner16Id]],
-                        ['fields' => ['id', 'name', 'vat', 'is_company', 'parent_id']],
-                    ]
-                );
-
-                if (!empty($rows) && isset($rows[0]['id'])) {
-                    return $rows[0];
-                }
-            }
-        }
-
-        // 2) Si no hay carrier_id válido, usamos driver_id como antes (partner en Odoo 19)
+        // Usamos driver_id (partner en Odoo 19)
         $driverField = $ruta['driver_id'] ?? null;
         $partnerId   = null;
 
