@@ -269,18 +269,8 @@ class RutasApiController extends Controller
                 return response()->json(['error' => 'status inválido'], 422);
             }
 
-            $result = $this->rutas->actualizarEstado((int)$id, $status);
-
-            // actualizarEstado ahora devuelve un array con más info (incluida la compra)
-            if (is_array($result)) {
-                return response()->json($result);
-            }
-
-            // Fallback por si en algún momento la firma volviera a bool
-            return response()->json([
-                'success' => (bool) $result,
-                'status'  => $status,
-            ]);
+            $ok = $this->rutas->actualizarEstado((int)$id, $status);
+            return response()->json(['success' => (bool)$ok, 'status' => $status]);
         }
 
         if ($name !== null) {
