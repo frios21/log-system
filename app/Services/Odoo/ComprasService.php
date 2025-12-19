@@ -235,10 +235,11 @@ class ComprasService
                 'purchase.order',
                 'create',
                 [[
-                    'partner_id'                   => $partnerId,
+                    'partner_id'                     => $partnerId,
+                    'date_planned'                   => date('Y-m-d H:i:s'),
                     'x_studio_selection_field_yUNPd' => 'RECEPCION',
-                    'picking_type_id'              => 151,
-                    'notes'                        => $notes,
+                    'picking_type_id'                => 151,
+                    'notes'                          => $notes,
                 ]],
             ]
         );
