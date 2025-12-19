@@ -3,6 +3,7 @@
 namespace App\Services\Odoo;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ComprasService
 {
@@ -114,6 +115,16 @@ class ComprasService
 
             return $poId;
         } catch (\Throwable $e) {
+            // Logueamos el error para poder depurar sin depender de la consola de Odoo.
+            Log::error('Error creando orden de compra en Odoo16 desde ruta', [
+                'route_id'      => $ruta['id'] ?? null,
+                'route_name'    => $ruta['name'] ?? null,
+                'carrier_id'    => $ruta['carrier_id'] ?? null,
+                'driver_id'     => $ruta['driver_id'] ?? null,
+                'distance_km'   => $ruta['total_distance_km'] ?? null,
+                'exception'     => $e->getMessage(),
+            ]);
+
             // No interrumpimos el flujo de negocio si falla la integración.
             return null;
         }
