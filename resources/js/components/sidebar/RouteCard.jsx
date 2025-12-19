@@ -141,6 +141,11 @@ export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, se
     async function confirmChange() {
         if (!targetStatus) return;
         try {
+            console.log("Enviando cambio de estado de ruta", {
+                routeId: ruta.id,
+                fromStatus: localStatus,
+                toStatus: targetStatus,
+            });
             await fetch(`/api/rutas/${ruta.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },

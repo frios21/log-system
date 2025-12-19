@@ -8,6 +8,7 @@ use App\Services\Odoo\CargasService;
 use App\Services\Odoo\ComprasService;
 use App\Services\Odoo\ContactosService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class RutasService
 {
@@ -824,16 +825,24 @@ class RutasService
         ]);
     }
 
-    public function actualizarEstado(int $id, string $status): bool
+    public function actualizarEstado(int $id, string $status): array
     {
         // Actualizar estado de la ruta
         $ok = $this->odoo->write('logistics.route', $id, [
             'status' => $status,
         ]);
 
-        if (!$ok) return false;
+        if (!$ok) {
+            return [
+                'success'  => false,
+                'status'   => $status,
+                'purchase' => null,
+            ];
+        }
 
-        // Si la ruta se finaliza, marcar cargas como 'done'
+        $purchaseInfo = null;
+
+        // Si la ruta se finaliza, marcar cargas como 'done' y crear la compra en Odoo 16
         if ($status === 'done') {
             $ruta = $this->porId($id);
             $loadIds = $ruta['load_ids'] ?? [];
@@ -843,22 +852,42 @@ class RutasService
                     try {
                         $this->odoo->write('logistics.load', $lid, ['state' => 'done']);
                     } catch (\Throwable $e) {
-                        // noop
+                        Log::warning('No se pudo marcar carga como done al cerrar ruta', [
+                            'route_id'   => $id,
+                            'load_id'    => $lid,
+                            'exception'  => $e->getMessage(),
+                        ]);
                     }
                 }
             }
 
-            // Crear orden de compra en Odoo 16 (mejor esfuerzo).
+            // Crear orden de compra en Odoo 16 (mejor esfuerzo, pero devolvemos info para logging en frontend)
             if ($ruta) {
                 try {
-                    $this->compras->crearOrdenDesdeRuta($ruta);
+                    $poId = $this->compras->crearOrdenDesdeRuta($ruta);
+                    $purchaseInfo = [
+                        'created'            => (bool) $poId,
+                        'purchase_order_id'  => $poId,
+                    ];
                 } catch (\Throwable $e) {
-                    // noop: no bloqueamos el cierre de la ruta
+                    Log::error('Error creando orden de compra en Odoo16 al cerrar ruta', [
+                        'route_id'  => $id,
+                        'exception' => $e->getMessage(),
+                    ]);
+                    $purchaseInfo = [
+                        'created'            => false,
+                        'purchase_order_id'  => null,
+                        'error'              => $e->getMessage(),
+                    ];
                 }
             }
         }
 
-        return true;
+        return [
+            'success'  => true,
+            'status'   => $status,
+            'purchase' => $purchaseInfo,
+        ];
     }
 
     public function actualizarTotalQnt(int $routeId, float $totalQnt): bool
