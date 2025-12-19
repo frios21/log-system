@@ -75,7 +75,7 @@ class RutasService
         $routes = $this->odoo->searchRead(
             'logistics.route',
             [],
-            ['id','name','status','vehicle_id','driver_id','carrier_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc']
+            ['id','name','status','vehicle_id','driver_id','carrier_id','total_distance_km','total_cost','expected_qnt','total_qnt','cost_per_kg','waypoints','load_ids','expected_qnt','estimated_date','last_recalc','lines_oc']
         );
 
         // Enriquecer con nombre de transportista (carrier_name) usando Odoo 16

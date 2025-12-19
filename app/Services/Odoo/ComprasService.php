@@ -222,7 +222,7 @@ class ComprasService
     private function createPurchaseOrder16(int $partnerId, string $rutaName = ''): int
     {
         $notes = $rutaName
-            ? sprintf('Orden de compra generada a partir de la ruta %s.', $rutaName)
+            ? sprintf('Orden de compra generada automáticamente desde el sistema de logística a partir de la ruta %s.', $rutaName)
             : 'Orden de compra generada automáticamente desde el sistema de logística.';
 
         $poId = $this->call16(
@@ -262,7 +262,7 @@ class ComprasService
                 'create',
                 [[
                     'order_id'           => $orderId,
-                    'product_template_id'=> 15475, // SERVICIO DE FLETE
+                    'product_template_id'=> 873, // SERVICIO DE FLETE
                     'product_qty'        => $qtyKm,
                     'price_unit'         => 1000,
                 ]],
