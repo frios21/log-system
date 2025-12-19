@@ -146,11 +146,37 @@ export default function RouteCard({ ruta, colorIndex = 0, isDeleting = false, se
                 fromStatus: localStatus,
                 toStatus: targetStatus,
             });
-            await fetch(`/api/rutas/${ruta.id}`, {
+
+            const res = await fetch(`/api/rutas/${ruta.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: targetStatus })
             });
+
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok) {
+                console.error('Error HTTP al actualizar el estado de la ruta', {
+                    status: res.status,
+                    response: data,
+                });
+                return;
+            }
+
+            console.log('Respuesta actualización de ruta', data);
+
+            if (targetStatus === 'done') {
+                const purchase = data && data.purchase;
+                if (purchase) {
+                    console.log('Resultado creación orden de compra Odoo16', purchase);
+                    if (!purchase.created) {
+                        console.warn('La orden de compra NO se creó correctamente', purchase);
+                    }
+                } else {
+                    console.warn('Ruta en done pero sin info de compra en la respuesta');
+                }
+            }
+
             setModalOpen(false);
             setLocalStatus(targetStatus);
             // notificar al mapa para recolorear la ruta
