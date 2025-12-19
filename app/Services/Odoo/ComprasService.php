@@ -262,8 +262,7 @@ class ComprasService
                 'create',
                 [[
                     'order_id'           => $orderId,
-                    'product_product_id'=> 16437, // SERVICIO DE FLETE
-                    'name'               => 'SERVICIO DE FLETE',
+                    'product_template_id'=> 873, // SERVICIO DE FLETE
                     'product_qty'        => $qtyKm,
                     'price_unit'         => 1000,
                 ]],
