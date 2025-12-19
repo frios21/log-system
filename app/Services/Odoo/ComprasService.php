@@ -249,9 +249,9 @@ class ComprasService
     /**
      * Crea una línea de servicio de flete en purchase.order.line.
      */
-    private function createPurchaseOrderLine16(int $orderId, float $qtyKm): void
+    private function createPurchaseOrderLine16(int $orderId, float $qtyKm): int
     {
-        $this->call16(
+        $lineId = $this->call16(
             'object',
             'execute_kw',
             [
@@ -268,5 +268,169 @@ class ComprasService
                 ]],
             ]
         );
+
+        return (int) $lineId;
+    }
+
+    /**
+     * Procesa rutas en Odoo 19 con status 'done' y lines_oc = false,
+     * buscando en Odoo 16 una orden de compra asociada para el mismo
+     * transportista y la misma ruta (por nombre en notes), y creando
+     * la linea de flete si no existe.
+     */
+    public function syncLinesOcPendientes(): array
+    {
+        $routes = $this->odoo19->searchRead(
+            'logistics.route',
+            [
+                ['status', '=', 'done'],
+                ['lines_oc', '=', false],
+            ],
+            ['id', 'name', 'carrier_id', 'total_distance_km', 'lines_oc']
+        );
+
+        $summary = [
+            'total_routes' => count($routes),
+            'processed'    => [],
+        ];
+
+        foreach ($routes as $route) {
+            $routeId   = $route['id'] ?? null;
+            $routeName = (string) ($route['name'] ?? '');
+
+            $carrierField = $route['carrier_id'] ?? null;
+            $carrierId    = null;
+            if (is_array($carrierField)) {
+                $carrierId = $carrierField[0] ?? null;
+            } elseif (is_int($carrierField) || ctype_digit((string) $carrierField)) {
+                $carrierId = (int) $carrierField;
+            }
+
+            $distKm = $route['total_distance_km'] ?? 0;
+            if (!is_numeric($distKm)) {
+                $distKm = 0;
+            }
+            $qtyKm = round((float) $distKm, 2);
+
+            $entry = [
+                'route_id'          => $routeId,
+                'route_name'        => $routeName,
+                'carrier_id'        => $carrierId,
+                'purchase_order_id' => null,
+                'purchase_line_id'  => null,
+                'action'            => null,
+                'error'             => null,
+            ];
+
+            if (!$routeId || !$carrierId || $routeName === '') {
+                $entry['action'] = 'skipped';
+                $entry['error']  = 'missing route_id, carrier_id or name';
+                $summary['processed'][] = $entry;
+                continue;
+            }
+
+            try {
+                // 1) Buscar orden de compra en Odoo 16 por partner
+                // y notas que contengan el nombre de la ruta
+                $orders = $this->call16(
+                    'object',
+                    'execute_kw',
+                    [
+                        $this->db16,
+                        $this->uid16,
+                        $this->apiKey16,
+                        'purchase.order',
+                        'search_read',
+                        [[
+                            ['partner_id', '=', $carrierId],
+                            ['notes', 'ilike', $routeName],
+                        ]],
+                        [
+                            'fields' => ['id', 'name', 'notes'],
+                            'limit'  => 2,
+                        ],
+                    ]
+                );
+
+                if (empty($orders)) {
+                    $entry['action'] = 'no_order_found';
+                    $summary['processed'][] = $entry;
+                    continue;
+                }
+
+                if (count($orders) > 1) {
+                    $entry['action'] = 'multiple_orders_found';
+                    $entry['error']  = 'Más de una orden coincide con partner y notes';
+                    $summary['processed'][] = $entry;
+                    continue;
+                }
+
+                $orderId = (int) ($orders[0]['id'] ?? 0);
+                if ($orderId <= 0) {
+                    $entry['action'] = 'invalid_order_id';
+                    $summary['processed'][] = $entry;
+                    continue;
+                }
+
+                $entry['purchase_order_id'] = $orderId;
+
+                // 2) Verificar si ya existe una linea de flete para esta orden
+                $lines = $this->call16(
+                    'object',
+                    'execute_kw',
+                    [
+                        $this->db16,
+                        $this->uid16,
+                        $this->apiKey16,
+                        'purchase.order.line',
+                        'search_read',
+                        [[
+                            ['order_id', '=', $orderId],
+                            ['product_template_id', '=', 873],
+                        ]],
+                        [
+                            'fields' => ['id', 'product_template_id'],
+                            'limit'  => 1,
+                        ],
+                    ]
+                );
+
+                if (!empty($lines)) {
+                    // Ya existe una línea de flete -> solo marcamos lines_oc = true en la ruta
+                    $lineId = (int) ($lines[0]['id'] ?? 0);
+                    $entry['purchase_line_id'] = $lineId > 0 ? $lineId : null;
+                    $entry['action'] = 'marked_existing_line';
+
+                    $this->odoo19->write('logistics.route', $routeId, [
+                        'lines_oc' => true,
+                    ]);
+
+                    $summary['processed'][] = $entry;
+                    continue;
+                }
+
+                // 3) No hay linea de flete aún -> la creamos con la distancia de la ruta
+                $lineId = $this->createPurchaseOrderLine16($orderId, $qtyKm);
+                $entry['purchase_line_id'] = $lineId;
+                $entry['action'] = 'created_line';
+
+                // Marcar la ruta como ya asociada a linea de O.C
+                $this->odoo19->write('logistics.route', $routeId, [
+                    'lines_oc' => true,
+                ]);
+
+                $summary['processed'][] = $entry;
+            } catch (\Throwable $e) {
+                Log::error('Error en syncLinesOcPendientes', [
+                    'route_id' => $routeId,
+                    'exception'=> $e->getMessage(),
+                ]);
+                $entry['action'] = 'error';
+                $entry['error']  = $e->getMessage();
+                $summary['processed'][] = $entry;
+            }
+        }
+
+        return $summary;
     }
 }

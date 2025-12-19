@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Odoo;
 
 use App\Http\Controllers\Controller;
 use App\Services\Odoo\RutasService;
+use App\Services\Odoo\ComprasService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -253,6 +254,19 @@ class RutasApiController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Sincroniza líneas de O.C. pendientes para rutas en Odoo 19.
+     *
+     * Busca rutas con status 'done' y lines_oc = false y, para cada una,
+     * localiza la orden de compra en Odoo 16 (por partner y notes) y crea
+     * la línea de flete si no existe.
+     */
+    public function syncLinesOc(ComprasService $compras)
+    {
+        $summary = $compras->syncLinesOcPendientes();
+        return response()->json($summary);
     }
 
     // PATCH /api/rutas/{id} - actualizar nombre o estado
