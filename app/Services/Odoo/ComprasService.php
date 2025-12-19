@@ -125,8 +125,9 @@ class ComprasService
                 'exception'     => $e->getMessage(),
             ]);
 
-            // No interrumpimos el flujo de negocio si falla la integración.
-            return null;
+            // Propagamos la excepción para que RutasService pueda incluir el mensaje
+            // en la respuesta HTTP (campo purchase.error) y verlo desde el frontend.
+            throw $e;
         }
     }
 
