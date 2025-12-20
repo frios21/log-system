@@ -20,9 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         // cada 3 minutos: sincronizar rutas "done" con sus lineas en Odoo 16.
-        $schedule->call(function () {
+        /*$schedule->call(function () {
             app(ComprasService::class)->syncLinesOcPendientes();
-        })->everyThreeMinutes()->name('sync-lines-oc');
+        })->everyThreeMinutes()->name('sync-lines-oc');*/
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
