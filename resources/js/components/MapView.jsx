@@ -202,7 +202,7 @@ async function fetchRouteFromGoogleDirections(waypoints) {
 export default function MapView() {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
-  const markersVisibleRef = useRef(true);
+  const infoWindowsRef = useRef([]);
   const routesLayers = useRef({});
   const [groups, setGroups] = useState([]);
   const [mapReady, setMapReady] = useState(false);
@@ -397,6 +397,8 @@ export default function MapView() {
             });
             marker._popupContent = popup;
             const info = new google.maps.InfoWindow();
+            // track info windows so we can close them on outside clicks
+            infoWindowsRef.current.push(info);
             marker.addListener("click", () => {
               info.setContent(marker._popupContent || "");
               info.open(map, marker);
@@ -509,6 +511,7 @@ export default function MapView() {
         });
         const label = wp.label || "Destino intermedio";
         const info = new google.maps.InfoWindow({ content: label });
+        infoWindowsRef.current.push(info);
         marker.addListener("click", () => {
           info.open(map, marker);
         });
@@ -736,29 +739,25 @@ export default function MapView() {
       }
 
       const info = new google.maps.InfoWindow({ content: popupHtml });
+      infoWindowsRef.current.push(info);
       marker.addListener("click", () => {
-        markersVisibleRef.current = true;
         info.open(map, marker);
       });
       markersRef.current.push(marker);
       marker.partnerId = Number(partner.id);
     });
-    if (!markersVisibleRef.current) {
-      markersRef.current.forEach((m) => m.setMap(null));
-    }
   }, [groups, mapReady]);
 
-  // Ocultar marcadores al hacer click fuera (click en el mapa)
+  // Cerrar cualquier InfoWindow abierto al hacer click en el mapa (click fuera)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
     const listener = map.addListener('click', () => {
-      if (!markersRef.current || markersRef.current.length === 0) return;
-      markersRef.current.forEach((m) => {
-        if (m) m.setMap(null);
+      if (!infoWindowsRef.current || infoWindowsRef.current.length === 0) return;
+      infoWindowsRef.current.forEach((iw) => {
+        try { iw.close(); } catch (e) {}
       });
-      markersVisibleRef.current = false;
     });
 
     return () => {
@@ -815,6 +814,7 @@ export default function MapView() {
         const info = new google.maps.InfoWindow({
           content: `<strong>${ct.name}</strong><br/>${ct.street ?? ""} ${ct.city ?? ""}`,
         });
+        infoWindowsRef.current.push(info);
         marker.addListener("click", () => {
           info.open({ map, anchor: marker });
         });
