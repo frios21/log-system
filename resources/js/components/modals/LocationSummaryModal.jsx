@@ -97,21 +97,21 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                       {cargas.length ? cargas.map((c, j) => {
                         const { type, insumoQuantity, pallets } = resolveInsumo(c);
-                        const entregaKilosNum = Number(c.total_quantity ?? c.kilos ?? NaN);
-                        const entregaPallets = pallets;
+                        const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
+                        const entregaPallets = pallets || '-';
                         return (
                           <div key={(c.id || j)} className="lsm-matrixRow">
                             <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
                             <div style={{ width: 180 }}>{c.name}</div>
                             <div style={{ width: 140 }} className="lsm-cell-left">{type}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{insumoQuantity != null ? `${intFmt.format(insumoQuantity)} unidades` : '-'}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{Number.isFinite(entregaKilosNum) ? `${kiloFmt.format(entregaKilosNum)} kg` : '-'}</div>
-                            <div style={{ width: 120 }} className="lsm-cell-left">{entregaPallets != null ? `${intFmt.format(entregaPallets)} pallets` : '-'}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{insumoQuantity || '-'}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{entregaKilos}</div>
+                            <div style={{ width: 120 }} className="lsm-cell-left">{entregaPallets}</div>
                           </div>
                         );
                       }) : (
                         // esta rama ya no debería ocurrir porque filtramos ubicaciones sin cargas
-                        <div className="lsm-matrixRow"><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
+                        <div style={styles.matrixRow}><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
                       )}
                     </div>
                   );
