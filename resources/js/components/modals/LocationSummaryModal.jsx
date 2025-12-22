@@ -31,6 +31,12 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
     return acc;
   }, { pallets: 0, kilos: 0, bv: 0, b: 0, e: 0 });
 
+  // preparar ubicaciones visibles (solo las que tienen cargas assigned)
+  const visibleLocations = (locations || []).map(loc => ({
+    ...loc,
+    cargas: (loc.cargas || []).filter(c => isAssigned(c))
+  })).filter(loc => (loc.cargas || []).length > 0);
+
   return (
     <div style={styles.modal}>
         <div style={styles.header}>
@@ -58,14 +64,14 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                 <div style={styles.matrixHeader}>
                   <div style={{ width: 220 }}>Proveedor / Ubicación</div>
                   <div style={{ width: 180 }}>Carga</div>
-                  <div style={{ width: 140, textAlign: 'right' }}>Insumo (Tipo)</div>
-                  <div style={{ width: 140, textAlign: 'right' }}>Insumo (Cantidad)</div>
-                  <div style={{ width: 140, textAlign: 'right' }}>Entrega (Kilos)</div>
-                  <div style={{ width: 120, textAlign: 'right' }}>Entrega (Pallets)</div>
+                  <div style={{ width: 140, textAlign: 'right', ...styles.insumoHeader }}>Insumo (Tipo)</div>
+                  <div style={{ width: 140, textAlign: 'right', ...styles.insumoHeader }}>Insumo (Cantidad)</div>
+                  <div style={{ width: 140, textAlign: 'right', ...styles.entregaHeader }}>Entrega (Kilos)</div>
+                  <div style={{ width: 120, textAlign: 'right', ...styles.entregaHeader }}>Entrega (Pallets)</div>
                 </div>
 
-                {locations && locations.length ? locations.map((loc, idx) => {
-                  const cargas = (loc.cargas || []).filter(c => isAssigned(c));
+                {visibleLocations && visibleLocations.length ? visibleLocations.map((loc, idx) => {
+                  const cargas = loc.cargas || [];
 
                   // helper para resolver tipo de insumo y cantidad por pallets
                   const resolveInsumo = (c) => {
@@ -93,15 +99,16 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                         const entregaPallets = pallets || '-';
                         return (
                           <div key={(c.id || j)} style={styles.matrixRow}>
-                            <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong>{loc.name}</strong> : ''}</div>
+                            <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong style={styles.proveedorName}>{loc.name}</strong> : ''}</div>
                             <div style={{ width: 180 }}>{c.name}</div>
-                            <div style={{ width: 140, textAlign: 'right', ...styles.insumoCell }}>{type}</div>
-                            <div style={{ width: 140, textAlign: 'right', ...styles.insumoCell }}>{insumoQuantity || '-'}</div>
-                            <div style={{ width: 140, textAlign: 'right', ...styles.recolectCell }}>{entregaKilos}</div>
-                            <div style={{ width: 120, textAlign: 'right', ...styles.recolectCell }}>{entregaPallets}</div>
+                            <div style={{ width: 140, textAlign: 'right' }}>{type}</div>
+                            <div style={{ width: 140, textAlign: 'right' }}>{insumoQuantity || '-'}</div>
+                            <div style={{ width: 140, textAlign: 'right' }}>{entregaKilos}</div>
+                            <div style={{ width: 120, textAlign: 'right' }}>{entregaPallets}</div>
                           </div>
                         );
                       }) : (
+                        // esta rama ya no debería ocurrir porque filtramos ubicaciones sin cargas
                         <div style={styles.matrixRow}><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
                       )}
                     </div>
@@ -236,19 +243,24 @@ const styles = {
     alignItems: 'center',
     borderBottom: '1px solid #fafafa',
   },
-  insumoCell: {
+  insumoHeader: {
     color: '#9b1c1c',
     background: '#fff5f5',
-    paddingLeft: 6,
-    paddingRight: 6,
-    fontWeight: 600,
+    padding: '4px 8px',
+    fontWeight: 700,
+    borderLeft: '1px solid #eee',
   },
-  recolectCell: {
+  entregaHeader: {
     color: '#116530',
     background: '#f5fff5',
-    paddingLeft: 6,
-    paddingRight: 6,
-    fontWeight: 600,
+    padding: '4px 8px',
+    fontWeight: 700,
+    borderLeft: '1px solid #eee',
+  },
+  proveedorName: {
+    background: '#e6f7e6',
+    padding: '2px 6px',
+    borderRadius: 4,
   },
   footer: {
     padding: 12,
