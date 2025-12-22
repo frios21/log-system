@@ -44,6 +44,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
 
   return (
     <div className="lsm-modal">
+      <div className="lsm-tab">Resumen</div>
       <div className="lsm-header">
         <strong>Resumen por Ubicación</strong>
         <button className="lsm-closeBtn" onClick={onClose}>Cerrar</button>
@@ -64,12 +65,12 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
             <div style={styles.matrixWrap}>
               <div className="lsm-matrixTable">
                 <div className="lsm-matrixHeader">
-                  <div style={{ width: 220 }}>Proveedor / Ubicación</div>
-                  <div style={{ width: 180 }}>Carga</div>
-                  <div style={{ width: 140 }} className="lsm-insumoHeader lsm-cell-left">Insumo (Tipo)</div>
-                  <div style={{ width: 140 }} className="lsm-insumoHeader lsm-cell-left">Insumo (Cantidad)</div>
-                  <div style={{ width: 140 }} className="lsm-entregaHeader lsm-cell-left">Entrega (Kilos)</div>
-                  <div style={{ width: 120 }} className="lsm-entregaHeader lsm-cell-left">Entrega (Pallets)</div>
+                  <div className="lsm-col lsm-col-provider">Proveedor / Ubicación</div>
+                  <div className="lsm-col lsm-col-carga">Carga</div>
+                  <div className="lsm-col lsm-col-insumo lsm-insumoHeader lsm-cell-left">Insumo (Tipo)</div>
+                  <div className="lsm-col lsm-col-insumoQty lsm-insumoHeader lsm-cell-left">Insumo (Cantidad)</div>
+                  <div className="lsm-col lsm-col-kilos lsm-entregaHeader lsm-cell-left">Entrega (Kilos)</div>
+                  <div className="lsm-col lsm-col-pallets lsm-entregaHeader lsm-cell-left">Entrega (Pallets)</div>
                 </div>
 
                 {visibleLocations && visibleLocations.length ? visibleLocations.map((loc, idx) => {
@@ -101,17 +102,17 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                         const entregaPallets = pallets || '-';
                         return (
                           <div key={(c.id || j)} className="lsm-matrixRow">
-                            <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
-                            <div style={{ width: 180 }}>{c.name}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{type}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{insumoQuantity || '-'}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{entregaKilos}</div>
-                            <div style={{ width: 120 }} className="lsm-cell-left">{entregaPallets}</div>
+                            <div className="lsm-col lsm-col-provider" title={loc.name}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
+                            <div className="lsm-col lsm-col-carga" title={c.name}>{c.name}</div>
+                            <div className="lsm-col lsm-col-insumo lsm-cell-left">{type}</div>
+                            <div className="lsm-col lsm-col-insumoQty lsm-cell-left">{insumoQuantity || '-'}</div>
+                            <div className="lsm-col lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
+                            <div className="lsm-col lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
                           </div>
                         );
                       }) : (
                         // esta rama ya no debería ocurrir porque filtramos ubicaciones sin cargas
-                        <div style={styles.matrixRow}><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
+                        <div style={styles.matrixRow}><div className="lsm-col lsm-col-provider"><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
                       )}
                     </div>
                   );

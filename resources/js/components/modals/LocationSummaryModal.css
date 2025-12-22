@@ -8,20 +8,45 @@
   --lsm-muted:#666;
 }
 .lsm-modal{
-  width:720px;
-  max-height:80vh;
+  /* Pestaña lateral: panel anclado al borde izquierdo, casi toda la altura
+     y dejando espacio para un sidebar a la derecha. */
+  width: calc(100% - 360px);
+  max-width: 980px;
+  height: 90vh;
   background:var(--lsm-bg);
-  border-radius:10px;
+  border-radius:0 10px 10px 0;
   box-shadow:0 10px 30px rgba(17,24,39,0.12);
   display:flex;
   flex-direction:column;
   overflow:hidden;
   position:fixed;
-  left:20px;
-  top:80px;
+  left:0;
+  top:5vh;
   z-index:9999;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   color:#222;
+  font-size:12px; /* achicar todas las letras */
+}
+.lsm-tab{
+  position:absolute;
+  right:-46px; /* sobresale al borde izquierdo */
+  top:50%;
+  transform:translateY(-50%);
+  width:46px;
+  height:160px;
+  background:var(--lsm-accent);
+  color:#fff;
+  border-radius:0 8px 8px 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-weight:700;
+  font-size:11px;
+  box-shadow: 0 6px 18px rgba(17,24,39,0.08);
+  cursor:default;
+  z-index: 10000;
 }
 .lsm-header{
   display:flex;
@@ -39,11 +64,11 @@
 }
 .lsm-summaryTop{
   display:flex;
-  gap:14px;
-  padding:10px 16px;
+  gap:12px;
+  padding:8px 12px;
   border-bottom:1px solid #f3f4f6;
   background:#fbfbfd;
-  font-size:13px;
+  font-size:12px;
   align-items:center;
 }
 .lsm-content{
@@ -56,9 +81,9 @@
   display:flex; flex-direction:column; border:1px solid var(--lsm-border); border-radius:8px; overflow:hidden; background:#fff; box-shadow: 0 6px 18px rgba(17,24,39,0.04);
 }
 .lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; position: sticky; top: 0; z-index: 2 }
-.lsm-matrixRow{ display:flex; padding:10px 12px; align-items:center; border-bottom:1px solid #fbfbfb; font-size:14px }
+.lsm-matrixRow{ display:flex; padding:8px 10px; align-items:center; border-bottom:1px solid #fbfbfb; font-size:12px }
 .lsm-matrixRow:nth-child(even){ background:#fbfcfe }
-.lsm-proveedorName{ background:linear-gradient(90deg,#e6f7e6, #dff3df); padding:4px 10px; border-radius:8px; display:inline-block; font-weight:700 }
+.lsm-proveedorName{ background:linear-gradient(90deg,#e6f7e6, #dff3df); padding:4px 10px; border-radius:8px; display:inline-block; font-weight:700; font-size:12px }
 
 .lsm-cell-left{ text-align:left }
 
@@ -66,9 +91,22 @@
 .lsm-insumoHeader{ color:var(--lsm-insumo); background:#fff5f5; padding:6px 10px; border-left:1px solid var(--lsm-border) }
 .lsm-entregaHeader{ color:var(--lsm-entrega); background:#f5fff5; padding:6px 10px; border-left:1px solid var(--lsm-border) }
 
+/* Column sizes */
+.lsm-col{ padding-right:8px; padding-left:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.lsm-col-provider{ min-width:360px; width:360px; max-width:480px }
+.lsm-col-carga{ min-width:220px; width:220px }
+.lsm-col-insumo{ min-width:120px; width:120px }
+.lsm-col-insumoQty{ min-width:120px; width:120px }
+.lsm-col-kilos{ min-width:120px; width:120px }
+.lsm-col-pallets{ min-width:100px; width:100px }
+
+/* Ajustes para evitar saltos de línea y mostrar el nombre del proveedor en una línea */
+.lsm-col-provider .lsm-proveedorName, .lsm-col-provider { white-space:nowrap; overflow:visible }
+
 /* Footer (kept minimal) */
 .lsm-footer{ padding:12px; border-top:1px solid var(--lsm-border); display:flex; justify-content:flex-end }
 
 /* Responsive */
+@media (max-width:1100px){ .lsm-modal{ width: calc(100% - 80px); left:0; right:80px } }
 @media (max-width:900px){ .lsm-modal{ left:10px; right:10px; width:auto; top:60px } }
-@media (max-width:600px){ .lsm-matrixHeader, .lsm-matrixRow{ padding:8px 10px; font-size:13px } .lsm-summaryTop{ font-size:12px } }
+@media (max-width:600px){ .lsm-matrixHeader, .lsm-matrixRow{ padding:6px 8px; font-size:11px } .lsm-summaryTop{ font-size:11px } }
