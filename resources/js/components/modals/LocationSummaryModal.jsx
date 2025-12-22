@@ -38,6 +38,10 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
     cargas: (loc.cargas || []).filter(c => isAssigned(c))
   })).filter(loc => (loc.cargas || []).length > 0);
 
+  // formateadores numéricos
+  const intFmt = new Intl.NumberFormat();
+  const kiloFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+
   return (
     <div className="lsm-modal">
       <div className="lsm-header">
@@ -46,11 +50,11 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
       </div>
 
       <div className="lsm-summaryTop">
-        <div>Palets: <strong>{totals.pallets}</strong></div>
-        <div>BV (unidades): <strong>{totals.bv}</strong></div>
-        <div>B (unidades): <strong>{totals.b}</strong></div>
-        <div>Esquineros: <strong>{totals.e}</strong></div>
-        <div>Kilos (aprox): <strong>{totals.kilos || '-'}</strong></div>
+        <div>Palets: <strong>{intFmt.format(totals.pallets || 0)}</strong></div>
+        <div>BV (unidades): <strong>{intFmt.format(totals.bv || 0)}</strong></div>
+        <div>B (unidades): <strong>{intFmt.format(totals.b || 0)}</strong></div>
+        <div>Esquineros: <strong>{intFmt.format(totals.e || 0)}</strong></div>
+        <div>Kilos (aprox): <strong>{kiloFmt.format(totals.kilos || 0)} kg</strong></div>
       </div>
 
       <div className="lsm-content">
@@ -93,21 +97,21 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                       {cargas.length ? cargas.map((c, j) => {
                         const { type, insumoQuantity, pallets } = resolveInsumo(c);
-                        const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
-                        const entregaPallets = pallets || '-';
+                        const entregaKilosNum = Number(c.total_quantity ?? c.kilos ?? NaN);
+                        const entregaPallets = pallets;
                         return (
                           <div key={(c.id || j)} className="lsm-matrixRow">
                             <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
                             <div style={{ width: 180 }}>{c.name}</div>
                             <div style={{ width: 140 }} className="lsm-cell-left">{type}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{insumoQuantity || '-'}</div>
-                            <div style={{ width: 140 }} className="lsm-cell-left">{entregaKilos}</div>
-                            <div style={{ width: 120 }} className="lsm-cell-left">{entregaPallets}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{insumoQuantity != null ? `${intFmt.format(insumoQuantity)} unidades` : '-'}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{Number.isFinite(entregaKilosNum) ? `${kiloFmt.format(entregaKilosNum)} kg` : '-'}</div>
+                            <div style={{ width: 120 }} className="lsm-cell-left">{entregaPallets != null ? `${intFmt.format(entregaPallets)} pallets` : '-'}</div>
                           </div>
                         );
                       }) : (
                         // esta rama ya no debería ocurrir porque filtramos ubicaciones sin cargas
-                        <div style={styles.matrixRow}><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
+                        <div className="lsm-matrixRow"><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
                       )}
                     </div>
                   );
