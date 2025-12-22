@@ -9,9 +9,17 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
   const B_UNITS = 75;   // bandejones
   const E_PER_PALLET = 4; // esquineros por pallet
 
-  // calcular totales globales
+  // helper para determinar si una carga está 'assigned'
+  const isAssigned = (c) => {
+    if (!c) return false;
+    const s = (c.status || c.state || c.estado || '').toString().toLowerCase();
+    return s === 'assigned' || s === 'asignado' || s === 'assigned_to' || c.assigned === true;
+  };
+
+  // calcular totales globales considerando solo cargas 'assigned'
   const totals = locations.reduce((acc, loc) => {
-    loc.cargas.forEach(c => {
+    (loc.cargas || []).forEach(c => {
+      if (!isAssigned(c)) return;
       const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
       const kilos = Number(c.total_quantity ?? 0) || 0;
       acc.pallets += pallets;
@@ -44,7 +52,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
           ) : (
             <div style={styles.matrixWrap}>
               <div style={styles.note}>
-                Nota: se usan campos heurísticos para "Recolección" (in) y "Entrega" (out). Si una carga solo tiene `total_quantity` se considerará como entrega.
+                Nota: se usan campos heurísticos para "Recolección" (in) y "Entrega" (out). Sólo se consideran cargas con estado <strong>assigned</strong>.
               </div>
               <div style={styles.matrixTable}>
                 <div style={styles.matrixHeader}>
@@ -57,7 +65,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                 </div>
 
                 {locations && locations.length ? locations.map((loc, idx) => {
-                  const cargas = loc.cargas || [];
+                  const cargas = (loc.cargas || []).filter(c => isAssigned(c));
 
                   // helper para resolver tipo de insumo y cantidad por pallets
                   const resolveInsumo = (c) => {
@@ -87,10 +95,10 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                           <div key={(c.id || j)} style={styles.matrixRow}>
                             <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong>{loc.name}</strong> : ''}</div>
                             <div style={{ width: 180 }}>{c.name}</div>
-                            <div style={{ width: 140, textAlign: 'right' }}>{type}</div>
-                            <div style={{ width: 140, textAlign: 'right' }}>{insumoQuantity || '-'}</div>
-                            <div style={{ width: 140, textAlign: 'right' }}>{entregaKilos}</div>
-                            <div style={{ width: 120, textAlign: 'right' }}>{entregaPallets}</div>
+                            <div style={{ width: 140, textAlign: 'right', ...styles.insumoCell }}>{type}</div>
+                            <div style={{ width: 140, textAlign: 'right', ...styles.insumoCell }}>{insumoQuantity || '-'}</div>
+                            <div style={{ width: 140, textAlign: 'right', ...styles.recolectCell }}>{entregaKilos}</div>
+                            <div style={{ width: 120, textAlign: 'right', ...styles.recolectCell }}>{entregaPallets}</div>
                           </div>
                         );
                       }) : (
@@ -107,7 +115,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
         </div>
 
         <div style={styles.footer}>
-          <button className="btn btn-primary" onClick={onClose}>Cerrar</button>
+          {/* Cierre en el header; footer intencionalmente vacío para evitar botón duplicado */}
         </div>
       </div>
   );
@@ -136,7 +144,7 @@ const styles = {
     flexDirection: 'column',
     overflow: 'hidden',
     position: 'fixed',
-    right: 20,
+    left: 20,
     top: 80,
     zIndex: 9999,
   },
@@ -227,6 +235,20 @@ const styles = {
     padding: '8px 12px',
     alignItems: 'center',
     borderBottom: '1px solid #fafafa',
+  },
+  insumoCell: {
+    color: '#9b1c1c',
+    background: '#fff5f5',
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontWeight: 600,
+  },
+  recolectCell: {
+    color: '#116530',
+    background: '#f5fff5',
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontWeight: 600,
   },
   footer: {
     padding: 12,
