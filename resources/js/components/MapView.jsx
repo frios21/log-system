@@ -281,6 +281,70 @@ export default function MapView() {
     };
   }, []);
 
+  // -------------------------------------------------------------
+  // LISTENER: actualizar mapa según filtros de sidebar
+  // Espera un CustomEvent 'map:update' con detail: { cargas?: [...], rutas?: [...] }
+  // -------------------------------------------------------------
+  useEffect(() => {
+    function onMapUpdate(ev) {
+      const map = mapRef.current;
+      if (!map || !mapReady) return;
+
+      const detail = ev.detail || {};
+
+      // 1) Cargas: agrupar por partner (usa groupByPartner) y actualizar 'groups'
+      if (Array.isArray(detail.cargas)) {
+        try {
+          const grouped = groupByPartner(detail.cargas || []);
+          setGroups(grouped);
+        } catch (err) {
+          console.warn('Error grouping cargas for map update', err);
+        }
+      }
+
+      // 2) Rutas: mostrar solo las rutas incluidas en detail.rutas (si se envían)
+      if (Array.isArray(detail.rutas)) {
+        const visibleIds = new Set(detail.rutas.map(r => Number(r.id)).filter(Boolean));
+
+        // Ocultar capas de rutas que no están en visibleIds
+        Object.keys(routesLayers.current).forEach((idStr) => {
+          const id = Number(idStr);
+          const layer = routesLayers.current[idStr];
+          if (!layer || !layer.polyline) return;
+          if (!visibleIds.has(id)) {
+            layer.polyline.setMap(null);
+            layer.visible = false;
+          }
+        });
+
+        // Para cada ruta visible, dibujar o reactivar su capa
+        detail.rutas.forEach(async (r) => {
+          const id = Number(r.id);
+          if (!id) return;
+          const waypoints = parseWaypointsField(r.waypoints || r.waypoints_json || r.waypoints || r.load_ids || []);
+          const existing = routesLayers.current[id];
+          if (existing && existing.polyline) {
+            // si existe pero estaba oculto, reactivar
+            if (!existing.visible) {
+              existing.polyline.setMap(map);
+              existing.visible = true;
+            }
+          } else {
+            try {
+              await drawRouteOnMap(id, waypoints, false, r.status || null);
+            } catch (err) {
+              // dibujo falló, ignorar para no romper el flujo
+              console.warn('Error drawing route from map:update', id, err);
+            }
+          }
+        });
+      }
+    }
+
+    window.addEventListener('map:update', onMapUpdate);
+    return () => window.removeEventListener('map:update', onMapUpdate);
+  }, [mapReady]);
+
   /** UBICACIÓN TRACCAR EN TIEMPO REAL */
   // desconectodo -> offline (marcador gris)
   useEffect(() => {

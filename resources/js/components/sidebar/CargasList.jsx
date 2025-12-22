@@ -192,6 +192,16 @@ export default function CargasList({ onBlockingChange }) {
         );
     });
 
+    // Emitir evento para que el mapa actualice los marcadores según las cargas visibles
+    useEffect(() => {
+        try {
+            const payload = { cargas: visibleCargas };
+            window.dispatchEvent(new CustomEvent('map:update', { detail: payload }));
+        } catch (e) {
+            console.warn('Error dispatching map:update from CargasList', e);
+        }
+    }, [visibleCargas]);
+
     // Si acabamos de crear una carga manual en esta sesión,
     // la forzamos a aparecer arriba de la lista, sin alterar
     // el orden original del resto. Tras recargar el componente,

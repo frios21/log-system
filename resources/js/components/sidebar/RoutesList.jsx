@@ -86,6 +86,16 @@ export default function RoutesList({ onBlockingChange }) {
         return name.includes(q) || idStr.includes(q);
     });
 
+    // Emitir evento para que el mapa actualice las rutas visibles
+    useEffect(() => {
+        try {
+            const payload = { rutas: visibleRutas };
+            window.dispatchEvent(new CustomEvent('map:update', { detail: payload }));
+        } catch (e) {
+            console.warn('Error dispatching map:update from RoutesList', e);
+        }
+    }, [visibleRutas]);
+
     return (
         <div>
             {/* Filtros similares a CargasList + botón nueva ruta en la misma fila */}
