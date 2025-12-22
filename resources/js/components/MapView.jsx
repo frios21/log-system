@@ -204,6 +204,13 @@ export default function MapView() {
   const markersRef = useRef([]);
   const infoWindowsRef = useRef([]);
   const routesLayers = useRef({});
+
+  function closeAllInfoWindows() {
+    const list = infoWindowsRef.current || [];
+    list.forEach((iw) => {
+      try { iw.close(); } catch (e) {}
+    });
+  }
   const [groups, setGroups] = useState([]);
   const [mapReady, setMapReady] = useState(false);
   const traccarMarkersRef = useRef({});
@@ -400,6 +407,7 @@ export default function MapView() {
             // track info windows so we can close them on outside clicks
             infoWindowsRef.current.push(info);
             marker.addListener("click", () => {
+              closeAllInfoWindows();
               info.setContent(marker._popupContent || "");
               info.open(map, marker);
             });
@@ -513,6 +521,7 @@ export default function MapView() {
         const info = new google.maps.InfoWindow({ content: label });
         infoWindowsRef.current.push(info);
         marker.addListener("click", () => {
+          closeAllInfoWindows();
           info.open(map, marker);
         });
         layerEntry.markers.push(marker);
@@ -741,6 +750,7 @@ export default function MapView() {
       const info = new google.maps.InfoWindow({ content: popupHtml });
       infoWindowsRef.current.push(info);
       marker.addListener("click", () => {
+        closeAllInfoWindows();
         info.open(map, marker);
       });
       markersRef.current.push(marker);
@@ -816,6 +826,7 @@ export default function MapView() {
         });
         infoWindowsRef.current.push(info);
         marker.addListener("click", () => {
+          closeAllInfoWindows();
           info.open({ map, anchor: marker });
         });
 
