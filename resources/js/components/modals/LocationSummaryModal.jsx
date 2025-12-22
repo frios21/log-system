@@ -43,38 +43,51 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
           {loading ? (
             <div style={{ padding: 12 }}>Cargando...</div>
           ) : (
-            locations.map((loc, idx) => (
-              <div key={idx} style={styles.locationBlock}>
-                <div style={styles.locationHeader}>{loc.name}</div>
-                <div style={styles.tableHeader}>
-                  <div style={{ flex: 1 }}>Item</div>
-                  <div style={{ width: 80, textAlign: 'right' }}>Pallets</div>
-                  <div style={{ width: 90, textAlign: 'right' }}>BV</div>
-                  <div style={{ width: 80, textAlign: 'right' }}>B</div>
-                  <div style={{ width: 80, textAlign: 'right' }}>E</div>
-                  <div style={{ width: 90, textAlign: 'right' }}>Kilos</div>
+            <div style={styles.matrixWrap}>
+              <div style={styles.note}>
+                Nota: se usan campos heurísticos para "Recolección" (in) y "Entrega" (out). Si una carga solo tiene `total_quantity` se considerará como entrega.
+              </div>
+              <div style={styles.matrixTable}>
+                <div style={styles.matrixHeader}>
+                  <div style={{ flex: 2 }}>Proveedor / Ubicación</div>
+                  <div style={{ width: 120, textAlign: 'right' }}>Recolecta (Kilos)</div>
+                  <div style={{ width: 120, textAlign: 'right' }}>Recolecta (Pallets)</div>
+                  <div style={{ width: 120, textAlign: 'right' }}>Entrega (Kilos)</div>
+                  <div style={{ width: 120, textAlign: 'right' }}>Entrega (Pallets)</div>
+                  <div style={{ width: 120, textAlign: 'right' }}>Entrega (Esq.)</div>
                 </div>
-                {loc.cargas && loc.cargas.length ? loc.cargas.map((c) => {
-                  const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
-                  const bv = pallets * BV_UNITS;
-                  const b = pallets * B_UNITS;
-                  const e = pallets * E_PER_PALLET;
-                  const kilos = Number(c.total_quantity ?? 0) || '-';
+
+                {locations && locations.length ? locations.map((loc, idx) => {
+                  // agregar totales por ubicación, usando heurísticas flexibles
+                  const locTotals = (loc.cargas || []).reduce((acc, c) => {
+                    const inKilos = Number(c.in_quantity ?? c.total_in ?? 0) || 0;
+                    const outKilos = Number(c.out_quantity ?? c.total_quantity ?? 0) || 0;
+                    const inPallets = Number(c.in_pallets ?? 0) || 0;
+                    const outPallets = Number(c.out_pallets ?? c.total_pallets ?? c.pallets ?? 0) || 0;
+                    const outEsq = Number(c.out_esquineros ?? 0) || 0;
+                    acc.inKilos += inKilos;
+                    acc.outKilos += outKilos;
+                    acc.inPallets += inPallets;
+                    acc.outPallets += outPallets;
+                    acc.outEsq += outEsq;
+                    return acc;
+                  }, { inKilos: 0, outKilos: 0, inPallets: 0, outPallets: 0, outEsq: 0 });
+
                   return (
-                    <div key={c.id || c.name} style={styles.row}>
-                      <div style={{ flex: 1 }}>{c.name}</div>
-                      <div style={{ width: 80, textAlign: 'right' }}>{pallets}</div>
-                      <div style={{ width: 90, textAlign: 'right' }}>{bv}</div>
-                      <div style={{ width: 80, textAlign: 'right' }}>{b}</div>
-                      <div style={{ width: 80, textAlign: 'right' }}>{e}</div>
-                      <div style={{ width: 90, textAlign: 'right' }}>{kilos}</div>
+                    <div key={idx} style={styles.matrixRow}>
+                      <div style={{ flex: 2, fontWeight: 600 }}>{loc.name}</div>
+                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.inKilos || '-'}</div>
+                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.inPallets || '-'}</div>
+                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.outKilos || '-'}</div>
+                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.outPallets || '-'}</div>
+                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.outEsq || '-'}</div>
                     </div>
                   );
                 }) : (
-                  <div style={{ padding: 8, color: '#666' }}>No hay cargas en esta ubicación</div>
+                  <div style={{ padding: 8, color: '#666' }}>No hay ubicaciones para mostrar</div>
                 )}
               </div>
-            ))
+            </div>
           )}
         </div>
 
@@ -152,6 +165,46 @@ const styles = {
     alignItems: 'center',
   },
   row: {
+    display: 'flex',
+    padding: '8px 12px',
+    alignItems: 'center',
+    borderBottom: '1px solid #fafafa',
+  },
+  subRow: {
+    display: 'flex',
+    padding: '4px 12px 8px 12px',
+    alignItems: 'center',
+    background: '#fff',
+    borderBottom: '1px solid #fbfbfb',
+  },
+  matrixWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  note: {
+    fontSize: 12,
+    color: '#666',
+    padding: '4px 8px',
+  },
+  matrixTable: {
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px solid #eee',
+    borderRadius: 6,
+    overflow: 'hidden',
+    background: '#fff',
+  },
+  matrixHeader: {
+    display: 'flex',
+    padding: '8px 12px',
+    background: '#f7f9fb',
+    fontSize: 13,
+    color: '#333',
+    borderBottom: '1px solid #eee',
+    alignItems: 'center',
+  },
+  matrixRow: {
     display: 'flex',
     padding: '8px 12px',
     alignItems: 'center',
