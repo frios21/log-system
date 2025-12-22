@@ -1,4 +1,5 @@
 import React from 'react';
+import './LocationSummaryModal.css';
 
 // Modal compacto para mostrar resumen por ubicación
 export default function LocationSummaryModal({ open, onClose, locations = [], loading = false }) {
@@ -38,36 +39,33 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
   })).filter(loc => (loc.cargas || []).length > 0);
 
   return (
-    <div style={styles.modal}>
-        <div style={styles.header}>
-          <strong>Resumen por Ubicación</strong>
-          <button className="btn" onClick={onClose} style={styles.closeBtn}>Cerrar</button>
-        </div>
+    <div className="lsm-modal">
+      <div className="lsm-header">
+        <strong>Resumen por Ubicación</strong>
+        <button className="lsm-closeBtn" onClick={onClose}>Cerrar</button>
+      </div>
 
-        <div style={styles.summaryTop}>
-          <div>Palets: <strong>{totals.pallets}</strong></div>
-          <div>BV (unidades): <strong>{totals.bv}</strong></div>
-          <div>B (unidades): <strong>{totals.b}</strong></div>
-          <div>Esquineros: <strong>{totals.e}</strong></div>
-          <div>Kilos (aprox): <strong>{totals.kilos || '-'}</strong></div>
-        </div>
+      <div className="lsm-summaryTop">
+        <div>Palets: <strong>{totals.pallets}</strong></div>
+        <div>BV (unidades): <strong>{totals.bv}</strong></div>
+        <div>B (unidades): <strong>{totals.b}</strong></div>
+        <div>Esquineros: <strong>{totals.e}</strong></div>
+        <div>Kilos (aprox): <strong>{totals.kilos || '-'}</strong></div>
+      </div>
 
-        <div style={styles.content}>
+      <div className="lsm-content">
           {loading ? (
             <div style={{ padding: 12 }}>Cargando...</div>
           ) : (
             <div style={styles.matrixWrap}>
-              <div style={styles.note}>
-                Nota: se usan campos heurísticos para "Recolección" (in) y "Entrega" (out). Sólo se consideran cargas con estado <strong>assigned</strong>.
-              </div>
-              <div style={styles.matrixTable}>
-                <div style={styles.matrixHeader}>
+              <div className="lsm-matrixTable">
+                <div className="lsm-matrixHeader">
                   <div style={{ width: 220 }}>Proveedor / Ubicación</div>
                   <div style={{ width: 180 }}>Carga</div>
-                  <div style={{ width: 140, textAlign: 'right', ...styles.insumoHeader }}>Insumo (Tipo)</div>
-                  <div style={{ width: 140, textAlign: 'right', ...styles.insumoHeader }}>Insumo (Cantidad)</div>
-                  <div style={{ width: 140, textAlign: 'right', ...styles.entregaHeader }}>Entrega (Kilos)</div>
-                  <div style={{ width: 120, textAlign: 'right', ...styles.entregaHeader }}>Entrega (Pallets)</div>
+                  <div style={{ width: 140 }} className="lsm-insumoHeader lsm-cell-left">Insumo (Tipo)</div>
+                  <div style={{ width: 140 }} className="lsm-insumoHeader lsm-cell-left">Insumo (Cantidad)</div>
+                  <div style={{ width: 140 }} className="lsm-entregaHeader lsm-cell-left">Entrega (Kilos)</div>
+                  <div style={{ width: 120 }} className="lsm-entregaHeader lsm-cell-left">Entrega (Pallets)</div>
                 </div>
 
                 {visibleLocations && visibleLocations.length ? visibleLocations.map((loc, idx) => {
@@ -98,13 +96,13 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                         const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
                         const entregaPallets = pallets || '-';
                         return (
-                          <div key={(c.id || j)} style={styles.matrixRow}>
-                            <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong style={styles.proveedorName}>{loc.name}</strong> : ''}</div>
+                          <div key={(c.id || j)} className="lsm-matrixRow">
+                            <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
                             <div style={{ width: 180 }}>{c.name}</div>
-                            <div style={{ width: 140, textAlign: 'right' }}>{type}</div>
-                            <div style={{ width: 140, textAlign: 'right' }}>{insumoQuantity || '-'}</div>
-                            <div style={{ width: 140, textAlign: 'right' }}>{entregaKilos}</div>
-                            <div style={{ width: 120, textAlign: 'right' }}>{entregaPallets}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{type}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{insumoQuantity || '-'}</div>
+                            <div style={{ width: 140 }} className="lsm-cell-left">{entregaKilos}</div>
+                            <div style={{ width: 120 }} className="lsm-cell-left">{entregaPallets}</div>
                           </div>
                         );
                       }) : (
