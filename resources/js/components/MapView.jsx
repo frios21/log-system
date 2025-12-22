@@ -202,6 +202,7 @@ async function fetchRouteFromGoogleDirections(waypoints) {
 export default function MapView() {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
+  const markersVisibleRef = useRef(true);
   const routesLayers = useRef({});
   const [groups, setGroups] = useState([]);
   const [mapReady, setMapReady] = useState(false);
@@ -736,12 +737,34 @@ export default function MapView() {
 
       const info = new google.maps.InfoWindow({ content: popupHtml });
       marker.addListener("click", () => {
+        markersVisibleRef.current = true;
         info.open(map, marker);
       });
       markersRef.current.push(marker);
       marker.partnerId = Number(partner.id);
     });
+    if (!markersVisibleRef.current) {
+      markersRef.current.forEach((m) => m.setMap(null));
+    }
   }, [groups, mapReady]);
+
+  // Ocultar marcadores al hacer click fuera (click en el mapa)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const listener = map.addListener('click', () => {
+      if (!markersRef.current || markersRef.current.length === 0) return;
+      markersRef.current.forEach((m) => {
+        if (m) m.setMap(null);
+      });
+      markersVisibleRef.current = false;
+    });
+
+    return () => {
+      if (listener) listener.remove();
+    };
+  }, [mapReady]);
 
   // -------------------------------------------------------------
   // FOCUS CONCTACO
