@@ -24,8 +24,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
   }, { pallets: 0, kilos: 0, bv: 0, b: 0, e: 0 });
 
   return (
-    <div style={styles.backdrop}>
-      <div style={styles.modal}>
+    <div style={styles.modal}>
         <div style={styles.header}>
           <strong>Resumen por Ubicación</strong>
           <button className="btn" onClick={onClose} style={styles.closeBtn}>Cerrar</button>
@@ -49,38 +48,54 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
               </div>
               <div style={styles.matrixTable}>
                 <div style={styles.matrixHeader}>
-                  <div style={{ flex: 2 }}>Proveedor / Ubicación</div>
-                  <div style={{ width: 120, textAlign: 'right' }}>Recolecta (Kilos)</div>
-                  <div style={{ width: 120, textAlign: 'right' }}>Recolecta (Pallets)</div>
-                  <div style={{ width: 120, textAlign: 'right' }}>Entrega (Kilos)</div>
+                  <div style={{ width: 220 }}>Proveedor / Ubicación</div>
+                  <div style={{ width: 180 }}>Carga</div>
+                  <div style={{ width: 140, textAlign: 'right' }}>Insumo (Tipo)</div>
+                  <div style={{ width: 140, textAlign: 'right' }}>Insumo (Cantidad)</div>
+                  <div style={{ width: 140, textAlign: 'right' }}>Entrega (Kilos)</div>
                   <div style={{ width: 120, textAlign: 'right' }}>Entrega (Pallets)</div>
-                  <div style={{ width: 120, textAlign: 'right' }}>Entrega (Esq.)</div>
                 </div>
 
                 {locations && locations.length ? locations.map((loc, idx) => {
-                  // agregar totales por ubicación, usando heurísticas flexibles
-                  const locTotals = (loc.cargas || []).reduce((acc, c) => {
-                    const inKilos = Number(c.in_quantity ?? c.total_in ?? 0) || 0;
-                    const outKilos = Number(c.out_quantity ?? c.total_quantity ?? 0) || 0;
-                    const inPallets = Number(c.in_pallets ?? 0) || 0;
-                    const outPallets = Number(c.out_pallets ?? c.total_pallets ?? c.pallets ?? 0) || 0;
-                    const outEsq = Number(c.out_esquineros ?? 0) || 0;
-                    acc.inKilos += inKilos;
-                    acc.outKilos += outKilos;
-                    acc.inPallets += inPallets;
-                    acc.outPallets += outPallets;
-                    acc.outEsq += outEsq;
-                    return acc;
-                  }, { inKilos: 0, outKilos: 0, inPallets: 0, outPallets: 0, outEsq: 0 });
+                  const cargas = loc.cargas || [];
+
+                  // helper para resolver tipo de insumo y cantidad por pallets
+                  const resolveInsumo = (c) => {
+                    const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
+                    // prefer explicit type fields, fallback to name heuristics
+                    const rawType = (c.insumo_type || c.tipo || c.insumo || c.name || '').toString().toUpperCase();
+                    let type = 'BV';
+                    if (/ESQUIN/i.test(rawType) || /ESQ/i.test(rawType)) type = 'E';
+                    else if (/BANDEJON|BANDJ|B-?B|BB/i.test(rawType) || /BANDEJA ARANDANERA/i.test(rawType)) type = 'B';
+                    else if (/BANDEJA|BV|BANDEJA VERDE|BANDEJA BLAN/i.test(rawType)) type = 'BV';
+
+                    let unitsPerPallet = BV_UNITS;
+                    if (type === 'B') unitsPerPallet = B_UNITS;
+                    if (type === 'E') unitsPerPallet = E_PER_PALLET;
+
+                    const insumoQuantity = pallets * unitsPerPallet;
+                    return { type, insumoQuantity, pallets };
+                  };
 
                   return (
-                    <div key={idx} style={styles.matrixRow}>
-                      <div style={{ flex: 2, fontWeight: 600 }}>{loc.name}</div>
-                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.inKilos || '-'}</div>
-                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.inPallets || '-'}</div>
-                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.outKilos || '-'}</div>
-                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.outPallets || '-'}</div>
-                      <div style={{ width: 120, textAlign: 'right' }}>{locTotals.outEsq || '-'}</div>
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
+                      {cargas.length ? cargas.map((c, j) => {
+                        const { type, insumoQuantity, pallets } = resolveInsumo(c);
+                        const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
+                        const entregaPallets = pallets || '-';
+                        return (
+                          <div key={(c.id || j)} style={styles.matrixRow}>
+                            <div style={{ width: 220, paddingRight: 8 }}>{j === 0 ? <strong>{loc.name}</strong> : ''}</div>
+                            <div style={{ width: 180 }}>{c.name}</div>
+                            <div style={{ width: 140, textAlign: 'right' }}>{type}</div>
+                            <div style={{ width: 140, textAlign: 'right' }}>{insumoQuantity || '-'}</div>
+                            <div style={{ width: 140, textAlign: 'right' }}>{entregaKilos}</div>
+                            <div style={{ width: 120, textAlign: 'right' }}>{entregaPallets}</div>
+                          </div>
+                        );
+                      }) : (
+                        <div style={styles.matrixRow}><div style={{ width: 220 }}><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
+                      )}
                     </div>
                   );
                 }) : (
@@ -95,7 +110,6 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
           <button className="btn btn-primary" onClick={onClose}>Cerrar</button>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -121,6 +135,10 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    position: 'fixed',
+    right: 20,
+    top: 80,
+    zIndex: 9999,
   },
   header: {
     display: 'flex',
