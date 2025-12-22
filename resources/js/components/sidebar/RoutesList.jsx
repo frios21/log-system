@@ -3,6 +3,7 @@ import RouteCard from "./RouteCard";
 import RouteAssignModal from "../modals/RouteAssignModal";
 import VehicleAssignModal from "../modals/VehicleAssignModal";
 import CircleLoader from "../common/CircleLoader";
+import LocationSummaryModal from "../modals/LocationSummaryModal";
 import { useRutas } from "../../api/rutas";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -20,6 +21,9 @@ export default function RoutesList({ onBlockingChange }) {
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
     const [filterDate, setFilterDate] = useState(""); // YYYY-MM-DD
     const [showFilters, setShowFilters] = useState(false);
+    const [showSummary, setShowSummary] = useState(false);
+    const [summaryLocations, setSummaryLocations] = useState([]);
+    const [summaryLoading, setSummaryLoading] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [selectAllVisible, setSelectAllVisible] = useState(true);
 
@@ -106,7 +110,32 @@ export default function RoutesList({ onBlockingChange }) {
                         </span>
                     </button>
 
-                    <button style={{background: "green"}} className="btn btn-primary" onClick={createRoute}>+</button>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button style={{background: "green"}} className="btn btn-primary" onClick={createRoute}>+</button>
+                                            <button className="btn" onClick={() => {
+                                                // build summary grouped by vendor/partner from visibleRutas
+                                                setSummaryLoading(true);
+                                                const groups = {};
+                                                visibleRutas.forEach(r => {
+                                                        // extract loads from route if present
+                                                        const loads = Array.isArray(r.loads) && r.loads.length ? r.loads : (Array.isArray(r.load_ids) ? r.load_ids.map(id => ({ id })) : []);
+                                                        loads.forEach(l => {
+                                                                const key = l.vendor_name || l.vendor || 'Sin ubicación';
+                                                                if (!groups[key]) groups[key] = { name: key, cargas: [] };
+                                                                // ensure minimal carga shape
+                                                                const carga = {
+                                                                        id: l.id || l[0] || null,
+                                                                        name: l.name || l.code || `OC ${l.id || ''}`,
+                                                                        total_pallets: l.total_pallets ?? l.pallets ?? l.n_pallets ?? 0,
+                                                                };
+                                                                groups[key].cargas.push(carga);
+                                                        });
+                                                });
+                                                setSummaryLocations(Object.values(groups));
+                                                setSummaryLoading(false);
+                                                setShowSummary(true);
+                                            }}>Resumen</button>
+                                        </div>
                 </div>
 
                 {showFilters && (
@@ -195,6 +224,15 @@ export default function RoutesList({ onBlockingChange }) {
                     onDelete={() => deleteRoute(r.id)}
                 />
             ))}
+
+            {showSummary && (
+                <LocationSummaryModal
+                    open={showSummary}
+                    onClose={() => setShowSummary(false)}
+                    locations={summaryLocations}
+                    loading={summaryLoading}
+                />
+            )}
 
             {openAssignFor && (
                 <RouteAssignModal

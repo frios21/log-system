@@ -4,6 +4,7 @@ import ContactSelectModal from "../modals/ContactSelectModal";
 import { useCargas } from "../../api/cargas";
 import { useContactos } from "../../api/contactos";
 import CircleLoader from "../common/CircleLoader";
+import LocationSummaryModal from "../modals/LocationSummaryModal";
 
 function formatCargaDate(raw) {
     if (!raw) return { date: "", time: "" };
@@ -48,6 +49,9 @@ export default function CargasList({ onBlockingChange }) {
 
     // desplegable filtros
     const [showFilters, setShowFilters] = useState(false);
+    const [showSummary, setShowSummary] = useState(false);
+    const [summaryLocations, setSummaryLocations] = useState([]);
+    const [summaryLoading, setSummaryLoading] = useState(false);
 
     // datos base
     const cargas = Array.isArray(cargasData) ? cargasData : [];
@@ -225,7 +229,22 @@ export default function CargasList({ onBlockingChange }) {
                         </span>
                     </button>
 
-                    <button style={{background: "green"}} className="btn btn-primary" onClick={createCarga}>+</button>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button style={{background: "green"}} className="btn btn-primary" onClick={createCarga}>+</button>
+                                            <button className="btn" onClick={() => {
+                                                // build summary grouped by vendor/partner name from visibleCargas
+                                                setSummaryLoading(true);
+                                                const groups = {};
+                                                visibleCargas.forEach(c => {
+                                                        const key = c.vendor_name || (c.partner && c.partner.name) || 'Sin ubicación';
+                                                        if (!groups[key]) groups[key] = { name: key, cargas: [] };
+                                                        groups[key].cargas.push(c);
+                                                });
+                                                setSummaryLocations(Object.values(groups));
+                                                setSummaryLoading(false);
+                                                setShowSummary(true);
+                                            }}>Resumen</button>
+                                        </div>
                 </div>
 
                 {showFilters && (
@@ -600,6 +619,15 @@ export default function CargasList({ onBlockingChange }) {
                 <CargaDetailsModal
                     carga={selectedCarga}
                     onClose={() => setSelectedCarga(null)}
+                />
+            )}
+
+            {showSummary && (
+                <LocationSummaryModal
+                    open={showSummary}
+                    onClose={() => setShowSummary(false)}
+                    locations={summaryLocations}
+                    loading={summaryLoading}
                 />
             )}
 
