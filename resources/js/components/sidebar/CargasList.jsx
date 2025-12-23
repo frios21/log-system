@@ -625,24 +625,26 @@ export default function CargasList({ onBlockingChange }) {
                                     </div>
                                 </div>
                             ) : (
-                                <>
-                                    Cantidad: {" "}
-                                    <span
-                                        style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
-                                        onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
-                                    >
-                                        {carga.total_quantity} kg
-                                    </span>
-                                    {" "}- Pallets: {" "}
-                                    <span
-                                        style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
-                                        onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
-                                    >
-                                        {carga.total_pallets}
-                                    </span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        Cantidad: {" "}
+                                        <span
+                                            style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                            onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
+                                        >
+                                            {carga.total_quantity} kg
+                                        </span>
+                                        {" "}- Pallets: {" "}
+                                        <span
+                                            style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                            onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
+                                        >
+                                            {carga.total_pallets}
+                                        </span>
+                                    </div>
 
                                     {/* Bandeja - Insumo qty display (right-aligned, placeholders replaced by values) */}
-                                    <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                                    <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280", display: 'flex', alignItems: 'center', gap: 6 }}>
                                         {/* compute short label if available */}
                                         {(() => {
                                             const tipoLabel = INSUMO_OPTIONS.find(o => o.value === carga.tipo_insumo)?.label || null;
@@ -667,26 +669,26 @@ export default function CargasList({ onBlockingChange }) {
                                                 </>
                                             );
                                         })()}
-                                    </div>
 
-                                    {inlineStatus[carga.id] && (
-                                        <span
-                                            style={{
-                                                width: 10,
-                                                height: 10,
-                                                borderRadius: "50%",
-                                                marginLeft: 6,
-                                                display: "inline-block",
-                                                background:
-                                                    inlineStatus[carga.id] === 'success'
-                                                        ? "#22c55e"
-                                                        : inlineStatus[carga.id] === 'error'
-                                                            ? "#ef4444"
-                                                            : "#9ca3af",
-                                            }}
-                                        />
-                                    )}
-                                </>
+                                        {inlineStatus[carga.id] && (
+                                            <span
+                                                style={{
+                                                    width: 10,
+                                                    height: 10,
+                                                    borderRadius: "50%",
+                                                    // marginLeft: 6, <- Movido al div contenedor de 'Bandeja - Cantidad insumo' o al flex principal.
+                                                    display: "inline-block",
+                                                    background:
+                                                        inlineStatus[carga.id] === 'success'
+                                                            ? "#22c55e"
+                                                            : inlineStatus[carga.id] === 'error'
+                                                                ? "#ef4444"
+                                                                : "#9ca3af",
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
                             )}
                         </div>
 
