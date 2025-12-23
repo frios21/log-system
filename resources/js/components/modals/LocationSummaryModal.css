@@ -90,7 +90,8 @@
   max-width: 1280px; /* limitar ancho máximo según solicitud */
   margin: 0 auto; /* centrar dentro del panel */
 }
-.lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; position: sticky; top: 0; z-index: 2 }
+.lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; justify-content:flex-start; position: sticky; top: 0; z-index: 2 }
+.lsm-matrixHeader .lsm-col { text-align: left; }
 .lsm-col-label{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; vertical-align:middle }
 
 .label-assigned{ background: #f59e0b }

@@ -166,7 +166,7 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
           <div>BV: <strong>${intFmt.format(totals.bv || 0)}</strong></div>
           <div>BB: <strong>${intFmt.format(totals.bb || 0)}</strong></div>
           <div>B: <strong>${intFmt.format(totals.b || 0)}</strong></div>
-          <div>Esquineros (est): <strong>${intFmt.format(E_PER_PALLET*totals.pallets || 0)}</strong></div>
+          <div>Esquineros: <strong>${intFmt.format(E_PER_PALLET*totals.pallets || 0)}</strong></div>
           <div>Kilos (aprox): <strong>${kiloFmt.format(totals.kilos || 0)} kg</strong></div>
         </div>
 
