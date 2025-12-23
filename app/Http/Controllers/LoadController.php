@@ -96,6 +96,8 @@ class LoadController extends Controller
             'vendor_id'      => ['nullable', 'numeric'],
             'total_quantity' => ['nullable', 'numeric', 'min:0'],
             'total_pallets'  => ['nullable', 'numeric', 'min:0'],
+            'tipo_insumo'    => ['nullable', 'string', 'max:255'],
+            'insumo_qty'     => ['nullable', 'numeric', 'min:0'],
             // permitimos YYYY-MM-DD o datetime; validación la delegamos a Odoo en la práctica
             'date'           => ['nullable', 'string'],
         ]);
