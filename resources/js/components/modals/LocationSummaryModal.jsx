@@ -1,61 +1,83 @@
 import React from 'react';
 import './LocationSummaryModal.css';
 
-// Modal compacto para mostrar resumen por ubicación
 export default function LocationSummaryModal({ open, onClose, locations = [], loading = false }) {
   if (!open) return null;
 
-  // Capacidades por pallet
+  // capacidades por pallet
   const BV_UNITS = 240; // bandejas verdes/blancas
   const B_UNITS = 75;   // bandejones
   const E_PER_PALLET = 4; // esquineros por pallet
 
-  // helper para determinar si una carga está 'assigned'
-  const isAssigned = (c) => {
-    if (!c) return false;
+  // HELPER para determinar el estado de la carga
+  const getChargeStatus = (c) => {
+    if (!c) return 'draft';
     const s = (c.status || c.state || c.estado || '').toString().toLowerCase();
-    return s === 'assigned' || s === 'asignado' || s === 'assigned_to' || c.assigned === true;
+
+    // lgica para sacar el estado
+    if (s === 'done') return 'done';
+    if (s === 'assigned') return 'assigned';
+    return 'draft';
   };
 
-  // calcular totales globales considerando solo cargas 'assigned'
+  const getChargeStatusColor = (status) => {
+    if (status === 'done') return 'lsm-row-done';
+    if (status === 'assigned') return 'lsm-row-assigned';
+    return 'lsm-row-draft';
+  };
+  
+  // calcular totales globales considerando todas las cargas
   const totals = locations.reduce((acc, loc) => {
     (loc.cargas || []).forEach(c => {
-      if (!isAssigned(c)) return;
       const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
       const kilos = Number(c.total_quantity ?? 0) || 0;
       acc.pallets += pallets;
       acc.kilos += kilos;
 
-      // Prefer explicit insumo_qty and tipo_insumo when available. If insumo_qty
-      // is provided, add it to the matching type total. Otherwise, estimate
-      // from pallets * unitsPerPallet using heuristics or defaults.
       const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
       const tipoRaw = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString().toUpperCase();
 
-      // decide type code: 'E' (esquinero), 'B' (bandejón), 'BV' (bandeja verde/blanca)
-      let typeCode = 'BV';
-      if (/ESQUIN/i.test(tipoRaw) || /ESQ/i.test(tipoRaw)) typeCode = 'E';
-      else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(tipoRaw) || /BANDEJON/i.test(tipoRaw)) typeCode = 'B';
-      else if (/BANDEJA|BV|BANDEJA VERDE|BANDEJA BLAN/i.test(tipoRaw)) typeCode = 'BV';
+      // decide type code: 'E' (esquinero), 'B' (bandejón), 'BV' (bandeja verde), 'BB' (bandeja blanca)
+      let typeCode = 'BV'; 
+      let unitsPerPallet = BV_UNITS; // Valor por defecto
+      
+      if (tipoRaw === '') typeCode = 'N/A';
+      else if (/ESQUIN/i.test(tipoRaw) || /ESQ/i.test(tipoRaw)) {
+        typeCode = 'E';
+      }
+      else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(tipoRaw)) {
+        typeCode = 'B';
+        unitsPerPallet = B_UNITS;
+      }
+      else if (/BANDEJA VERDE|BV/i.test(tipoRaw)) {
+        typeCode = 'BV';
+        unitsPerPallet = BV_UNITS;
+      }
+      else if (/BANDEJA BLAN|BB|BLANCA/i.test(tipoRaw)) {
+        typeCode = 'BB';
+        unitsPerPallet = BV_UNITS; 
+      }
+      else if (/BANDEJA/i.test(tipoRaw)) {
+          typeCode = 'BV';
+          unitsPerPallet = BV_UNITS;
+      }
+
 
       if (explicitQty != null && !Number.isNaN(explicitQty)) {
         if (typeCode === 'E') acc.e += explicitQty;
         else if (typeCode === 'B') acc.b += explicitQty;
-        else acc.bv += explicitQty;
+        else if (typeCode === 'BV') acc.bv += explicitQty;
+        else if (typeCode === 'BB') acc.bb += explicitQty; 
       } else {
-        // estimate from pallets
         if (typeCode === 'E') acc.e += pallets * E_PER_PALLET;
-        else if (typeCode === 'B') acc.b += pallets * B_UNITS;
-        else acc.bv += pallets * BV_UNITS;
       }
     });
-    return acc;
-  }, { pallets: 0, kilos: 0, bv: 0, b: 0, e: 0 });
+  }, { pallets: 0, kilos: 0, bv: 0, bb: 0, b: 0, e: 0 });
 
-  // preparar ubicaciones visibles (solo las que tienen cargas assigned)
+  // preparar ubicaciones visibles (todas las que tienen cargas)
   const visibleLocations = (locations || []).map(loc => ({
     ...loc,
-    cargas: (loc.cargas || []).filter(c => isAssigned(c))
+    cargas: (loc.cargas || [])
   })).filter(loc => (loc.cargas || []).length > 0);
 
   // formateadores numéricos
@@ -73,6 +95,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
       <div className="lsm-summaryTop">
         <div>Palets: <strong>{intFmt.format(totals.pallets || 0)}</strong></div>
         <div>BV (unidades): <strong>{intFmt.format(totals.bv || 0)}</strong></div>
+        <div>BB (unidades): <strong>{intFmt.format(totals.bb || 0)}</strong></div>
         <div>B (unidades): <strong>{intFmt.format(totals.b || 0)}</strong></div>
         <div>Esquineros: <strong>{intFmt.format(totals.e || 0)}</strong></div>
         <div>Kilos (aprox): <strong>{kiloFmt.format(totals.kilos || 0)} kg</strong></div>
@@ -99,29 +122,49 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                   // helper para resolver tipo de insumo y cantidad por pallets
                   const resolveInsumo = (c) => {
                     const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
-                    // Prefer explicit tipo_insumo if present, else fall back to heuristics
                     const rawType = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString();
                     const rawTypeUp = rawType.toUpperCase();
 
-                    // Map to short labels and internal codes
                     let code = 'BV';
-                    let label = rawType ? rawType : 'Bandeja';
-                    if (/ESQUIN/i.test(rawTypeUp) || /ESQ/i.test(rawTypeUp)) {
+                    let label = rawType ? rawType : 'N/A'; 
+                    let unitsPerPallet = BV_UNITS; // Valor por defecto (no se usa para estimación aquí)
+
+                    if (rawTypeUp === '') {
+                        code = 'N/A';
+                    } else if (/ESQUIN/i.test(rawTypeUp) || /ESQ/i.test(rawTypeUp)) {
                       code = 'E';
                       label = 'Esquinero';
                     } else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(rawTypeUp)) {
                       code = 'B';
                       label = 'Bandejón';
-                    } else if (/BANDEJA|BV|BANDEJA VERDE|BANDEJA BLAN/i.test(rawTypeUp)) {
+                      unitsPerPallet = B_UNITS;
+                    } else if (/BANDEJA VERDE|BV/i.test(rawTypeUp)) {
                       code = 'BV';
-                      if (/BLAN/i.test(rawTypeUp)) label = 'B. Blanca';
-                      else if (/VERDE|BV/i.test(rawTypeUp)) label = 'B. Verde';
-                      else label = 'Bandeja';
+                      label = 'B. Verde';
+                      unitsPerPallet = BV_UNITS;
+                    } else if (/BANDEJA BLAN|BB|BLANCA/i.test(rawTypeUp)) {
+                      code = 'BB';
+                      label = 'B. Blanca';
+                      unitsPerPallet = BV_UNITS; 
+                    } else if (/BANDEJA/i.test(rawTypeUp)) {
+                      code = 'BV';
+                      label = 'Bandeja';
+                      unitsPerPallet = BV_UNITS;
                     }
 
-                    // If explicit insumo_qty provided, use it. Else estimate from pallets.
                     const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
-                    const insumoQuantity = (explicitQty != null && !Number.isNaN(explicitQty)) ? explicitQty : (pallets * (code === 'E' ? E_PER_PALLET : code === 'B' ? B_UNITS : BV_UNITS));
+                    
+                    let insumoQuantity;
+
+                    if (code === 'N/A') {
+                        insumoQuantity = '-';
+                    } else if (explicitQty != null && !Number.isNaN(explicitQty)) {
+                        insumoQuantity = explicitQty;
+                    } else if (code === 'E') {
+                        insumoQuantity = pallets * E_PER_PALLET;
+                    } else {
+                        insumoQuantity = '-';
+                    }
 
                     return { code, label, insumoQuantity, pallets };
                   };
@@ -129,21 +172,27 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                       {cargas.length ? cargas.map((c, j) => {
-                        const { code, label, insumoQuantity, pallets } = resolveInsumo(c);
+                        const { label, insumoQuantity, pallets } = resolveInsumo(c);
                         const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
                         const entregaPallets = pallets || '-';
+                        const status = getChargeStatus(c); 
+                        const rowClass = getChargeStatusColor(status); 
+                        
                         return (
-                          <div key={(c.id || j)} className="lsm-matrixRow">
-                            <div className="lsm-col lsm-col-provider" title={loc.name}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
+                          <div key={(c.id || j)} className={`lsm-matrixRow ${rowClass}`}>
+                            <div className="lsm-col lsm-col-provider" title={loc.name}>
+                                {j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}
+                            </div>
                             <div className="lsm-col lsm-col-carga" title={c.name}>{c.name}</div>
                             <div className="lsm-col lsm-col-insumo lsm-cell-left">{label}</div>
-                            <div className="lsm-col lsm-col-insumoQty lsm-cell-left">{insumoQuantity != null ? intFmt.format(insumoQuantity) : '-'}</div>
+                            <div className="lsm-col lsm-col-insumoQty lsm-cell-left">
+                                {insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : insumoQuantity}
+                            </div>
                             <div className="lsm-col lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
                             <div className="lsm-col lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
                           </div>
                         );
                       }) : (
-                        // esta rama ya no debería ocurrir porque filtramos ubicaciones sin cargas
                         <div style={styles.matrixRow}><div className="lsm-col lsm-col-provider"><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
                       )}
                     </div>
@@ -157,7 +206,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
         </div>
 
         <div style={styles.footer}>
-          {/* Cierre en el header; footer intencionalmente vacío para evitar botón duplicado */}
+          {/* Footer vacío */}
         </div>
       </div>
   );
