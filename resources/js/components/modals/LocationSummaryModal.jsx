@@ -1,23 +1,27 @@
 import React from 'react';
 import './LocationSummaryModal.css';
 
-export default function LocationSummaryModal({ open, onClose = () => {}, locations = [], loading = false }) {
+// Modal compacto para mostrar resumen por ubicación
+export default function LocationSummaryModal({ open, onClose, locations = [], loading = false }) {
   if (!open) return null;
 
-  const BV_UNITS = 240;
-  const B_UNITS = 75;
-  const E_PER_PALLET = 4;
+  // Capacidades por pallet
+  const BV_UNITS = 240; // bandejas verdes/blancas
+  const B_UNITS = 75;   // bandejones
+  const E_PER_PALLET = 4; // esquineros por pallet
 
   // HELPER para determinar el estado de la carga
   const getChargeStatus = (c) => {
     if (!c) return 'draft';
     const s = (c.status || c.state || c.estado || '').toString().toLowerCase();
 
+    // Lógica para determinar el estado (mejorada para mayor compatibilidad)
     if (s === 'done' || s === 'finalized' || s === 'finalizado') return 'done';
     if (s === 'assigned' || s === 'asignado' || s === 'assigned_to' || c.assigned === true) return 'assigned';
-    return 'draft';
+    return 'draft'; // Por defecto: draft (borrador/pendiente/otro)
   };
 
+  // HELPER para obtener la clase CSS del color de la fila
   const getChargeStatusColor = (status) => {
     if (status === 'done') return 'lsm-row-done';
     if (status === 'assigned') return 'lsm-row-assigned';
@@ -27,11 +31,15 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
   // calcular totales globales considerando TODAS las cargas
   const totals = locations.reduce((acc, loc) => {
     (loc.cargas || []).forEach(c => {
+      // 🚨 CONTROL DE SEGURIDAD 1: Ignorar si la carga es nula/undefined
+      if (!c) return;
+
       const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
       const kilos = Number(c.total_quantity ?? 0) || 0;
       acc.pallets += pallets;
       acc.kilos += kilos;
 
+      // Prefer explicit insumo_qty and tipo_insumo when available.
       const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
       const tipoRaw = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString().toUpperCase();
 
@@ -68,9 +76,12 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
         else if (typeCode === 'BV') acc.bv += explicitQty;
         else if (typeCode === 'BB') acc.bb += explicitQty; 
       } else {
+        // Estimar desde pallets SÓLO para E. NO para B, BV, BB.
         if (typeCode === 'E') acc.e += pallets * E_PER_PALLET;
+        // Si typeCode es B, BV, BB, o N/A, la estimación por pallet se omite.
       }
     });
+    // Totales BV y BB separados
   }, { pallets: 0, kilos: 0, bv: 0, bb: 0, b: 0, e: 0 });
 
   // preparar ubicaciones visibles (todas las que tienen cargas)
@@ -83,12 +94,67 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
   const intFmt = new Intl.NumberFormat();
   const kiloFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
+  // helper para resolver tipo de insumo y cantidad por pallets (movido fuera de map para limpieza)
+  const resolveInsumo = (c) => {
+    // 🚨 CONTROL DE SEGURIDAD 2: Devolver valores seguros si la carga es nula/undefined
+    if (!c) return { code: 'N/A', label: 'Error de Datos', insumoQuantity: '-', pallets: 0 };
+    
+    const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
+    const rawType = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString();
+    const rawTypeUp = rawType.toUpperCase();
+
+    let code = 'BV';
+    let label = rawType ? rawType : 'N/A'; 
+    let unitsPerPallet = BV_UNITS; 
+
+    if (rawTypeUp === '') {
+        code = 'N/A';
+    } else if (/ESQUIN/i.test(rawTypeUp) || /ESQ/i.test(rawTypeUp)) {
+      code = 'E';
+      label = 'Esquinero';
+    } else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(rawTypeUp)) {
+      code = 'B';
+      label = 'Bandejón';
+      unitsPerPallet = B_UNITS;
+    } else if (/BANDEJA VERDE|BV/i.test(rawTypeUp)) {
+      code = 'BV';
+      label = 'B. Verde';
+      unitsPerPallet = BV_UNITS;
+    } else if (/BANDEJA BLAN|BB|BLANCA/i.test(rawTypeUp)) {
+      code = 'BB';
+      label = 'B. Blanca';
+      unitsPerPallet = BV_UNITS; 
+    } else if (/BANDEJA/i.test(rawTypeUp)) {
+      code = 'BV';
+      label = 'Bandeja';
+      unitsPerPallet = BV_UNITS;
+    }
+
+    const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
+    
+    let insumoQuantity;
+
+    if (code === 'N/A') {
+        insumoQuantity = '-';
+    } else if (explicitQty != null && !Number.isNaN(explicitQty)) {
+        insumoQuantity = explicitQty;
+    } else if (code === 'E') {
+        // Estimación por pallet SÓLO para Esquineros
+        insumoQuantity = pallets * E_PER_PALLET;
+    } else {
+        // Si es B, BV, BB y no tiene cantidad explícita, es '-' (Estimación eliminada)
+        insumoQuantity = '-';
+    }
+
+    return { code, label, insumoQuantity, pallets };
+  };
+
   return (
     <div className="lsm-modal">
       <div className="lsm-tab">Resumen</div>
       <div className="lsm-header">
         <strong>Resumen por Ubicación</strong>
-        <button className="lsm-closeBtn" onClick={() => onClose && onClose()}>Cerrar</button>
+        <button className="lsm-closeBtn" onClick={onClose}>Cerrar</button>
       </div>
 
       <div className="lsm-summaryTop">
@@ -118,59 +184,13 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
                 {visibleLocations && visibleLocations.length ? visibleLocations.map((loc, idx) => {
                   const cargas = loc.cargas || [];
 
-                  // helper para resolver tipo de insumo y cantidad por pallets
-                  const resolveInsumo = (c) => {
-                    const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
-                    const rawType = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString();
-                    const rawTypeUp = rawType.toUpperCase();
-
-                    let code = 'BV';
-                    let label = rawType ? rawType : 'N/A'; 
-                    let unitsPerPallet = BV_UNITS;
-
-                    if (rawTypeUp === '') {
-                        code = 'N/A';
-                    } else if (/ESQUIN/i.test(rawTypeUp) || /ESQ/i.test(rawTypeUp)) {
-                      code = 'E';
-                      label = 'Esquinero';
-                    } else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(rawTypeUp)) {
-                      code = 'B';
-                      label = 'Bandejón';
-                      unitsPerPallet = B_UNITS;
-                    } else if (/BANDEJA VERDE|BV/i.test(rawTypeUp)) {
-                      code = 'BV';
-                      label = 'B. Verde';
-                      unitsPerPallet = BV_UNITS;
-                    } else if (/BANDEJA BLAN|BB|BLANCA/i.test(rawTypeUp)) {
-                      code = 'BB';
-                      label = 'B. Blanca';
-                      unitsPerPallet = BV_UNITS; 
-                    } else if (/BANDEJA/i.test(rawTypeUp)) {
-                      code = 'BV';
-                      label = 'Bandeja';
-                      unitsPerPallet = BV_UNITS;
-                    }
-
-                    const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
-                    
-                    let insumoQuantity;
-
-                    if (code === 'N/A') {
-                        insumoQuantity = '-';
-                    } else if (explicitQty != null && !Number.isNaN(explicitQty)) {
-                        insumoQuantity = explicitQty;
-                    } else if (code === 'E') {
-                        insumoQuantity = pallets * E_PER_PALLET;
-                    } else {
-                        insumoQuantity = '-';
-                    }
-
-                    return { code, label, insumoQuantity, pallets };
-                  };
-
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
-                      {cargas.length ? cargas.map((c, j) => {
+                      {/* El filtro 'visibleLocations' asegura que cargas.length > 0, así que mapeamos directamente */}
+                      {cargas.map((c, j) => {
+                        // 🚨 CONTROL DE SEGURIDAD 3: Ignorar y saltar si la carga es nula/undefined
+                        if (!c) return null; 
+
                         const { label, insumoQuantity, pallets } = resolveInsumo(c);
                         const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
                         const entregaPallets = pallets || '-';
@@ -191,9 +211,7 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
                             <div className="lsm-col lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
                           </div>
                         );
-                      }) : (
-                        <div style={styles.matrixRow}><div className="lsm-col lsm-col-provider"><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
-                      )}
+                      })}
                     </div>
                   );
                 }) : (
