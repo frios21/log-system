@@ -3,6 +3,7 @@
   --lsm-bg:#ffffff;
   --lsm-accent:#1a73e8;
   --lsm-insumo:#9b1c1c;
+  --lsm-kilos:#0ea5a4;
   --lsm-entrega:#116530;
   --lsm-border:#e6e9ef;
   --lsm-muted:#666;
@@ -90,8 +91,15 @@
   margin: 0 auto; /* centrar dentro del panel */
 }
 .lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; position: sticky; top: 0; z-index: 2 }
+.lsm-col-label{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; vertical-align:middle }
+.label-insumo{ background: var(--lsm-insumo) }
+.label-entrega{ background: var(--lsm-entrega) }
+.label-kilos{ background: var(--lsm-kilos) }
 .lsm-matrixRow{ display:flex; padding:8px 10px; align-items:center; border-bottom:1px solid #fbfbfb; font-size:12px }
 .lsm-matrixRow:nth-child(even){ background:#fbfcfe }
+.lsm-row-assigned { border-left: 4px solid #f59e0b; }
+.lsm-row-done { border-left: 4px solid #10b981; background: rgba(16,185,129,0.03); }
+.lsm-row-draft { border-left: 4px solid transparent; }
 .lsm-proveedorName{ background:linear-gradient(90deg,#e6f7e6, #dff3df); padding:4px 10px; border-radius:8px; display:inline-block; font-weight:700; font-size:12px }
 
 .lsm-cell-left{ text-align:left }
