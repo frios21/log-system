@@ -149,9 +149,9 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
             <td>${escapeHtml(provider)}</td>
             <td>${escapeHtml(c.name || '')}</td>
             <td><span class="col-label label-insumo"></span>${escapeHtml(String(label))}</td>
-            <td style="text-align:right">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
-            <td style="text-align:right">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
-            <td style="text-align:right">${entregaPallets || '-'}</td>
+            <td style="text-align:left">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
+            <td style="text-align:left">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
+            <td style="text-align:left">${entregaPallets || '-'}</td>
           </tr>`;
         });
       });
