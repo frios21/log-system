@@ -559,7 +559,7 @@ export default function CargasList({ onBlockingChange }) {
                         )}
 
                         {/* Info: Cantidad / Pallets / Bandeja - Insumo qty */}
-                        <div className="text-small" style={{ marginTop: "10px" }}>
+                        <div className="text-small" style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
                             {/* Si estamos en modo edición grupal mostramos inputs para todos los campos */}
                             {editing && editing.editMode ? (
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
