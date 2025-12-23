@@ -148,7 +148,7 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
           rowsHtml += `<tr class="${rowClass}">
             <td>${escapeHtml(provider)}</td>
             <td>${escapeHtml(c.name || '')}</td>
-            <td style="text-align:left"><span class="col-label label-insumo"></span>${escapeHtml(String(label))}</td>
+            <td style="text-align:left">${escapeHtml(String(label))}</td>
             <td style="text-align:left">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
             <td style="text-align:left">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
             <td style="text-align:left">${entregaPallets || '-'}</td>
