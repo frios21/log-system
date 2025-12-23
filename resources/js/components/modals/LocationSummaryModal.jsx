@@ -125,9 +125,9 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
         .label-insumo{ background: #9b1c1c }
         .label-entrega{ background: #116530 }
         .label-kilos{ background: #0ea5a4 }
-        .row-assigned { border-left: 6px solid #f59e0b; }
+        .row-assigned { border-left: 6px solid #f59e0b; background: rgba(255, 248, 225, 1) }
         .row-done { border-left: 6px solid #10b981; background: rgba(16,185,129,0.03); }
-        .row-draft { border-left: 6px solid #9b1c1c; }
+        .row-draft { border-left: 6px solid #9b1c1c; background: rgba(255, 235, 238, 1); }
         @media print {
           @page { size: A4; margin: 12mm; }
           body { padding: 0; }
