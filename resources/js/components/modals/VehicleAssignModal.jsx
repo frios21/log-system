@@ -14,7 +14,7 @@ function m2oName(value) {
   return "";
 }
 
-export default function VehicleAssignModal({ ruta, onClose }) {
+export default function VehicleAssignModal({ ruta, onClose = () => {} }) {
   // ids/nombres desde ruta (Odoo)
   const rutaVehicleId = m2oId(ruta?.vehicle_id);
   const rutaVehicleName = m2oName(ruta?.vehicle_id);

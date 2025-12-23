@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 
 export default function ContactSelectModal({
-    onClose,
+    onClose = () => {},
     onSelect,
     contacts = [],
     loading = false,

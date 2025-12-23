@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export default function CargaDetailsModal({ carga, onClose }) {
+export default function CargaDetailsModal({ carga, onClose = () => {} }) {
     const [items, setItems] = useState(carga.lines || []);
     const [editingLineId, setEditingLineId] = useState(null);
     const [tempPallets, setTempPallets] = useState("");

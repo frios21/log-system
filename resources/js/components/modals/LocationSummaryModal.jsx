@@ -1,7 +1,7 @@
 import React from 'react';
 import './LocationSummaryModal.css';
 
-export default function LocationSummaryModal({ open, onClose, locations = [], loading = false }) {
+export default function LocationSummaryModal({ open, onClose = () => {}, locations = [], loading = false }) {
   if (!open) return null;
 
   const BV_UNITS = 240;
@@ -88,7 +88,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
       <div className="lsm-tab">Resumen</div>
       <div className="lsm-header">
         <strong>Resumen por Ubicación</strong>
-        <button className="lsm-closeBtn" onClick={onClose}>Cerrar</button>
+        <button className="lsm-closeBtn" onClick={() => onClose && onClose()}>Cerrar</button>
       </div>
 
       <div className="lsm-summaryTop">

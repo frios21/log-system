@@ -16,7 +16,7 @@ function parseWaypointsField(w) {
   return [];
 }
 
-export default function RouteConfirmModal({ open, onClose, onConfirm, ruta, targetStatus }) {
+export default function RouteConfirmModal({ open, onClose = () => {}, onConfirm, ruta, targetStatus }) {
   const [totalQnt, setTotalQnt] = useState(() =>
     ruta?.total_qnt != null
       ? Number(ruta.total_qnt)

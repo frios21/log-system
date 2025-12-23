@@ -16,7 +16,7 @@ function intVal(v) {
     return typeof v === "string" ? parseInt(v, 10) : v;
 }
 
-export default function RouteAssignModal({ ruta, onClose }) {
+export default function RouteAssignModal({ ruta, onClose = () => {} }) {
     const routeId = ruta?.id;
     const [routeDetails, setRouteDetails] = useState(ruta);
     const {
