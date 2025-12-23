@@ -95,12 +95,12 @@
 
 .label-assigned{ background: #f59e0b }
 .label-done{ background: #10b981 }
-.label-draft{ background: transparent; border: 1px solid #dd0e0e }
+.label-draft{ background: #dd0e0e }
 .lsm-matrixRow{ display:flex; padding:8px 10px; align-items:center; border-bottom:1px solid #fbfbfb; font-size:12px }
 .lsm-matrixRow:nth-child(even){ background:#fbfcfe }
 .lsm-row-assigned { border-left: 4px solid #f59e0b; }
 .lsm-row-done { border-left: 4px solid #10b981; background: rgba(16,185,129,0.03); }
-.lsm-row-draft { border-left: 4px solid transparent; }
+.lsm-row-draft { border-left: 4px solid #9b1c1c; }
 
 .lsm-legend{ display:flex; gap:12px; align-items:center; font-size:12px }
 .lsm-legend div{ display:flex; align-items:center; gap:6px; color:var(--lsm-muted) }

@@ -127,7 +127,7 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
         .label-kilos{ background: #0ea5a4 }
         .row-assigned { border-left: 6px solid #f59e0b; }
         .row-done { border-left: 6px solid #10b981; background: rgba(16,185,129,0.03); }
-        .row-draft { border-left: 6px solid transparent; }
+        .row-draft { border-left: 6px solid #9b1c1c; }
         @media print {
           @page { size: A4; margin: 12mm; }
           body { padding: 0; }
