@@ -197,7 +197,7 @@ export default function CargasList({ onBlockingChange }) {
     function stateColor(state) {
         switch (state) {
             case "draft":
-                return { background: "#ffebee", borderLeft: "5px solid #d32f2f" };
+                return { background: "#ffebeeff", borderLeft: "5px solid #d32f2f" };
             case "assigned":
                 return { background: "#fff8e1", borderLeft: "5px solid #f9a825" };
             case "done":
