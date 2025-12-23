@@ -14,10 +14,10 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
     if (!c) return 'draft';
     const s = (c.status || c.state || c.estado || '').toString().toLowerCase();
 
-    // lgica para sacar el estado
-    if (s === 'done') return 'done';
-    if (s === 'assigned') return 'assigned';
-    return 'draft';
+    // lógica para estados
+    if (s === 'done' || s === 'finalized' || s === 'finalizado') return 'done';
+    if (s === 'assigned' || s === 'asignado' || s === 'assigned_to' || c.assigned === true) return 'assigned';
+    return 'draft'; // default draft
   };
 
   const getChargeStatusColor = (status) => {
@@ -26,7 +26,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
     return 'lsm-row-draft';
   };
   
-  // calcular totales globales considerando todas las cargas
+  // calcular totales globales considerando TODAS las cargas
   const totals = locations.reduce((acc, loc) => {
     (loc.cargas || []).forEach(c => {
       const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
@@ -64,6 +64,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
 
 
       if (explicitQty != null && !Number.isNaN(explicitQty)) {
+        // Si hay cantidad explícita, se suma a su tipo
         if (typeCode === 'E') acc.e += explicitQty;
         else if (typeCode === 'B') acc.b += explicitQty;
         else if (typeCode === 'BV') acc.bv += explicitQty;
@@ -127,7 +128,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
 
                     let code = 'BV';
                     let label = rawType ? rawType : 'N/A'; 
-                    let unitsPerPallet = BV_UNITS; // Valor por defecto (no se usa para estimación aquí)
+                    let unitsPerPallet = BV_UNITS; // Valor por defecto (no se usa para estimación de bandejas)
 
                     if (rawTypeUp === '') {
                         code = 'N/A';
