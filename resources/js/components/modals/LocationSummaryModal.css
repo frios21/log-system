@@ -123,6 +123,9 @@
 .lsm-legend div{ display:flex; align-items:center; gap:6px; color:var(--lsm-muted) }
 .lsm-proveedorName{ padding:4px 10px; border-radius:8px; display:inline-block; font-weight:700; font-size:12px }
 
+/* Texto pequeño que muestra el filtro de fechas aplicado */
+.lsm-filterDates{ font-size:12px; color:#666; margin-top:6px }
+
 .lsm-cell-left{ text-align:left }
 
 /* Header highlights */

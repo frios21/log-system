@@ -1,7 +1,7 @@
 import React from 'react';
 import './LocationSummaryModal.css';
 
-export default function LocationSummaryModal({ open, onClose = () => {}, locations = [], loading = false }) {
+export default function LocationSummaryModal({ open, onClose = () => {}, locations = [], loading = false, startDate = '', endDate = '' }) {
   if (!open) return null;
 
   // capacidades por pallet
@@ -104,6 +104,33 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
     }
   };
 
+  // helper para formatear fechas de filtro (yyyy-mm-dd -> local)
+  const formatFilterDate = (raw) => {
+    if (!raw) return '';
+    try {
+      const [y, m, d] = raw.split('-').map(Number);
+      if (!y || !m || !d) return raw;
+      // Formatear como dd/mm/yyyy (con padding)
+      const dd = String(d).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      const yyyy = String(y);
+      return `${dd}/${mm}/${yyyy}`;
+    } catch (e) {
+      return raw;
+    }
+  };
+
+  const formattedStart = formatFilterDate(startDate);
+  const formattedEnd = formatFilterDate(endDate);
+  let dateRangeText = '';
+  if (formattedStart && formattedEnd) {
+    dateRangeText = `De ${formattedStart} hasta ${formattedEnd}`;
+  } else if (formattedStart) {
+    dateRangeText = `${formattedStart}`;
+  } else if (formattedEnd) {
+    dateRangeText = `${formattedEnd}`;
+  }
+
   const handlePrint = () => {
     try {
       const printCss = `
@@ -152,7 +179,10 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
 
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>Resumen por Ubicación</title><style>${printCss}</style></head><body>
         <div class="header">
-          <h2>Resumen por Ubicación</h2>
+          <div style="display:flex;flex-direction:column;">
+            <h2 style="margin:0;padding:0">Resumen por Ubicación</h2>
+            <div style="font-size:12px;color:#666;margin-top:6px">${dateRangeText || ''}</div>
+          </div>
           <div class="no-print">Generado: ${new Date().toLocaleString()}</div>
         </div>
         <div class="summary">

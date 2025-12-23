@@ -719,6 +719,8 @@ export default function CargasList({ onBlockingChange }) {
                     onClose={() => setShowSummary(false)}
                     locations={summaryLocations}
                     loading={summaryLoading}
+                    startDate={startDate}
+                    endDate={endDate}
                 />
             )}
 
