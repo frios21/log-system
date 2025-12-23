@@ -559,7 +559,7 @@ export default function CargasList({ onBlockingChange }) {
                         )}
 
                         {/* Info: Cantidad / Pallets / Bandeja - Insumo qty */}
-                        <div className="text-small" style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                        <div className="text-small" style={{ marginTop: "10px" }}>
                             {/* Si estamos en modo edición grupal mostramos inputs para todos los campos */}
                             {editing && editing.editMode ? (
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -642,14 +642,14 @@ export default function CargasList({ onBlockingChange }) {
                                     </span>
 
                                     {/* Bandeja - Insumo qty display */}
-                                    <span style={{ marginLeft: 12, color: '#374151' }}>
-                                        — Bandeja: <strong
-                                            style={{ cursor: 'pointer' }}
-                                            onDoubleClick={() => { enterGroupedEdit(carga, ['tipo_insumo','insumo_qty']); }}
+                                    <span style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                                        Bandeja: <strong
+                                            style={{ cursor: manual ? 'pointer' : 'default' }}
+                                            onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
                                         >{INSUMO_OPTIONS.find(o => o.value === carga.tipo_insumo)?.label || (carga.tipo_insumo || '-')}</strong>
                                         {" "}- Cantidad: <strong
-                                            style={{ cursor: 'pointer' }}
-                                            onDoubleClick={() => { enterGroupedEdit(carga, ['tipo_insumo','insumo_qty']); }}
+                                            style={{ cursor: manual ? 'pointer' : 'default' }}
+                                            onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
                                         >{carga.insumo_qty ?? '-'}</strong>
                                     </span>
 
