@@ -28,10 +28,8 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
   
   // calcular totales globales considerando TODAS las cargas
   const totals = locations.reduce((acc, loc) => {
-    // 🚨 CORRECCIÓN CRÍTICA: Ignorar si la UBICACIÓN es null/undefined
     if (!loc) return acc; 
 
-    // Usar encadenamiento opcional para mayor seguridad aunque ya revisamos loc
     (loc.cargas || []).forEach(c => {
       // Control de seguridad para cargas nulas/undefined
       if (!c) return; 
@@ -71,7 +69,6 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
 
 
       if (explicitQty != null && !Number.isNaN(explicitQty)) {
-        // Si hay cantidad explícita, se suma a su tipo
         if (typeCode === 'E') acc.e += explicitQty;
         else if (typeCode === 'B') acc.b += explicitQty;
         else if (typeCode === 'BV') acc.bv += explicitQty;
@@ -82,12 +79,12 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
       }
     });
     
-    return acc; // ¡Asegurarse de retornar el acumulador!
+    return acc;
   }, { pallets: 0, kilos: 0, bv: 0, bb: 0, b: 0, e: 0 });
 
   // preparar ubicaciones visibles (todas las que tienen cargas)
   const visibleLocations = (locations || [])
-    .filter(loc => loc) // Filtrar ubicaciones nulas/undefined de la lista
+    .filter(loc => loc)
     .map(loc => ({
       ...loc,
       cargas: (loc?.cargas || [])
@@ -98,7 +95,6 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
   const intFmt = new Intl.NumberFormat();
   const kiloFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
-  // safe close helper to avoid uncaught errors coming from parent onClose
   const safeClose = () => {
     try {
       onClose && onClose();
@@ -108,7 +104,6 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
     }
   };
 
-  // Print builder: creates HTML, opens new window, triggers print (supports multi-page)
   const handlePrint = () => {
     try {
       const printCss = `
@@ -135,7 +130,6 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
         }
       `;
 
-      // build rows
       let rowsHtml = '';
       visibleLocations.forEach(loc => {
         const provider = loc.name || '';
@@ -315,7 +309,6 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                       {cargas.length ? cargas.map((c, j) => {
-                        // Control de seguridad dentro del map
                         if (!c) return null; 
                         
                         const { label, insumoQuantity, pallets } = resolveInsumo(c);
