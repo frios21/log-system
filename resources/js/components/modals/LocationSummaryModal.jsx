@@ -121,6 +121,13 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
         th, td { padding: 8px 6px; border: 1px solid #e6e6e6; text-align: left; }
         thead { display: table-header-group; }
         tr { page-break-inside: avoid; }
+        .col-label{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; vertical-align:middle }
+        .label-insumo{ background: #9b1c1c }
+        .label-entrega{ background: #116530 }
+        .label-kilos{ background: #0ea5a4 }
+        .row-assigned { border-left: 6px solid #f59e0b; }
+        .row-done { border-left: 6px solid #10b981; background: rgba(16,185,129,0.03); }
+        .row-draft { border-left: 6px solid transparent; }
         @media print {
           @page { size: A4; margin: 12mm; }
           body { padding: 0; }
@@ -136,10 +143,12 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
           const { label, insumoQuantity, pallets } = resolveInsumo(c);
           const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || 0;
           const entregaPallets = pallets || 0;
-          rowsHtml += `<tr>
+          const status = getChargeStatus(c) || 'draft';
+          const rowClass = `row-${status}`;
+          rowsHtml += `<tr class="${rowClass}">
             <td>${escapeHtml(provider)}</td>
             <td>${escapeHtml(c.name || '')}</td>
-            <td>${escapeHtml(String(label))}</td>
+            <td><span class="col-label label-insumo"></span>${escapeHtml(String(label))}</td>
             <td style="text-align:right">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
             <td style="text-align:right">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
             <td style="text-align:right">${entregaPallets || '-'}</td>
@@ -276,6 +285,13 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
         <div>B (unidades): <strong>{intFmt.format(totals.b || 0)}</strong></div>
         <div>Esquineros: <strong>{intFmt.format(E_PER_PALLET*totals.pallets || 0)}</strong></div>
         <div>Kilos (aprox): <strong>{kiloFmt.format(totals.kilos || 0)} kg</strong></div>
+        <div style={{ marginLeft: 'auto' }}>
+          <div className="lsm-legend">
+            <div><span className="lsm-col-label label-assigned"/>Asignada</div>
+            <div><span className="lsm-col-label label-done"/>Finalizada</div>
+            <div><span className="lsm-col-label label-draft"/>Borrador</div>
+          </div>
+        </div>
       </div>
 
       <div className="lsm-content">
