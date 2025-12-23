@@ -641,17 +641,33 @@ export default function CargasList({ onBlockingChange }) {
                                         {carga.total_pallets}
                                     </span>
 
-                                    {/* Bandeja - Insumo qty display */}
-                                    <span style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
-                                        Bandeja: <strong
-                                            style={{ cursor: manual ? 'pointer' : 'default' }}
-                                            onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
-                                        >{INSUMO_OPTIONS.find(o => o.value === carga.tipo_insumo)?.label || (carga.tipo_insumo || '-')}</strong>
-                                        {" "}- Cantidad: <strong
-                                            style={{ cursor: manual ? 'pointer' : 'default' }}
-                                            onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
-                                        >{carga.insumo_qty ?? '-'}</strong>
-                                    </span>
+                                    {/* Bandeja - Insumo qty display (right-aligned, placeholders replaced by values) */}
+                                    <div style={{ textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                                        {/* compute short label if available */}
+                                        {(() => {
+                                            const tipoLabel = INSUMO_OPTIONS.find(o => o.value === carga.tipo_insumo)?.label || null;
+                                            const left = tipoLabel || (carga.tipo_insumo ? carga.tipo_insumo : 'Bandeja');
+                                            const right = (carga.insumo_qty != null && carga.insumo_qty !== '') ? String(carga.insumo_qty) : 'Cantidad';
+                                            return (
+                                                <>
+                                                    <span
+                                                        style={{ cursor: 'pointer', fontWeight: 600 }}
+                                                        onDoubleClick={() => { enterGroupedEdit(carga, ['tipo_insumo','insumo_qty']); }}
+                                                        title={tipoLabel ? (carga.tipo_insumo || tipoLabel) : undefined}
+                                                    >
+                                                        {left}
+                                                    </span>
+                                                    {" - "}
+                                                    <span
+                                                        style={{ cursor: 'pointer', fontWeight: 600 }}
+                                                        onDoubleClick={() => { enterGroupedEdit(carga, ['tipo_insumo','insumo_qty']); }}
+                                                    >
+                                                        {right}
+                                                    </span>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
 
                                     {inlineStatus[carga.id] && (
                                         <span
