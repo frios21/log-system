@@ -122,7 +122,7 @@
 
 .lsm-legend{ display:flex; gap:12px; align-items:center; font-size:12px }
 .lsm-legend div{ display:flex; align-items:center; gap:6px; color:var(--lsm-muted) }
-.lsm-proveedorName{ background:linear-gradient(90deg,#e6f7e6, #dff3df); padding:4px 10px; border-radius:8px; display:inline-block; font-weight:700; font-size:12px }
+.lsm-proveedorName{ padding:4px 10px; border-radius:8px; display:inline-block; font-weight:700; font-size:12px }
 
 .lsm-cell-left{ text-align:left }
 
