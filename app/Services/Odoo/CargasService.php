@@ -18,8 +18,8 @@ class CargasService
             'logistics.load',
             [],
             [
-                'name', 'vendor_name', 'total_pallets', 'total_quantity',
-                'state', 'date', 'destino', 'priority', 'fleet_assigned',
+                'name', 'vendor_name', 'total_pallets', 'total_quantity','tipo_insumo',
+                'insumo_qty','state', 'date', 'destino', 'priority', 'fleet_assigned', 
             ]
         );
     }
@@ -37,11 +37,13 @@ class CargasService
                 'destino',
                 'date',
                 'total_quantity',
+                'tipo_insumo',
+                'insumo_qty',
                 'total_pallets',
                 'total_cost',
                 'state',
                 'line_ids',
-                'partner', // nuevo campo JSON en Odoo
+                'partner',
             ],
             1
         );
@@ -146,10 +148,12 @@ class CargasService
                 'date',
                 'total_quantity',
                 'total_pallets',
+                'tipo_insumo',
+                'insumo_qty',
                 'total_cost',
                 'state',
                 'line_ids',
-                'partner', // snapshot JSON del partner en Odoo
+                'partner',
             ]
         );
 
@@ -210,7 +214,7 @@ class CargasService
     public function updateSimpleFields(int $id, array $fields): void
     {
         // No tocamos vendor_id aquí para evitar problemas con IDs de Odoo 16.
-        $allowed = ['name', 'vendor_name', 'total_quantity', 'total_pallets', 'date'];
+        $allowed = ['name', 'vendor_name', 'total_quantity','tipo_insumo','insumo_qty', 'total_pallets', 'date'];
         $vals = [];
 
         foreach ($allowed as $key) {

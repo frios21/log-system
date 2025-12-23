@@ -115,6 +115,68 @@ export default function CargasList({ onBlockingChange }) {
         }
     }
 
+    // Opciones para tipo_insumo
+    const INSUMO_OPTIONS = [
+        { value: 'Bandeja Verde', label: 'B. Verde' },
+        { value: 'Bandeja Blanca', label: 'B. Blanca' },
+        { value: 'Bandejón', label: 'Bandejón' },
+    ];
+
+    // fieldsToEdit: array of field keys to edit; if omitted, edit all main fields
+    function enterGroupedEdit(carga, fieldsToEdit = null) {
+        const id = carga.id;
+        const defaultPayload = {
+            editMode: true,
+            total_quantity: carga.total_quantity ?? 0,
+            total_pallets: carga.total_pallets ?? 0,
+            tipo_insumo: carga.tipo_insumo ?? '',
+            insumo_qty: carga.insumo_qty ?? 0,
+        };
+        const payload = { ...defaultPayload };
+        if (Array.isArray(fieldsToEdit) && fieldsToEdit.length > 0) {
+            payload.editFields = fieldsToEdit;
+            // prune values not requested? keep values but UI will only show requested fields
+        }
+
+        setEditingManualFields(prev => ({
+            ...prev,
+            [id]: payload
+        }));
+    }
+
+    async function saveGroupedEdit(id) {
+        const payload = editingManualFields[id];
+        if (!payload) return;
+
+        const fields = Array.isArray(payload.editFields) && payload.editFields.length ? payload.editFields : ['total_quantity', 'total_pallets', 'tipo_insumo', 'insumo_qty'];
+
+        const patch = {};
+        if (fields.includes('total_quantity') && payload.total_quantity != null) patch.total_quantity = Number(payload.total_quantity) || 0;
+        if (fields.includes('total_pallets') && payload.total_pallets != null) patch.total_pallets = Number(payload.total_pallets) || 0;
+        if (fields.includes('tipo_insumo') && payload.tipo_insumo != null) patch.tipo_insumo = payload.tipo_insumo || null;
+        if (fields.includes('insumo_qty') && payload.insumo_qty != null) patch.insumo_qty = Number(payload.insumo_qty) || 0;
+
+        try {
+            await updateManualCarga(id, patch);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setEditingManualFields(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+        }
+    }
+
+    function cancelGroupedEdit(id) {
+        setEditingManualFields(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+    }
+
     useEffect(() => {
         function handleRefresh() { loadData(); }
         window.addEventListener("cargas-refresh", handleRefresh);
@@ -496,118 +558,119 @@ export default function CargasList({ onBlockingChange }) {
                             </div>
                         )}
 
-                        {/* Info */}
+                        {/* Info: Cantidad / Pallets / Bandeja - Insumo qty */}
                         <div className="text-small" style={{ marginTop: "10px" }}>
-                            Cantidad: {" "}
-                            {manual && editing.qty ? (
-                                <input
-                                    autoFocus
-                                    type="number"
-                                    min={0}
-                                    defaultValue={carga.total_quantity ?? 0}
-                                    onFocus={e => e.target.select()}
-                                    onBlur={async (e) => {
-                                        const value = e.target.value;
-                                        setEditingManualFields(prev => ({
-                                            ...prev,
-                                            [carga.id]: { ...(prev[carga.id] || {}), qty: false },
-                                        }));
-                                        if (value === "") return;
-                                        const num = Number(value);
-                                        if (Number.isNaN(num) || num < 0) return;
-                                        await updateManualCarga(carga.id, { total_quantity: num });
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.currentTarget.blur();
-                                        }
-                                        if (e.key === "Escape") {
-                                            e.preventDefault();
-                                            setEditingManualFields(prev => ({
-                                                ...prev,
-                                                [carga.id]: { ...(prev[carga.id] || {}), qty: false },
-                                            }));
-                                        }
-                                    }}
-                                    style={{ width: 80, padding: 2 }}
-                                />
+                            {/* Si estamos en modo edición grupal mostramos inputs para todos los campos */}
+                            {editing && editing.editMode ? (
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    {(!editing.editFields || editing.editFields.includes('total_quantity')) && (
+                                    <div>
+                                        <div style={{ fontSize: 11, color: '#6b7280' }}>Cantidad (kg)</div>
+                                        <input
+                                            autoFocus
+                                            type="number"
+                                            min={0}
+                                            value={editing.total_quantity}
+                                            onChange={e => setEditingManualFields(prev => ({ ...prev, [carga.id]: { ...prev[carga.id], total_quantity: e.target.value } }))}
+                                            style={{ width: 100, padding: 4 }}
+                                        />
+                                    </div>
+                                    )}
+
+                                    {(!editing.editFields || editing.editFields.includes('total_pallets')) && (
+                                    <div>
+                                        <div style={{ fontSize: 11, color: '#6b7280' }}>Pallets</div>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            value={editing.total_pallets}
+                                            onChange={e => setEditingManualFields(prev => ({ ...prev, [carga.id]: { ...prev[carga.id], total_pallets: e.target.value } }))}
+                                            style={{ width: 80, padding: 4 }}
+                                        />
+                                    </div>
+                                    )}
+
+                                    {(!editing.editFields || editing.editFields.includes('tipo_insumo')) && (
+                                    <div>
+                                        <div style={{ fontSize: 11, color: '#6b7280' }}>Bandeja</div>
+                                        <select
+                                            value={editing.tipo_insumo || ''}
+                                            onChange={e => setEditingManualFields(prev => ({ ...prev, [carga.id]: { ...prev[carga.id], tipo_insumo: e.target.value } }))}
+                                            style={{ padding: 4 }}
+                                        >
+                                            <option value="">(sin especificar)</option>
+                                            {INSUMO_OPTIONS.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    )}
+
+                                    {(!editing.editFields || editing.editFields.includes('insumo_qty')) && (
+                                    <div>
+                                        <div style={{ fontSize: 11, color: '#6b7280' }}>Cantidad insumo</div>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            value={editing.insumo_qty}
+                                            onChange={e => setEditingManualFields(prev => ({ ...prev, [carga.id]: { ...prev[carga.id], insumo_qty: e.target.value } }))}
+                                            style={{ width: 100, padding: 4 }}
+                                        />
+                                    </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        <button className="btn btn-primary" onClick={() => saveGroupedEdit(carga.id)}>Guardar</button>
+                                        <button className="btn" onClick={() => cancelGroupedEdit(carga.id)}>Cancelar</button>
+                                    </div>
+                                </div>
                             ) : (
-                                <span
-                                    style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
-                                    onDoubleClick={() => {
-                                        if (!manual) return;
-                                        setEditingManualFields(prev => ({
-                                            ...prev,
-                                            [carga.id]: { ...(prev[carga.id] || {}), qty: true },
-                                        }));
-                                    }}
-                                >
-                                    {carga.total_quantity} kg
-                                </span>
-                            )}
-                            {" "}— Pallets:{" "}
-                            {manual && editing.pallets ? (
-                                <input
-                                    autoFocus
-                                    type="number"
-                                    min={0}
-                                    defaultValue={carga.total_pallets ?? 0}
-                                    onFocus={e => e.target.select()}
-                                    onBlur={async (e) => {
-                                        const value = e.target.value;
-                                        setEditingManualFields(prev => ({
-                                            ...prev,
-                                            [carga.id]: { ...(prev[carga.id] || {}), pallets: false },
-                                        }));
-                                        if (value === "") return;
-                                        const num = Number(value);
-                                        if (Number.isNaN(num) || num < 0) return;
-                                        await updateManualCarga(carga.id, { total_pallets: num });
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.currentTarget.blur();
-                                        }
-                                        if (e.key === "Escape") {
-                                            e.preventDefault();
-                                            setEditingManualFields(prev => ({
-                                                ...prev,
-                                                [carga.id]: { ...(prev[carga.id] || {}), pallets: false },
-                                            }));
-                                        }
-                                    }}
-                                    style={{ width: 70, padding: 2, marginLeft: 4 }}
-                                />
-                            ) : (
-                                <span
-                                    style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
-                                    onDoubleClick={() => {
-                                        if (!manual) return;
-                                        setEditingManualFields(prev => ({
-                                            ...prev,
-                                            [carga.id]: { ...(prev[carga.id] || {}), pallets: true },
-                                        }));
-                                    }}
-                                >
-                                    {carga.total_pallets}
-                                </span>
-                            )}
-                            {inlineStatus[carga.id] && (
-                                <span
-                                    style={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: "50%",
-                                        marginLeft: 6,
-                                        display: "inline-block",
-                                        background:
-                                            inlineStatus[carga.id] === 'success'
-                                                ? "#22c55e"
-                                                : inlineStatus[carga.id] === 'error'
-                                                    ? "#ef4444"
-                                                    : "#9ca3af",
-                                    }}
-                                />
+                                <>
+                                    Cantidad: {" "}
+                                    <span
+                                        style={{ fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                        onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
+                                    >
+                                        {carga.total_quantity} kg
+                                    </span>
+                                    {" "}- Pallets: {" "}
+                                    <span
+                                        style={{ marginLeft: 4, fontWeight: 600, cursor: manual ? "pointer" : "default" }}
+                                        onDoubleClick={() => { if (!manual) return; enterGroupedEdit(carga); }}
+                                    >
+                                        {carga.total_pallets}
+                                    </span>
+
+                                    {/* Bandeja - Insumo qty display */}
+                                    <span style={{ marginLeft: 12, color: '#374151' }}>
+                                        — Bandeja: <strong
+                                            style={{ cursor: 'pointer' }}
+                                            onDoubleClick={() => { enterGroupedEdit(carga, ['tipo_insumo','insumo_qty']); }}
+                                        >{INSUMO_OPTIONS.find(o => o.value === carga.tipo_insumo)?.label || (carga.tipo_insumo || '-')}</strong>
+                                        {" "}- Cantidad: <strong
+                                            style={{ cursor: 'pointer' }}
+                                            onDoubleClick={() => { enterGroupedEdit(carga, ['tipo_insumo','insumo_qty']); }}
+                                        >{carga.insumo_qty ?? '-'}</strong>
+                                    </span>
+
+                                    {inlineStatus[carga.id] && (
+                                        <span
+                                            style={{
+                                                width: 10,
+                                                height: 10,
+                                                borderRadius: "50%",
+                                                marginLeft: 6,
+                                                display: "inline-block",
+                                                background:
+                                                    inlineStatus[carga.id] === 'success'
+                                                        ? "#22c55e"
+                                                        : inlineStatus[carga.id] === 'error'
+                                                            ? "#ef4444"
+                                                            : "#9ca3af",
+                                            }}
+                                        />
+                                    )}
+                                </>
                             )}
                         </div>
 
