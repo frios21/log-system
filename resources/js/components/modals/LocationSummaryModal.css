@@ -109,15 +109,15 @@
 .lsm-matrixRow:nth-child(even){ background:#fbfcfe }
 .lsm-row-assigned {
   border-left: 6px solid #f59e0b;
-  background: rgba(2255, 248, 225, 0.06); /* pastel amber */
+  background: rgba(225, 248, 225, 1); /* pastel amber */
 }
 .lsm-row-done {
   border-left: 6px solid #10b981;
-  background: rgba(232, 245, 233,0.06); /* pastel green */
+  background: rgba(232, 245, 233, 1); /* pastel green */
 }
 .lsm-row-draft {
   border-left: 6px solid #dd0e0e;
-  background: rgba(255, 235, 238,0.04); /* pastel red */
+  background: rgba(255, 235, 238, 1); /* pastel red */
 }
 
 .lsm-legend{ display:flex; gap:12px; align-items:center; font-size:12px }
