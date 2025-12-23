@@ -4,20 +4,18 @@ import './LocationSummaryModal.css';
 export default function LocationSummaryModal({ open, onClose, locations = [], loading = false }) {
   if (!open) return null;
 
-  // capacidades por pallet
-  const BV_UNITS = 240; // bandejas verdes/blancas
-  const B_UNITS = 75;   // bandejones
-  const E_PER_PALLET = 4; // esquineros por pallet
+  const BV_UNITS = 240;
+  const B_UNITS = 75;
+  const E_PER_PALLET = 4;
 
   // HELPER para determinar el estado de la carga
   const getChargeStatus = (c) => {
     if (!c) return 'draft';
     const s = (c.status || c.state || c.estado || '').toString().toLowerCase();
 
-    // lógica para estados
     if (s === 'done' || s === 'finalized' || s === 'finalizado') return 'done';
     if (s === 'assigned' || s === 'asignado' || s === 'assigned_to' || c.assigned === true) return 'assigned';
-    return 'draft'; // default draft
+    return 'draft';
   };
 
   const getChargeStatusColor = (status) => {
@@ -128,7 +126,7 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
 
                     let code = 'BV';
                     let label = rawType ? rawType : 'N/A'; 
-                    let unitsPerPallet = BV_UNITS; // Valor por defecto (no se usa para estimación de bandejas)
+                    let unitsPerPallet = BV_UNITS;
 
                     if (rawTypeUp === '') {
                         code = 'N/A';
