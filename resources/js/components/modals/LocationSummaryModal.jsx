@@ -326,16 +326,16 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
                         
                         return (
                           <div key={(c.id || j)} className={`lsm-matrixRow ${rowClass}`}>
-                            <div className="lsm-col lsm-col-provider" title={loc.name}>
+                            <div className="lsm-col-provider" title={loc.name}>
                                 {j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}
                             </div>
-                            <div className="lsm-col lsm-col-carga" title={c.name}>{c.name}</div>
-                            <div className="lsm-col lsm-col-insumo lsm-cell-left">{label}</div>
-                            <div className="lsm-col lsm-col-insumoQty lsm-cell-left">
+                            <div className="lsm-col-carga" title={c.name}>{c.name}</div>
+                            <div className="lsm-col-insumo lsm-cell-left">{label}</div>
+                            <div className="lsm-col-insumoQty lsm-cell-left">
                                 {insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : insumoQuantity}
                             </div>
-                            <div className="lsm-col lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
-                            <div className="lsm-col lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
+                            <div className="lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
+                            <div className="lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
                           </div>
                         );
                       }) : (
