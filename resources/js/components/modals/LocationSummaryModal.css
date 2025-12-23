@@ -102,15 +102,21 @@
 
 /* Column sizes */
 .lsm-col{ padding-right:8px; padding-left:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.lsm-col-provider{ min-width:360px; width:360px; max-width:480px }
+.lsm-col-provider{ min-width:360px; width:360px; max-width:480px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .lsm-col-carga{ min-width:220px; width:220px }
 .lsm-col-insumo{ min-width:120px; width:120px }
 .lsm-col-insumoQty{ min-width:120px; width:120px }
 .lsm-col-kilos{ min-width:120px; width:120px }
 .lsm-col-pallets{ min-width:100px; width:100px }
 
-/* Ajustes para evitar saltos de línea y mostrar el nombre del proveedor en una línea */
-.lsm-col-provider .lsm-proveedorName, .lsm-col-provider { white-space:nowrap; overflow:visible }
+/* Ajustes para truncar el nombre del proveedor con ellipsis en una sola línea */
+.lsm-col-provider .lsm-proveedorName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
 
 /* Footer (kept minimal) */
 .lsm-footer{ padding:12px; border-top:1px solid var(--lsm-border); display:flex; justify-content:flex-end }
