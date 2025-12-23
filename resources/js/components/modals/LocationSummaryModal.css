@@ -91,15 +91,24 @@
   margin: 0 auto; /* centrar dentro del panel */
 }
 .lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; justify-content:flex-start; position: sticky; top: 0; z-index: 2 }
-.lsm-matrixHeader .lsm-col { text-align: left; display: flex; align-items: center; justify-content: flex-start; }
+.lsm-matrixHeader .lsm-col { text-align: left !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
 
 /* Force left alignment for specific header highlight columns (ensure not centered by other rules) */
 .lsm-insumoHeader, .lsm-entregaHeader, .lsm-col-insumo, .lsm-col-insumoQty, .lsm-col-kilos, .lsm-col-pallets {
-  text-align: left;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  text-align: left !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
 }
+
+/* More specific: force children alignment and remove any centering on nested elements */
+.lsm-matrixHeader > .lsm-col, .lsm-matrixHeader > .lsm-col * {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+}
+
+.lsm-matrixHeader .lsm-col-label { margin-left: 0 !important; margin-right: 8px !important; }
 .lsm-col-label{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; vertical-align:middle }
 
 .label-assigned{ background: #f59e0b }
