@@ -92,12 +92,10 @@
 }
 .lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; position: sticky; top: 0; z-index: 2 }
 .lsm-col-label{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; vertical-align:middle }
-.label-insumo{ background: var(--lsm-insumo) }
-.label-entrega{ background: var(--lsm-entrega) }
-.label-kilos{ background: var(--lsm-kilos) }
+
 .label-assigned{ background: #f59e0b }
 .label-done{ background: #10b981 }
-.label-draft{ background: transparent; border: 1px solid #e6e9ef }
+.label-draft{ background: transparent; border: 1px solid #dd0e0e }
 .lsm-matrixRow{ display:flex; padding:8px 10px; align-items:center; border-bottom:1px solid #fbfbfb; font-size:12px }
 .lsm-matrixRow:nth-child(even){ background:#fbfcfe }
 .lsm-row-assigned { border-left: 4px solid #f59e0b; }
