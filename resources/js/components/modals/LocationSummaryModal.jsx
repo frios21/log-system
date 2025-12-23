@@ -289,7 +289,7 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
           <div className="lsm-legend">
             <div><span className="lsm-col-label label-assigned"/>Asignada</div>
             <div><span className="lsm-col-label label-done"/>Finalizada</div>
-            <div><span className="lsm-col-label label-draft"/>Borrador</div>
+            <div><span className="lsm-col-label label-draft"/>Pendiente</div>
           </div>
         </div>
       </div>
