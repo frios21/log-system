@@ -28,6 +28,10 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
   
   // calcular totales globales considerando TODAS las cargas
   const totals = locations.reduce((acc, loc) => {
+    // 🚨 CORRECCIÓN CRÍTICA: Ignorar si la UBICACIÓN es null/undefined
+    if (!loc) return acc; 
+
+    // Usar encadenamiento opcional para mayor seguridad aunque ya revisamos loc
     (loc.cargas || []).forEach(c => {
       // Control de seguridad para cargas nulas/undefined
       if (!c) return; 
@@ -40,9 +44,9 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
       const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
       const tipoRaw = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString().toUpperCase();
 
-      // decide type code: 'E' (esquinero), 'B' (bandejón), 'BV' (bandeja verde), 'BB' (bandeja blanca)
+      // decide type code
       let typeCode = 'BV'; 
-      let unitsPerPallet = BV_UNITS; // Valor por defecto
+      let unitsPerPallet = BV_UNITS; 
       
       if (tipoRaw === '') typeCode = 'N/A';
       else if (/ESQUIN/i.test(tipoRaw) || /ESQ/i.test(tipoRaw)) {
@@ -73,24 +77,28 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
         else if (typeCode === 'BV') acc.bv += explicitQty;
         else if (typeCode === 'BB') acc.bb += explicitQty; 
       } else {
-        // Estimar solo Esquineros. Bandejas/Bandejones se dejan en 0 a menos que tengan explicitQty.
+        // Estimar solo Esquineros.
         if (typeCode === 'E') acc.e += pallets * E_PER_PALLET;
       }
     });
+    
+    return acc; // ¡Asegurarse de retornar el acumulador!
   }, { pallets: 0, kilos: 0, bv: 0, bb: 0, b: 0, e: 0 });
 
   // preparar ubicaciones visibles (todas las que tienen cargas)
-  const visibleLocations = (locations || []).map(loc => ({
-    // Control de seguridad para ubicaciones nulas/undefined
-    ...loc, 
-    cargas: (loc?.cargas || [])
-  })).filter(loc => (loc.cargas || []).length > 0);
+  const visibleLocations = (locations || [])
+    .filter(loc => loc) // Filtrar ubicaciones nulas/undefined de la lista
+    .map(loc => ({
+      ...loc,
+      cargas: (loc?.cargas || [])
+    }))
+    .filter(loc => (loc.cargas || []).length > 0);
 
   // formateadores numéricos
   const intFmt = new Intl.NumberFormat();
   const kiloFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
-  // helper para resolver tipo de insumo y cantidad por pallets (movido fuera de map para evitar redefiniciones)
+  // helper para resolver tipo de insumo y cantidad por pallets
   const resolveInsumo = (c) => {
     // Control de seguridad adicional
     if (!c) return { code: 'N/A', label: 'Error de Carga', insumoQuantity: '-', pallets: 0 };
