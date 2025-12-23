@@ -301,12 +301,12 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
             <div style={styles.matrixWrap}>
               <div className="lsm-matrixTable">
                 <div className="lsm-matrixHeader">
-                  <div className="lsm-col lsm-col-provider">Proveedor</div>
-                  <div className="lsm-col lsm-col-carga">Carga</div>
-                  <div className="lsm-col lsm-col-insumo lsm-insumoHeader lsm-cell-left"><span className="lsm-col-label label-insumo"></span>Insumo (Tipo)</div>
-                  <div className="lsm-col lsm-col-insumoQty lsm-insumoHeader lsm-cell-left"><span className="lsm-col-label label-insumo"></span>Insumo (Cantidad)</div>
-                  <div className="lsm-col lsm-col-kilos lsm-entregaHeader lsm-cell-left"><span className="lsm-col-label label-kilos"></span>Entrega (Kilos)</div>
-                  <div className="lsm-col lsm-col-pallets lsm-entregaHeader lsm-cell-left"><span className="lsm-col-label label-entrega"></span>Entrega (Pallets)</div>
+                  <div className="lsm-col-provider">Proveedor</div>
+                  <div className="lsm-col-carga">Carga</div>
+                  <div className="lsm-col-insumo lsm-insumoHeader lsm-cell-left"><span className="lsm-col-label label-insumo"></span>Insumo<br/>(Tipo)</div>
+                  <div className="lsm-col-insumoQty lsm-insumoHeader lsm-cell-left"><span className="lsm-col-label label-insumo"></span>Insumo (Cantidad)</div>
+                  <div className="lsm-col-kilos lsm-entregaHeader lsm-cell-left"><span className="lsm-col-label label-kilos"></span>Entrega<br/>(Kilos)</div>
+                  <div className="lsm-col-pallets lsm-entregaHeader lsm-cell-left"><span className="lsm-col-label label-entrega"></span>Entrega (Pallets)</div>
                 </div>
 
                 {visibleLocations && visibleLocations.length ? visibleLocations.map((loc, idx) => {
