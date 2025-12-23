@@ -25,9 +25,29 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
       const kilos = Number(c.total_quantity ?? 0) || 0;
       acc.pallets += pallets;
       acc.kilos += kilos;
-      acc.bv += pallets * BV_UNITS;
-      acc.b += pallets * B_UNITS;
-      acc.e += pallets * E_PER_PALLET;
+
+      // Prefer explicit insumo_qty and tipo_insumo when available. If insumo_qty
+      // is provided, add it to the matching type total. Otherwise, estimate
+      // from pallets * unitsPerPallet using heuristics or defaults.
+      const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
+      const tipoRaw = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString().toUpperCase();
+
+      // decide type code: 'E' (esquinero), 'B' (bandejón), 'BV' (bandeja verde/blanca)
+      let typeCode = 'BV';
+      if (/ESQUIN/i.test(tipoRaw) || /ESQ/i.test(tipoRaw)) typeCode = 'E';
+      else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(tipoRaw) || /BANDEJON/i.test(tipoRaw)) typeCode = 'B';
+      else if (/BANDEJA|BV|BANDEJA VERDE|BANDEJA BLAN/i.test(tipoRaw)) typeCode = 'BV';
+
+      if (explicitQty != null && !Number.isNaN(explicitQty)) {
+        if (typeCode === 'E') acc.e += explicitQty;
+        else if (typeCode === 'B') acc.b += explicitQty;
+        else acc.bv += explicitQty;
+      } else {
+        // estimate from pallets
+        if (typeCode === 'E') acc.e += pallets * E_PER_PALLET;
+        else if (typeCode === 'B') acc.b += pallets * B_UNITS;
+        else acc.bv += pallets * BV_UNITS;
+      }
     });
     return acc;
   }, { pallets: 0, kilos: 0, bv: 0, b: 0, e: 0 });
@@ -79,33 +99,45 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
                   // helper para resolver tipo de insumo y cantidad por pallets
                   const resolveInsumo = (c) => {
                     const pallets = Number(c.total_pallets ?? c.pallets ?? 0) || 0;
-                    // prefer explicit type fields, fallback to name heuristics
-                    const rawType = (c.insumo_type || c.tipo || c.insumo || c.name || '').toString().toUpperCase();
-                    let type = 'BV';
-                    if (/ESQUIN/i.test(rawType) || /ESQ/i.test(rawType)) type = 'E';
-                    else if (/BANDEJON|BANDJ|B-?B|BB/i.test(rawType) || /BANDEJA ARANDANERA/i.test(rawType)) type = 'B';
-                    else if (/BANDEJA|BV|BANDEJA VERDE|BANDEJA BLAN/i.test(rawType)) type = 'BV';
+                    // Prefer explicit tipo_insumo if present, else fall back to heuristics
+                    const rawType = (c.tipo_insumo || c.insumo_type || c.tipo || c.insumo || c.name || '').toString();
+                    const rawTypeUp = rawType.toUpperCase();
 
-                    let unitsPerPallet = BV_UNITS;
-                    if (type === 'B') unitsPerPallet = B_UNITS;
-                    if (type === 'E') unitsPerPallet = E_PER_PALLET;
+                    // Map to short labels and internal codes
+                    let code = 'BV';
+                    let label = rawType ? rawType : 'Bandeja';
+                    if (/ESQUIN/i.test(rawTypeUp) || /ESQ/i.test(rawTypeUp)) {
+                      code = 'E';
+                      label = 'Esquinero';
+                    } else if (/BANDEJON|BANDJ|B-?J|BANDEJON/i.test(rawTypeUp)) {
+                      code = 'B';
+                      label = 'Bandejón';
+                    } else if (/BANDEJA|BV|BANDEJA VERDE|BANDEJA BLAN/i.test(rawTypeUp)) {
+                      code = 'BV';
+                      if (/BLAN/i.test(rawTypeUp)) label = 'B. Blanca';
+                      else if (/VERDE|BV/i.test(rawTypeUp)) label = 'B. Verde';
+                      else label = 'Bandeja';
+                    }
 
-                    const insumoQuantity = pallets * unitsPerPallet;
-                    return { type, insumoQuantity, pallets };
+                    // If explicit insumo_qty provided, use it. Else estimate from pallets.
+                    const explicitQty = (c.insumo_qty != null && c.insumo_qty !== '') ? Number(c.insumo_qty) : null;
+                    const insumoQuantity = (explicitQty != null && !Number.isNaN(explicitQty)) ? explicitQty : (pallets * (code === 'E' ? E_PER_PALLET : code === 'B' ? B_UNITS : BV_UNITS));
+
+                    return { code, label, insumoQuantity, pallets };
                   };
 
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                       {cargas.length ? cargas.map((c, j) => {
-                        const { type, insumoQuantity, pallets } = resolveInsumo(c);
+                        const { code, label, insumoQuantity, pallets } = resolveInsumo(c);
                         const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
                         const entregaPallets = pallets || '-';
                         return (
                           <div key={(c.id || j)} className="lsm-matrixRow">
                             <div className="lsm-col lsm-col-provider" title={loc.name}>{j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}</div>
                             <div className="lsm-col lsm-col-carga" title={c.name}>{c.name}</div>
-                            <div className="lsm-col lsm-col-insumo lsm-cell-left">{type}</div>
-                            <div className="lsm-col lsm-col-insumoQty lsm-cell-left">{insumoQuantity || '-'}</div>
+                            <div className="lsm-col lsm-col-insumo lsm-cell-left">{label}</div>
+                            <div className="lsm-col lsm-col-insumoQty lsm-cell-left">{insumoQuantity != null ? intFmt.format(insumoQuantity) : '-'}</div>
                             <div className="lsm-col lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
                             <div className="lsm-col lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
                           </div>
