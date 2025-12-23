@@ -91,24 +91,15 @@
   margin: 0 auto; /* centrar dentro del panel */
 }
 .lsm-matrixHeader{ display:flex; padding:10px 12px; background:#f7f9fb; font-weight:700; color:#333; align-items:center; justify-content:flex-start; position: sticky; top: 0; z-index: 2 }
-.lsm-matrixHeader .lsm-col { text-align: left !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
+.lsm-matrixHeader .lsm-col { text-align: left; display: flex; align-items: center; justify-content: flex-start; }
 
 /* Force left alignment for specific header highlight columns (ensure not centered by other rules) */
 .lsm-insumoHeader, .lsm-entregaHeader, .lsm-col-insumo, .lsm-col-insumoQty, .lsm-col-kilos, .lsm-col-pallets {
-  text-align: left !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
-
-/* More specific: force children alignment and remove any centering on nested elements */
-.lsm-matrixHeader > .lsm-col, .lsm-matrixHeader > .lsm-col * {
-  text-align: left !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-}
-
-.lsm-matrixHeader .lsm-col-label { margin-left: 0 !important; margin-right: 8px !important; }
 .lsm-col-label{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; vertical-align:middle }
 
 .label-assigned{ background: #f59e0b }
@@ -116,9 +107,18 @@
 .label-draft{ background: #dd0e0e }
 .lsm-matrixRow{ display:flex; padding:8px 10px; align-items:center; border-bottom:1px solid #fbfbfb; font-size:12px }
 .lsm-matrixRow:nth-child(even){ background:#fbfcfe }
-.lsm-row-assigned { border-left: 4px solid #f59e0b; }
-.lsm-row-done { border-left: 4px solid #10b981; background: rgba(16,185,129,0.03); }
-.lsm-row-draft { border-left: 4px solid #dd0e0e; }
+.lsm-row-assigned {
+  border-left: 6px solid #f59e0b;
+  background: rgba(245,158,11,0.06); /* pastel amber */
+}
+.lsm-row-done {
+  border-left: 6px solid #10b981;
+  background: rgba(16,185,129,0.06); /* pastel green */
+}
+.lsm-row-draft {
+  border-left: 6px solid #dd0e0e;
+  background: rgba(221,14,14,0.04); /* pastel red */
+}
 
 .lsm-legend{ display:flex; gap:12px; align-items:center; font-size:12px }
 .lsm-legend div{ display:flex; align-items:center; gap:6px; color:var(--lsm-muted) }
