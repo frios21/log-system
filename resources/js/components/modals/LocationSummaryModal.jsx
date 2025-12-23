@@ -1,7 +1,7 @@
 import React from 'react';
 import './LocationSummaryModal.css';
 
-export default function LocationSummaryModal({ open, onClose, locations = [], loading = false }) {
+export default function LocationSummaryModal({ open, onClose = () => {}, locations = [], loading = false }) {
   if (!open) return null;
 
   // capacidades por pallet
@@ -98,6 +98,113 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
   const intFmt = new Intl.NumberFormat();
   const kiloFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
+  // safe close helper to avoid uncaught errors coming from parent onClose
+  const safeClose = () => {
+    try {
+      onClose && onClose();
+    } catch (err) {
+      console.error('Error executing onClose from LocationSummaryModal:', err);
+      // don't rethrow
+    }
+  };
+
+  // Print builder: creates HTML, opens new window, triggers print (supports multi-page)
+  const handlePrint = () => {
+    try {
+      const printCss = `
+        body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 18px; }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; }
+        .summary { display:flex; gap:16px; margin-bottom: 12px; flex-wrap:wrap; }
+        .summary div { font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        thead { background: #f7f9fb; }
+        th, td { padding: 8px 6px; border: 1px solid #e6e6e6; text-align: left; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body { padding: 0; }
+          .no-print { display: none; }
+        }
+      `;
+
+      // build rows
+      let rowsHtml = '';
+      visibleLocations.forEach(loc => {
+        const provider = loc.name || '';
+        (loc.cargas || []).forEach((c) => {
+          const { label, insumoQuantity, pallets } = resolveInsumo(c);
+          const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || 0;
+          const entregaPallets = pallets || 0;
+          rowsHtml += `<tr>
+            <td>${escapeHtml(provider)}</td>
+            <td>${escapeHtml(c.name || '')}</td>
+            <td>${escapeHtml(String(label))}</td>
+            <td style="text-align:right">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
+            <td style="text-align:right">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
+            <td style="text-align:right">${entregaPallets || '-'}</td>
+          </tr>`;
+        });
+      });
+
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Resumen por Ubicación</title><style>${printCss}</style></head><body>
+        <div class="header">
+          <h2>Resumen por Ubicación</h2>
+          <div class="no-print">Generado: ${new Date().toLocaleString()}</div>
+        </div>
+        <div class="summary">
+          <div>Palets: <strong>${intFmt.format(totals.pallets || 0)}</strong></div>
+          <div>BV: <strong>${intFmt.format(totals.bv || 0)}</strong></div>
+          <div>BB: <strong>${intFmt.format(totals.bb || 0)}</strong></div>
+          <div>B: <strong>${intFmt.format(totals.b || 0)}</strong></div>
+          <div>Esquineros (est): <strong>${intFmt.format(totals.e || 0)}</strong></div>
+          <div>Kilos (aprox): <strong>${kiloFmt.format(totals.kilos || 0)} kg</strong></div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Proveedor</th>
+              <th>Carga</th>
+              <th>Insumo (Tipo)</th>
+              <th>Insumo (Cantidad)</th>
+              <th>Entrega (Kilos)</th>
+              <th>Entrega (Pallets)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </body></html>`;
+
+      const w = window.open('', '_blank');
+      if (!w) {
+        alert('No se pudo abrir la ventana de impresión. ¿Hay un bloqueador de ventanas emergentes?');
+        return;
+      }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      // small delay to allow rendering
+      setTimeout(() => {
+        try { w.print(); } catch (e) { console.error('Print failed', e); }
+      }, 500);
+    } catch (err) {
+      console.error('Error building print view', err);
+      alert('Error preparando la impresión');
+    }
+  };
+
+  // small helper to escape HTML
+  const escapeHtml = (s) => {
+    if (s == null) return '';
+    return String(s).replace(/[&<>\"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  };
+
   // helper para resolver tipo de insumo y cantidad por pallets
   const resolveInsumo = (c) => {
     // Control de seguridad adicional
@@ -156,7 +263,10 @@ export default function LocationSummaryModal({ open, onClose, locations = [], lo
       <div className="lsm-tab">Resumen</div>
       <div className="lsm-header">
         <strong>Resumen por Ubicación</strong>
-        <button className="lsm-closeBtn" onClick={onClose}>Cerrar</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="lsm-printBtn" onClick={() => handlePrint()} style={{ marginRight: 8 }}>Imprimir</button>
+          <button className="lsm-closeBtn" onClick={safeClose}>Cerrar</button>
+        </div>
       </div>
 
       <div className="lsm-summaryTop">
