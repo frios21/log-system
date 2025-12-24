@@ -34,6 +34,7 @@ export default function RouteAssignModal({ ruta, onClose = () => {} }) {
     const sortableRef = useRef(null);
     const recalcTimeoutRef = useRef(null);
     const cargasListRef = useRef(null);
+    const initializedLoadsForRouteRef = useRef(null);
 
     const [vehicleId, setVehicleId] = useState(
         ruta.vehicle_id ? (Array.isArray(ruta.vehicle_id) ? ruta.vehicle_id[0] : ruta.vehicle_id) : null
@@ -117,6 +118,9 @@ export default function RouteAssignModal({ ruta, onClose = () => {} }) {
 
         if (!routeId) return;
 
+        // inicializar una sola vez por routeId para no sobrescribir la selección
+        if (initializedLoadsForRouteRef.current === routeId) return;
+
         (async () => {
             try {
                 const fullRoute = await fetch(`/api/rutas/${routeId}`).then(r => r.json());
@@ -160,8 +164,19 @@ export default function RouteAssignModal({ ruta, onClose = () => {} }) {
                 // luego: cualquiera que haya quedado sin ordenar
                 loadMap.forEach(load => sortedLoads.push(load));
 
-                setOrdered(sortedLoads);
-                setSelected(new Set(sortedLoads.map(c => c.id)));
+                // si el usuario ya ha hecho selecciones/orden (no vacío), no sobreescribir
+                if (selected && selected.size > 0) {
+                    const existingIds = new Set(ordered.map(o => o.id));
+                    const merged = [...ordered];
+                    sortedLoads.forEach(s => { if (!existingIds.has(s.id)) merged.push(s); });
+                    setOrdered(merged);
+                    setSelected(prev => new Set([...prev, ...sortedLoads.map(c => c.id)]));
+                } else {
+                    setOrdered(sortedLoads);
+                    setSelected(new Set(sortedLoads.map(c => c.id)));
+                }
+
+                initializedLoadsForRouteRef.current = routeId;
             } catch (err) {
                 console.error("Error cargando detalles de ruta:", err);
             }
@@ -220,6 +235,11 @@ export default function RouteAssignModal({ ruta, onClose = () => {} }) {
                 itemToAdd = routeDetails.loads.find(c => c.id === id);
             }
 
+            // fallback: buscar en el caché global de cargas si aún no lo encontramos
+            if (!itemToAdd && Array.isArray(cargasData)) {
+                itemToAdd = cargasData.find(c => c.id === id);
+            }
+
             if (itemToAdd) {
                 setOrdered([...ordered, itemToAdd]);
             }
@@ -268,6 +288,16 @@ export default function RouteAssignModal({ ruta, onClose = () => {} }) {
             performPreview();
         }, 300);
     }
+
+    // cleanup de timeouts en desmontaje para evitar flags huérfanos
+    useEffect(() => {
+        return () => {
+            if (recalcTimeoutRef.current) {
+                clearTimeout(recalcTimeoutRef.current);
+                recalcTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     async function performPreview() {
         if (!routeId) {
@@ -373,7 +403,7 @@ export default function RouteAssignModal({ ruta, onClose = () => {} }) {
             },
         });
         return () => instance.destroy();
-    }, [ordered]);
+    }, []);
 
     // -------------------------------------------------------------
     // GUARDAR
