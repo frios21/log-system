@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import './LocationSummaryModal.css';
 
 export default function LocationSummaryModal({ open, onClose = () => {}, locations = [], loading = false, startDate = '', endDate = '' }) {
@@ -95,12 +95,29 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
   const intFmt = new Intl.NumberFormat();
   const kiloFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
+  // sort tabla columnas
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState(0);
+
+  const toggleSort = (key) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir(1);
+      return;
+    }
+    // ciclo 0 -> 1 -> 2 -> 0
+    const next = sortDir === 0 ? 1 : (sortDir === 1 ? 2 : 0);
+    setSortDir(next);
+    if (next === 0) setSortKey(null);
+  };
+
+  
+
   const safeClose = () => {
     try {
       onClose && onClose();
     } catch (err) {
       console.error('Error executing onClose from LocationSummaryModal:', err);
-      // don't rethrow
     }
   };
 
@@ -158,23 +175,23 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
       `;
 
       let rowsHtml = '';
-      visibleLocations.forEach(loc => {
-        const provider = loc.name || '';
-        (loc.cargas || []).forEach((c) => {
-          const { label, insumoQuantity, pallets } = resolveInsumo(c);
-          const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || 0;
-          const entregaPallets = pallets || 0;
-          const status = getChargeStatus(c) || 'draft';
-          const rowClass = `row-${status}`;
-          rowsHtml += `<tr class="${rowClass}">
-            <td>${escapeHtml(provider)}</td>
-            <td>${escapeHtml(c.name || '')}</td>
-            <td style="text-align:left">${escapeHtml(String(label))}</td>
-            <td style="text-align:left">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
-            <td style="text-align:left">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
-            <td style="text-align:left">${entregaPallets || '-'}</td>
-          </tr>`;
-        });
+      (displayRows || []).forEach(r => {
+        const c = r.carga;
+        const provider = r.provider || '';
+        const label = r.label;
+        const insumoQuantity = r.insumoQuantity;
+        const entregaKilos = Number(r.entregaKilos || 0) || 0;
+        const entregaPallets = r.entregaPallets || 0;
+        const status = r.status || 'draft';
+        const rowClass = `row-${status}`;
+        rowsHtml += `<tr class="${rowClass}">
+          <td>${escapeHtml(provider)}</td>
+          <td>${escapeHtml(c.name || '')}</td>
+          <td style="text-align:left">${escapeHtml(String(label))}</td>
+          <td style="text-align:left">${insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : '-'}</td>
+          <td style="text-align:left">${entregaKilos ? kiloFmt.format(entregaKilos) : '-'}</td>
+          <td style="text-align:left">${entregaPallets || '-'}</td>
+        </tr>`;
       });
 
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>Resumen por Ubicación</title><style>${printCss}</style></head><body>
@@ -291,6 +308,40 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
     return { code, label, insumoQuantity, pallets };
   };
 
+  // prepara las filas a mostrar en la tabla, con sorting
+  const displayRows = useMemo(() => {
+    const rows = [];
+    (visibleLocations || []).forEach(loc => {
+      const provider = loc.name || '';
+      (loc.cargas || []).forEach(c => {
+        if (!c) return;
+        const { label, insumoQuantity, pallets } = resolveInsumo(c);
+        const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || 0;
+        const entregaPallets = pallets || 0;
+        const status = getChargeStatus(c) || 'draft';
+        const rowClass = getChargeStatusColor(status);
+        rows.push({ provider, carga: c, label, insumoQuantity, entregaKilos, entregaPallets, status, rowClass });
+      });
+    });
+
+    if (!sortKey || sortDir === 0) return rows;
+
+    const dir = sortDir === 1 ? 1 : -1;
+    if (sortKey === 'insumo') {
+      rows.sort((a, b) => {
+        const aa = (a.insumoQuantity == null || a.insumoQuantity === '-') ? NaN : Number(a.insumoQuantity);
+        const bb = (b.insumoQuantity == null || b.insumoQuantity === '-') ? NaN : Number(b.insumoQuantity);
+        if (!Number.isNaN(aa) && !Number.isNaN(bb) && aa !== bb) return (aa - bb) * dir;
+        const la = (a.label || '').toString().localeCompare((b.label || '').toString());
+        return la * dir;
+      });
+    } else if (sortKey === 'entrega') {
+      rows.sort((a, b) => (Number(a.entregaKilos || 0) - Number(b.entregaKilos || 0)) * dir);
+    }
+
+    return rows;
+  }, [visibleLocations, sortKey, sortDir]);
+
   return (
     <div className="lsm-modal">
       <div className="lsm-tab">Resumen</div>
@@ -327,47 +378,77 @@ export default function LocationSummaryModal({ open, onClose = () => {}, locatio
                 <div className="lsm-matrixHeader">
                   <div className="lsm-col-provider">Proveedor</div>
                   <div className="lsm-col-carga">Carga</div>
-                  <div className="lsm-col-insumo lsm-insumoHeader lsm-cell-left"><span className="lsm-col-label label-insumo"></span>Insumo<br/>(Tipo)</div>
-                  <div className="lsm-col-insumoQty lsm-insumoHeader lsm-cell-left"><span className="lsm-col-label label-insumo"></span>Insumo (Cantidad)</div>
-                  <div className="lsm-col-kilos lsm-entregaHeader lsm-cell-left"><span className="lsm-col-label label-kilos"></span>Entrega<br/>(Kilos)</div>
-                  <div className="lsm-col-pallets lsm-entregaHeader lsm-cell-left"><span className="lsm-col-label label-entrega"></span>Entrega (Pallets)</div>
+                  <div className="lsm-col-insumo lsm-insumoHeader lsm-cell-left" onClick={() => toggleSort('insumo')} style={{ cursor: 'pointer' }}>
+                    <span className="lsm-col-label label-insumo"></span>Insumo<br/>(Tipo)
+                    <span style={{ marginLeft: 6 }}>{sortKey === 'insumo' ? (sortDir === 1 ? '▲' : sortDir === 2 ? '▼' : '') : ''}</span>
+                  </div>
+                  <div className="lsm-col-insumoQty lsm-insumoHeader lsm-cell-left" onClick={() => toggleSort('insumo')} style={{ cursor: 'pointer' }}>
+                    <span className="lsm-col-label label-insumo"></span>Insumo (Cantidad)
+                    <span style={{ marginLeft: 6 }}>{sortKey === 'insumo' ? (sortDir === 1 ? '▲' : sortDir === 2 ? '▼' : '') : ''}</span>
+                  </div>
+                  <div className="lsm-col-kilos lsm-entregaHeader lsm-cell-left" onClick={() => toggleSort('entrega')} style={{ cursor: 'pointer' }}>
+                    <span className="lsm-col-label label-kilos"></span>Entrega<br/>(Kilos)
+                    <span style={{ marginLeft: 6 }}>{sortKey === 'entrega' ? (sortDir === 1 ? '▲' : sortDir === 2 ? '▼' : '') : ''}</span>
+                  </div>
+                  <div className="lsm-col-pallets lsm-entregaHeader lsm-cell-left" onClick={() => toggleSort('entrega')} style={{ cursor: 'pointer' }}>
+                    <span className="lsm-col-label label-entrega"></span>Entrega (Pallets)
+                    <span style={{ marginLeft: 6 }}>{sortKey === 'entrega' ? (sortDir === 1 ? '▲' : sortDir === 2 ? '▼' : '') : ''}</span>
+                  </div>
                 </div>
 
-                {visibleLocations && visibleLocations.length ? visibleLocations.map((loc, idx) => {
-                  const cargas = loc.cargas || [];
+                {sortKey && sortDir !== 0 ? (
+                  (displayRows && displayRows.length) ? displayRows.map((r, idx) => {
+                    const c = r.carga;
+                    return (
+                      <div key={c.id || idx} className={`lsm-matrixRow ${r.rowClass}`}>
+                        <div className="lsm-col-provider" title={r.provider}><strong className="lsm-proveedorName">{r.provider}</strong></div>
+                        <div className="lsm-col-carga" title={c.name}>{c.name}</div>
+                        <div className="lsm-col-insumo lsm-cell-left">{r.label}</div>
+                        <div className="lsm-col-insumoQty lsm-cell-left">{r.insumoQuantity != null && r.insumoQuantity !== '-' ? intFmt.format(r.insumoQuantity) : r.insumoQuantity}</div>
+                        <div className="lsm-col-kilos lsm-cell-left">{r.entregaKilos || '-'}</div>
+                        <div className="lsm-col-pallets lsm-cell-left">{r.entregaPallets || '-'}</div>
+                      </div>
+                    );
+                  }) : (
+                    <div style={{ padding: 8, color: '#666' }}>No hay ubicaciones para mostrar</div>
+                  )
+                ) : (
+                  (visibleLocations && visibleLocations.length) ? visibleLocations.map((loc, idx) => {
+                    const cargas = loc.cargas || [];
 
-                  return (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
-                      {cargas.length ? cargas.map((c, j) => {
-                        if (!c) return null; 
-                        
-                        const { label, insumoQuantity, pallets } = resolveInsumo(c);
-                        const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
-                        const entregaPallets = pallets || '-';
-                        const status = getChargeStatus(c); 
-                        const rowClass = getChargeStatusColor(status); 
-                        
-                        return (
-                          <div key={(c.id || j)} className={`lsm-matrixRow ${rowClass}`}>
-                            <div className="lsm-col-provider" title={loc.name}>
-                                {j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}
+                    return (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
+                        {cargas.length ? cargas.map((c, j) => {
+                          if (!c) return null;
+
+                          const { label, insumoQuantity, pallets } = resolveInsumo(c);
+                          const entregaKilos = Number(c.total_quantity ?? c.kilos ?? 0) || '-';
+                          const entregaPallets = pallets || '-';
+                          const status = getChargeStatus(c);
+                          const rowClass = getChargeStatusColor(status);
+
+                          return (
+                            <div key={(c.id || j)} className={`lsm-matrixRow ${rowClass}`}>
+                              <div className="lsm-col-provider" title={loc.name}>
+                                  {j === 0 ? <strong className="lsm-proveedorName">{loc.name}</strong> : ''}
+                              </div>
+                              <div className="lsm-col-carga" title={c.name}>{c.name}</div>
+                              <div className="lsm-col-insumo lsm-cell-left">{label}</div>
+                              <div className="lsm-col-insumoQty lsm-cell-left">
+                                  {insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : insumoQuantity}
+                              </div>
+                              <div className="lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
+                              <div className="lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
                             </div>
-                            <div className="lsm-col-carga" title={c.name}>{c.name}</div>
-                            <div className="lsm-col-insumo lsm-cell-left">{label}</div>
-                            <div className="lsm-col-insumoQty lsm-cell-left">
-                                {insumoQuantity != null && insumoQuantity !== '-' ? intFmt.format(insumoQuantity) : insumoQuantity}
-                            </div>
-                            <div className="lsm-col-kilos lsm-cell-left">{entregaKilos}</div>
-                            <div className="lsm-col-pallets lsm-cell-left">{entregaPallets}</div>
-                          </div>
-                        );
-                      }) : (
-                        <div style={styles.matrixRow}><div className="lsm-col lsm-col-provider"><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
-                      )}
-                    </div>
-                  );
-                }) : (
-                  <div style={{ padding: 8, color: '#666' }}>No hay ubicaciones para mostrar</div>
+                          );
+                        }) : (
+                          <div style={styles.matrixRow}><div className="lsm-col lsm-col-provider"><strong>{loc.name}</strong></div><div style={{ paddingLeft: 8, color: '#666' }}>No hay cargas</div></div>
+                        )}
+                      </div>
+                    );
+                  }) : (
+                    <div style={{ padding: 8, color: '#666' }}>No hay ubicaciones para mostrar</div>
+                  )
                 )}
               </div>
             </div>
